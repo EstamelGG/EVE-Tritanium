@@ -487,3 +487,9 @@ Fixes & Improvements:
 1. Character sheet redesigned: attributes, medals, employment history, and faction & rank moved behind a unified entry into lazy-loaded sub-pages — shorter sheet and faster opening
 2. New "Standings & Contacts" feature: the Standings tab lists faction/corporation/agent standings with type tags and colored values; the Contacts tab shows all contacts with corporation/alliance affiliations, blocked/watched markers, filters by standing level and status, and long-press navigation to character/corporation/alliance details
 
+# v1.14.3 September 10, 2026
+
+1. Assets: added a volume progress bar to containers to show space usage (inaccurate ship cargohold volume is a known issue and cannot be mitigated for now)
+2. Account list now shows a summary bar (total wallet + total skill points) with refresh progress
+3. Fixed layout of type tags in standings/contacts rows
+

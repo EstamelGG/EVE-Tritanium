@@ -343,6 +343,67 @@ private struct ContainerInfoRow: View {
     }
 }
 
+/// 容器容积 / 内容物体积进度行（绿/黄/红按占比着色）
+private struct ContainerVolumeRow: View {
+    let capacity: Double
+    let contentVolume: Double
+
+    private var hasCapacity: Bool {
+        capacity > 0
+    }
+
+    private var ratio: Double {
+        hasCapacity ? contentVolume / capacity : 0
+    }
+
+    private var progressColor: Color {
+        guard hasCapacity else { return .gray }
+        if ratio >= 1.0 { return .red }
+        if ratio >= 0.8 { return .yellow }
+        return .green
+    }
+
+    private var contentsText: String {
+        String(
+            format: NSLocalizedString("%@ m³", comment: ""),
+            FormatUtil.format(contentVolume, maxFractionDigits: 2)
+        )
+    }
+
+    private var capacityText: String {
+        hasCapacity
+            ? String(
+                format: NSLocalizedString("%@ m³", comment: ""),
+                FormatUtil.format(capacity, maxFractionDigits: 2)
+            )
+            : "∞"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ProgressView(value: min(max(ratio, 0), 1), total: 1)
+                .progressViewStyle(.linear)
+                .tint(progressColor)
+
+            HStack(spacing: 4) {
+                Text(
+                    "\(NSLocalizedString("Assets_Container_Contents", comment: "")) \(contentsText)"
+                )
+                Spacer()
+                Text(
+                    "\(NSLocalizedString("Assets_Container_Capacity", comment: "")) \(capacityText)"
+                )
+                if hasCapacity {
+                    Text(FormatUtil.formatPercent(ratio, fractionDigits: 0))
+                }
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 2)
+    }
+}
+
 /// 单个资产项的视图
 struct AssetItemView: View {
     let node: AssetTreeNode
@@ -437,6 +498,10 @@ struct SubLocationAssetsView: View {
     let dynamicResultingTypeIds: Set<Int>
     let typeFilterContext: AssetTypeFilterContext
 
+    private let containerCapacity: Double
+    private let isShip: Bool
+    private let contentVolume: Double
+
     @State private var isExportableFittedShip = false
     @State private var showExportConfirm = false
     @State private var exportErrorMessage: String?
@@ -456,6 +521,23 @@ struct SubLocationAssetsView: View {
         self.solarSystemNameCache = solarSystemNameCache
         self.dynamicResultingTypeIds = dynamicResultingTypeIds
         self.typeFilterContext = typeFilterContext
+
+        let parentInfo = ItemInfoMap.typeInfo(for: parentNode.type_id)
+        let ship = parentInfo?.categoryID == 6
+        containerCapacity = parentInfo?.capacity ?? 0
+        isShip = ship
+        contentVolume = (parentNode.items ?? []).reduce(0) { sum, item in
+            if ship && item.location_flag != "Cargo" {
+                return sum
+            }
+            let info = ItemInfoMap.typeInfo(for: item.type_id)
+            let volume =
+                item.is_singleton
+                    ? (info?.volume ?? 0)
+                    : (info?.repackagedVolume ?? info?.volume ?? 0)
+            return sum + volume * Double(item.quantity)
+        }
+
         _viewModel = StateObject(
             wrappedValue: LocationAssetsViewModel(
                 location: parentNode, preloadedItemInfo: preloadedItemInfo,
@@ -608,6 +690,11 @@ struct SubLocationAssetsView: View {
                     showItemId: isDynamic
                 )
             }
+
+            ContainerVolumeRow(
+                capacity: containerCapacity,
+                contentVolume: contentVolume
+            )
         } header: {
             Text(NSLocalizedString("Container_Basic_Info", comment: ""))
                 .fontWeight(.semibold)

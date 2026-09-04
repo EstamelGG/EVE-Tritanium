@@ -472,10 +472,12 @@ private struct StandingEntryRow: View {
                     .cornerRadius(6)
             }
 
-            Text(item.name)
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                    .lineLimit(1)
 
-            typeTag
+                typeTag
+            }
 
             Spacer()
 

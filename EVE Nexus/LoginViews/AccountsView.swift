@@ -153,6 +153,7 @@ struct AccountsView: View {
     @State private var forceUpdate: Bool = false
     @State private var isRefreshing = false
     @State private var refreshingCharacters: Set<Int> = []
+    @State private var refreshingTotal = 0
     @State private var expiredTokenCharacters: Set<Int> = []
     @State private var isLoggingIn = false
     @State private var isRefreshingScopes = false
@@ -331,11 +332,7 @@ struct AccountsView: View {
 
             // 已登录角色列表
             if !viewModel.characters.isEmpty {
-                Section(
-                    header: Text(
-                        "\(NSLocalizedString("Account_Logged_Characters", comment: "")) (\(viewModel.characters.count))"
-                    )
-                ) {
+                Section(header: accountListHeader) {
                     ForEach(viewModel.characters, id: \.CharacterID) { character in
                         Button {
                             if isEditing {
@@ -493,6 +490,53 @@ struct AccountsView: View {
             Task {
                 await mainViewModel.quickRefreshFromLocal()
             }
+        }
+    }
+
+    // MARK: - 列表 header 汇总
+
+    /// 已加载（不在刷新中集合）的人物
+    private var loadedCharacters: [EVECharacterInfo] {
+        viewModel.characters.filter { !refreshingCharacters.contains($0.CharacterID) }
+    }
+
+    private var loadedWalletSum: Double {
+        loadedCharacters.reduce(0) { $0 + ($1.walletBalance ?? 0) }
+    }
+
+    private var loadedSkillPointSum: Int {
+        loadedCharacters.reduce(0) { $0 + ($1.totalSkillPoints ?? 0) }
+    }
+
+    private var loadingProgressText: String {
+        let done = max(0, refreshingTotal - refreshingCharacters.count)
+        return "\(NSLocalizedString("Account_Loading_Progress", comment: "")) \(done)/\(refreshingTotal)"
+    }
+
+    private var accountSummaryText: String {
+        let wallet = NSLocalizedString("Account_Wallet_value", comment: "")
+        let sp = NSLocalizedString("Account_Total_SP", comment: "")
+        return "\(wallet) \(FormatUtil.formatISK(loadedWalletSum)) · \(sp) \(formatSkillPoints(loadedSkillPointSum))"
+    }
+
+    private var accountListHeader: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 8) {
+                Text(
+                    "\(NSLocalizedString("Account_Logged_Characters", comment: "")) (\(viewModel.characters.count))"
+                )
+                if !refreshingCharacters.isEmpty {
+                    Spacer()
+                    Text(loadingProgressText)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .textCase(.none)
+                }
+            }
+            Text(accountSummaryText)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .textCase(.none)
         }
     }
 
@@ -661,6 +705,7 @@ struct AccountsView: View {
             !knownExpiredIds.contains($0.character.CharacterID)
         }
         refreshingCharacters = Set(candidates.map(\.character.CharacterID))
+        refreshingTotal = candidates.count
         // 让 UI 先渲染过期遮罩
         await Task.yield()
 
