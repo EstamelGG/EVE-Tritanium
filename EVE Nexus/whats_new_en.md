@@ -493,3 +493,11 @@ Fixes & Improvements:
 2. Account list now shows a summary bar (total wallet + total skill points) with refresh progress
 3. Fixed layout of type tags in standings/contacts rows
 
+# v1.14.4 September 11, 2026
+
+1. Fitting simulation: new booster side-effect management — view and toggle each side-effect penalty on the booster detail page, all off by default
+2. Item database: ships' item detail pages now offer a "Fitting" entry in the top-right corner to jump straight into fitting simulation
+3. Standings & Contacts: corporation/alliance logos now load concurrently up front, making the list open faster
+4. Fitting deletion now uses a unified confirmation alert; returning from a fitting detail refreshes the list automatically
+5. Dead code cleanup and performance optimizations
+

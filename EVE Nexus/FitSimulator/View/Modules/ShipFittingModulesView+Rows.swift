@@ -146,11 +146,7 @@ extension ShipFittingModulesView {
                 .clipShape(RoundedRectangle(cornerRadius: 2))
 
             Text(title)
-                .fontWeight(.semibold)
-                .font(.system(size: 18))
         }
-        .foregroundColor(.primary)
-        .textCase(.none)
     }
 
     /// 带折叠按钮的区域头部视图
@@ -165,8 +161,6 @@ extension ShipFittingModulesView {
                 .clipShape(RoundedRectangle(cornerRadius: 2))
 
             Text(title)
-                .fontWeight(.semibold)
-                .font(.system(size: 18))
 
             Spacer()
 
@@ -177,11 +171,9 @@ extension ShipFittingModulesView {
                 )
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.blue)
-                .contentTransition(.symbolEffect(.replace.downUp))
+                .contentTransition(.opacity)
             }
         }
-        .foregroundColor(.primary)
-        .textCase(.none)
     }
 
     // MARK: - 折叠/展开动画

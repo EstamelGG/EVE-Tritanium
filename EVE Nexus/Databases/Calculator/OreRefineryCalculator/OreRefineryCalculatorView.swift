@@ -209,10 +209,6 @@ struct OreRefineryCalculatorView: View {
                     }
                 } header: {
                     Text(NSLocalizedString("Ore_Refinery_Basic_Settings", comment: ""))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 }
                 .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
 
@@ -231,10 +227,6 @@ struct OreRefineryCalculatorView: View {
                         .padding(.vertical, 20)
                     } header: {
                         Text(NSLocalizedString("Main_Market_Item_List", comment: ""))
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                     }
                 } else {
                     Section {
@@ -257,10 +249,6 @@ struct OreRefineryCalculatorView: View {
                     } header: {
                         HStack {
                             Text(NSLocalizedString("Main_Market_Item_List", comment: ""))
-                                .fontWeight(.semibold)
-                                .font(.system(size: 18))
-                                .foregroundColor(.primary)
-                                .textCase(.none)
 
                             Spacer()
 

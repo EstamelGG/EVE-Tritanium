@@ -34,10 +34,6 @@ struct WormholeView: View {
             ) { target in
                 Section(
                     header: Text(target)
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 ) {
                     ForEach(filteredWormholes[target] ?? wormholes[target] ?? []) { wormhole in
                         NavigationLink(
@@ -151,8 +147,6 @@ struct WormholeDetailView: View {
                 )
             } header: {
                 Text(NSLocalizedString("Main_Market_WH_Details", comment: ""))
-                    .font(.headline)
-                    .textCase(.none)
             }
         }
         .listStyle(.insetGrouped)

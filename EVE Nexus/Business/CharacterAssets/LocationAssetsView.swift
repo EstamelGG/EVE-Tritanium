@@ -217,10 +217,6 @@ struct LocationAssetsView: View {
             )
         } header: {
             Text(NSLocalizedString("ESI_Tag_Location", comment: ""))
-                .fontWeight(.semibold)
-                .font(.system(size: 18))
-                .foregroundColor(.primary)
-                .textCase(.none)
         }
     }
 
@@ -228,10 +224,6 @@ struct LocationAssetsView: View {
     private func assetGroupSection(for group: (flag: String, items: [AssetTreeNode])) -> some View {
         Section(
             header: Text(formatLocationFlag(group.flag))
-                .fontWeight(.semibold)
-                .font(.system(size: 18))
-                .foregroundColor(.primary)
-                .textCase(.none)
         ) {
             ForEach(group.items, id: \.item_id) { node in
                 assetRow(for: node)
@@ -697,10 +689,6 @@ struct SubLocationAssetsView: View {
             )
         } header: {
             Text(NSLocalizedString("Container_Basic_Info", comment: ""))
-                .fontWeight(.semibold)
-                .font(.system(size: 18))
-                .foregroundColor(.primary)
-                .textCase(.none)
         }
     }
 
@@ -710,10 +698,6 @@ struct SubLocationAssetsView: View {
     {
         Section(
             header: Text(formatLocationFlag(group.flag))
-                .fontWeight(.semibold)
-                .font(.system(size: 18))
-                .foregroundColor(.primary)
-                .textCase(.none)
         ) {
             ForEach(group.items, id: \.item_id) { node in
                 containerItemRow(for: node)
@@ -1046,10 +1030,6 @@ struct MergedLocationAssetsView: View {
                 )
             } header: {
                 Text(NSLocalizedString("ESI_Tag_Location", comment: ""))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             }
 
             // 人物列表：点击跳转到该人物的资产目录
@@ -1102,10 +1082,6 @@ struct MergedLocationAssetsView: View {
                 }
             } header: {
                 Text(NSLocalizedString("Assets_Characters_At_Location", comment: ""))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             }
         }
         .listStyle(.insetGrouped)

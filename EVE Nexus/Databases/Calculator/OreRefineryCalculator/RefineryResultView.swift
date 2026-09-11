@@ -105,10 +105,6 @@ struct RefineryResultView: View {
                 }
             } header: {
                 Text(NSLocalizedString("Ore_Refinery_Result_Market_Settings", comment: "市场设置"))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             }
             .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
 
@@ -178,10 +174,6 @@ struct RefineryResultView: View {
             } header: {
                 HStack {
                     Text(NSLocalizedString("Ore_Refinery_Result_Product_Value", comment: ""))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
 
                     Spacer()
 
@@ -225,10 +217,6 @@ struct RefineryResultView: View {
                 } header: {
                     HStack {
                         Text(NSLocalizedString("Ore_Refinery_Result_Output_List", comment: ""))
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
 
                         Spacer()
 
@@ -253,10 +241,6 @@ struct RefineryResultView: View {
                         .italic()
                 } header: {
                     Text(NSLocalizedString("Ore_Refinery_Result_Output_List", comment: ""))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 }
             }
 
@@ -270,10 +254,6 @@ struct RefineryResultView: View {
                     }
                 } header: {
                     Text(NSLocalizedString("Ore_Refinery_Result_Remaining_List", comment: ""))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 }
             } else {
                 Section {
@@ -282,10 +262,6 @@ struct RefineryResultView: View {
                         .italic()
                 } header: {
                     Text(NSLocalizedString("Ore_Refinery_Result_Remaining_List", comment: ""))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 }
             }
         }

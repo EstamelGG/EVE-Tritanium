@@ -191,10 +191,37 @@ extension SDEMemoryStore {
         marketGroups = cache
     }
 
+    /// 预计算可模拟装配的飞船 typeID 集合：market group 4「Ships」子树（仅 show=true）下的物品
+    static func loadSimulatableShips(_: DatabaseManager) {
+        let shipMarketGroupIDs = marketSubgroupIDs(rootID: 4)
+        simulatableShipTypeIDs = Set(
+            types.compactMap { typeID, info in
+                guard let marketGroupID = info.marketGroupID,
+                      shipMarketGroupIDs.contains(marketGroupID)
+                else { return nil }
+                return typeID
+            }
+        )
+    }
+
+    /// 递归收集根分组及其全部子孙分组 ID（仅 show=true）
+    private static func marketSubgroupIDs(rootID: Int) -> Set<Int> {
+        var result: Set<Int> = [rootID]
+        for group in marketGroups.values where group.show && group.parentGroupID == rootID {
+            result.formUnion(marketSubgroupIDs(rootID: group.id))
+        }
+        return result
+    }
+
     // MARK: - Lookups
 
     static func type(for typeID: Int) -> TypeInfo? {
         types[typeID]
+    }
+
+    /// 判断 typeID 是否为可模拟装配的飞船（market group 4 子树）
+    static func isSimulatableShip(_ typeID: Int) -> Bool {
+        simulatableShipTypeIDs.contains(typeID)
     }
 
     /// 解析变体树顶层父物品 ID（无父物品时返回自身）

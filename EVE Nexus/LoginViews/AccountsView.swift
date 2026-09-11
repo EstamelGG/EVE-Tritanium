@@ -516,7 +516,7 @@ struct AccountsView: View {
     private var accountSummaryText: String {
         let wallet = NSLocalizedString("Account_Wallet_value", comment: "")
         let sp = NSLocalizedString("Account_Total_SP", comment: "")
-        return "\(wallet) \(FormatUtil.formatISK(loadedWalletSum)) · \(sp) \(formatSkillPoints(loadedSkillPointSum))"
+        return "\(wallet) \(FormatUtil.formatISK(loadedWalletSum)) · \(sp) \(FormatUtil.formatForUI(Double(loadedSkillPointSum)))"
     }
 
     private var accountListHeader: some View {
@@ -624,7 +624,7 @@ struct AccountsView: View {
             isEditing: isEditing,
             refreshTokenhasExpired: expiredTokenCharacters.contains(character.CharacterID),
             formatISK: FormatUtil.formatISK,
-            formatSkillPoints: formatSkillPoints,
+            formatSkillPoints: { FormatUtil.formatForUI(Double($0)) },
             formatRemainingTime: formatRemainingTime
         )
     }
@@ -767,16 +767,6 @@ struct AccountsView: View {
         await updateUI {
             self.isRefreshing = false
         }
-    }
-
-    /// 格式化技能点显示
-    private func formatSkillPoints(_ sp: Int) -> String {
-        if sp >= 1_000_000 {
-            return String(format: "%.1fM", Double(sp) / 1_000_000.0)
-        } else if sp >= 1000 {
-            return String(format: "%.1fK", Double(sp) / 1000.0)
-        }
-        return "\(sp)"
     }
 
     /// 格式化剩余时间显示

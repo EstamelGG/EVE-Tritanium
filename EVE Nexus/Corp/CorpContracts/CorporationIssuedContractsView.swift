@@ -377,19 +377,10 @@ struct CorporationIssuedContractsView: View {
                         } header: {
                             if viewModel.groupingMode == .byCompletionDate && group.date == Date.distantFuture {
                                 Text(NSLocalizedString("Contract_Group_Incomplete", comment: ""))
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                    .textCase(nil)
                             } else if viewModel.groupingMode == .byIssueDate {
                                 Text(NSLocalizedString("Contract_Group_Issued_On", comment: "") + " " + FormatUtil.formatDateToLocalDate(group.date))
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                    .textCase(nil)
                             } else {
                                 Text(NSLocalizedString("Contract_Group_Completed_On", comment: "") + " " + FormatUtil.formatDateToLocalDate(group.date))
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                    .textCase(nil)
                             }
                         }
                     }

@@ -9,9 +9,14 @@ struct SkillPlan: Identifiable, Hashable {
     var totalSkillPoints: Int
     var lastUpdated: Date
 
-    /// 仅按 id 判等/哈希（供 navigationDestination(item:) 使用）
+    /// 判等必须覆盖列表行展示的内容：SwiftUI 会用 Equatable 判断数组元素是否变化来决定是否刷新行，
+    /// 只比 id 会导致详情页编辑后回到列表时“技能数/更新时间”停留在旧值。
+    /// 哈希仍只用 id，保证 navigationDestination(item:) 的导航身份稳定。
     static func == (lhs: SkillPlan, rhs: SkillPlan) -> Bool {
         lhs.id == rhs.id
+            && lhs.name == rhs.name
+            && lhs.skills.count == rhs.skills.count
+            && lhs.lastUpdated == rhs.lastUpdated
     }
 
     func hash(into hasher: inout Hasher) {
@@ -122,6 +127,8 @@ class SkillPlanFileManager {
             encoder.dateEncodingStrategy = .formatted(DateFormatter.iso8601Full)
             let data = try encoder.encode(planData)
             try data.write(to: fileURL)
+            // 写盘成功后将内存中的计划时间同步为落盘时间，避免列表行的“更新时间”滞后
+            correctedPlan.lastUpdated = planData.lastUpdated
             Logger.debug("保存技能计划成功: \(fileURL.lastPathComponent)")
         } catch {
             Logger.error("保存技能计划失败: \(fileURL.lastPathComponent) - \(error)")

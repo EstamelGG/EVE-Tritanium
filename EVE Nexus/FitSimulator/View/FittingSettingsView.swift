@@ -570,27 +570,20 @@ struct FittingSettingsView: View {
                 )
             )
         }
-        .alert(
-            NSLocalizedString("Fitting_Delete_Confirm_Title", comment: "确认删除"),
-            isPresented: $showingDeleteConfirmAlert
-        ) {
-            Button(NSLocalizedString("Common_Cancel", comment: "取消"), role: .cancel) {}
-            Button(NSLocalizedString("Fitting_Delete_Confirm", comment: "删除"), role: .destructive) {
-                deleteFitting()
-            }
-        } message: {
-            let fittingName =
+        .fittingDeleteConfirmation(
+            message: String(
+                format: NSLocalizedString(
+                    "Fitting_Delete_Confirm_Message", comment: "确定要删除配置吗？"
+                ),
                 viewModel.simulationInput.name.isEmpty
                     ? NSLocalizedString("Fitting_Unnamed_Fitting", comment: "未命名配置")
                     : viewModel.simulationInput.name
-            Text(
-                String(
-                    format: NSLocalizedString(
-                        "Fitting_Delete_Confirm_Message", comment: "确定要删除配置吗？"
-                    ), fittingName
-                )
-            )
-        }
+            ),
+            isPresented: $showingDeleteConfirmAlert,
+            onConfirm: {
+                deleteFitting()
+            }
+        )
         .onAppear {
             shipItem = DatabaseListItem(
                 typeID: shipTypeID,

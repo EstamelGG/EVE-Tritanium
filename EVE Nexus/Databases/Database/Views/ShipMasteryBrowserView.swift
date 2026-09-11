@@ -197,10 +197,6 @@ struct ShipMasteryGroupView: View {
             ForEach(SDEMemoryStore.metaGroupSections(published) { $0.metaGroupID }, id: \.id) { group in
                 Section(
                     header: Text(group.name)
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 ) {
                     ForEach(group.items, id: \.typeID) { ship in
                         shipRow(ship, state: stateMap[ship.typeID])
@@ -211,10 +207,6 @@ struct ShipMasteryGroupView: View {
             if !unpublished.isEmpty {
                 Section(
                     header: Text(NSLocalizedString("Main_Database_unpublished", comment: "未发布"))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 ) {
                     ForEach(unpublished, id: \.typeID) { ship in
                         shipRow(ship, state: stateMap[ship.typeID])

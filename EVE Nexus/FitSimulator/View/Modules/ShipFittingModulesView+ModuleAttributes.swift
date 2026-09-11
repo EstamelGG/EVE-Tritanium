@@ -38,22 +38,21 @@ extension ShipFittingModulesView {
                     .scaledToFit()
                     .frame(width: 20, height: 20)
 
-                HStack(spacing: 0) {
-                    Text("DPS: ")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(formatNumber(damage.dps, digits: 2))")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.secondary)
-                    Text(" | DPH: ")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(formatNumber(damage.dph, digits: 2))")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.secondary)
-                }
+                (Text("DPS: ")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    + Text(String(format: "%.1f", damage.dps))
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                    + Text(" / DPH: ")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    + Text(String(format: "%.1f", damage.dph))
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary))
+                    .lineLimit(1)
             }
         }
     }

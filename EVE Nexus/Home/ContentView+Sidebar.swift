@@ -35,35 +35,8 @@ extension ContentView {
                     .foregroundColor(.yellow)
                     .font(.system(size: 16))
                 Text(NSLocalizedString("Main_Pinned_Features", comment: "常用功能"))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-            }
-            .textCase(nil)
-        }
-    }
-
-    private var loginSectionHeader: some View {
-        HStack {
-            Text(NSLocalizedString("Account_Management", comment: ""))
-                .fontWeight(.semibold)
-                .font(.system(size: 18))
-                .foregroundColor(.primary)
-
-            Spacer()
-
-            if sdeUpdateChecker.updateStatus == .hasUpdate {
-                sdeUpdateAvailableButton
-                    .transition(
-                        .asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.8, anchor: .trailing)),
-                            removal: .opacity.combined(with: .scale(scale: 0.8, anchor: .trailing))
-                        )
-                    )
             }
         }
-        .textCase(nil)
-        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: sdeUpdateChecker.updateStatus)
     }
 
     var loginSection: some View {
@@ -89,11 +62,22 @@ extension ContentView {
                     }
                 }
             }
-        } header: {
-            loginSectionHeader
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
-                ServerStatusView(mainViewModel: viewModel)
+                HStack {
+                    ServerStatusView(mainViewModel: viewModel)
+                    Spacer()
+                    if sdeUpdateChecker.updateStatus == .hasUpdate {
+                        sdeUpdateAvailableButton
+                            .transition(
+                                .asymmetric(
+                                    insertion: .opacity.combined(with: .scale(scale: 0.8, anchor: .trailing)),
+                                    removal: .opacity.combined(with: .scale(scale: 0.8, anchor: .trailing))
+                                )
+                            )
+                    }
+                }
+                .animation(.spring(response: 0.35, dampingFraction: 0.75), value: sdeUpdateChecker.updateStatus)
                 RateLimitCooldownView()
             }
         }
@@ -112,10 +96,6 @@ extension ContentView {
 
     private func featureSectionHeader(_ section: FeatureSection) -> some View {
         Text(section.title)
-            .fontWeight(.semibold)
-            .font(.system(size: 18))
-            .foregroundColor(.primary)
-            .textCase(nil)
     }
 
     private var sdeUpdateAvailableButton: some View {

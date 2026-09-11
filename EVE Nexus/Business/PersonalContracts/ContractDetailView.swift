@@ -764,10 +764,6 @@ struct ContractDetailView: View {
                         }
                     } header: {
                         Text(NSLocalizedString("Contract_Basic_Info", comment: ""))
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                     }
                     .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
 
@@ -784,10 +780,6 @@ struct ContractDetailView: View {
                             }
                         } header: {
                             Text(NSLocalizedString("Contract_Items_Included", comment: ""))
-                                .fontWeight(.semibold)
-                                .font(.system(size: 18))
-                                .foregroundColor(.primary)
-                                .textCase(.none)
                         }
                         .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                     }
@@ -805,10 +797,6 @@ struct ContractDetailView: View {
                             }
                         } header: {
                             Text(NSLocalizedString("Contract_Items_Required", comment: ""))
-                                .fontWeight(.semibold)
-                                .font(.system(size: 18))
-                                .foregroundColor(.primary)
-                                .textCase(.none)
                         }
                         .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                     }

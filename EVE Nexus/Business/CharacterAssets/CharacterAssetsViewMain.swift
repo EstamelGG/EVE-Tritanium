@@ -486,10 +486,6 @@ struct CharacterAssetsView: View {
                 ForEach(viewModel.mergedUnpinnedLocationsByRegion, id: \.region) { group in
                     Section(
                         header: Text(group.region)
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                     ) {
                         ForEach(group.locations) { merged in
                             mergedLocationRowLink(merged: merged, role: nil)
@@ -501,10 +497,6 @@ struct CharacterAssetsView: View {
                 ForEach(viewModel.unpinnedLocationsByRegion, id: \.region) { group in
                     Section(
                         header: Text(group.region)
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                     ) {
                         ForEach(group.locations) { entry in
                             locationRowLink(entry: entry, pinLabel: "Assets_Pin", pinIcon: "pin", role: nil)
@@ -524,11 +516,7 @@ struct CharacterAssetsView: View {
                         .foregroundColor(.yellow)
                         .font(.system(size: 16))
                     Text(NSLocalizedString("Assets_Pinned_Locations", comment: ""))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
                 }
-                .textCase(.none)
             ) {
                 ForEach(viewModel.pinnedLocations) { entry in
                     locationRowLink(
@@ -551,11 +539,7 @@ struct CharacterAssetsView: View {
                         .foregroundColor(.yellow)
                         .font(.system(size: 16))
                     Text(NSLocalizedString("Assets_Pinned_Locations", comment: ""))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
                 }
-                .textCase(.none)
             ) {
                 ForEach(viewModel.mergedPinnedLocations) { merged in
                     mergedLocationRowLink(merged: merged, role: .destructive)

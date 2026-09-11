@@ -79,10 +79,6 @@ struct LanguageMapView: View {
                             header: Text(
                                 NSLocalizedString("Main_Language_Map_Exact_Match", comment: "完全匹配")
                             )
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(nil)
                         ) {
                             ForEach(exactMatchResults, id: \.id) { result in
                                 ResultRow(result: result, availableLanguages: availableLanguages)
@@ -96,10 +92,6 @@ struct LanguageMapView: View {
                             header: Text(
                                 NSLocalizedString("Main_Language_Map_Prefix_Match", comment: "前缀匹配")
                             )
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(nil)
                         ) {
                             ForEach(prefixMatchResults, id: \.id) { result in
                                 ResultRow(result: result, availableLanguages: availableLanguages)
@@ -113,10 +105,6 @@ struct LanguageMapView: View {
                             header: Text(
                                 NSLocalizedString("Main_Language_Map_Fuzzy_Match", comment: "模糊匹配")
                             )
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(nil)
                         ) {
                             ForEach(fuzzyMatchResults, id: \.id) { result in
                                 ResultRow(result: result, availableLanguages: availableLanguages)

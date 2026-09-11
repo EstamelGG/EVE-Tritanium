@@ -19,10 +19,6 @@ struct SovereigntySystemsView: View {
                 ForEach(constellationGroups, id: \.name) { group in
                     Section(
                         header: Text(group.name)
-                            .fontWeight(.semibold)
-                            .font(.system(size: 16))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                     ) {
                         ForEach(group.systems, id: \.systemId) { system in
                             systemRow(system)

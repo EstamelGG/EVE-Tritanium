@@ -25,24 +25,11 @@
     " / %@" : {
       "shouldTranslate" : false
     },
+    " / DPH: " : {
+
+    },
     " %@" : {
       "shouldTranslate" : false
-    },
-    " | DPH: " : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "/ DPH"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "/ DPH"
-          }
-        }
-      }
     },
     "-" : {
       "shouldTranslate" : false
@@ -5413,6 +5400,52 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "没有可用的增效剂槽位"
+          }
+        }
+      }
+    },
+    "Booster_No_Side_Effects" : {
+      "comment" : "无副作用",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No side effects"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет побочных эффектов"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无副作用"
+          }
+        }
+      }
+    },
+    "Booster_Side_Effects" : {
+      "comment" : "副作用",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Side Effects"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Побочные эффекты"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "副作用"
           }
         }
       }
@@ -15443,6 +15476,23 @@
         }
       }
     },
+    "Fitting_Section_Fittings" : {
+      "comment" : "装配列表页的 section 标题",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fittings"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "装配列表"
+          }
+        }
+      }
+    },
     "Fitting_Section_Groups" : {
       "comment" : "分组列表页的 section 标题",
       "localizations" : {
@@ -15456,6 +15506,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "分组"
+          }
+        }
+      }
+    },
+    "Fitting_Section_Ships" : {
+      "comment" : "飞船列表页的 section 标题",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ships"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "飞船列表"
           }
         }
       }
@@ -16316,6 +16383,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "全部删除"
+          }
+        }
+      }
+    },
+    "Fitting_Unreadable_Clear_All_Confirm" : {
+      "comment" : "确认删除全部无法解析的装配",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Are you sure you want to delete all unreadable fittings? This cannot be undone."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "确定要删除全部无法解析的装配配置吗？此操作无法撤销。"
           }
         }
       }
@@ -33260,6 +33344,29 @@
         }
       }
     },
+    "Main_Skills_Plan_Load_Failed" : {
+      "comment" : "技能计划核心数据（已学技能/角色属性）加载失败占位",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to load character skill data. Please check your network and retry."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось загрузить данные навыков персонажа. Проверьте подключение и повторите попытку."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "人物技能数据加载失败，请检查网络后重试"
+          }
+        }
+      }
+    },
     "Main_Skills_Plan_Loading_Fetching_Skills" : {
       "localizations" : {
         "en" : {
@@ -36344,6 +36451,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重命名"
+          }
+        }
+      }
+    },
+    "Misc_Retry" : {
+      "comment" : "重试",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
           }
         }
       }

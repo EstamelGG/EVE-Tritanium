@@ -545,10 +545,6 @@ struct ShipFittingFightersView: View {
     /// 区域头部视图
     private func sectionHeader(title: String) -> some View {
         Text(title)
-            .fontWeight(.semibold)
-            .font(.system(size: 18))
-            .foregroundColor(.primary)
-            .textCase(.none)
             .padding(.leading, 4)
     }
 

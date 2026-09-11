@@ -136,9 +136,12 @@ struct ServerStatusView: View {
         HStack(spacing: 4) {
             Text(formattedUTCDateTime)
                 .font(.monospacedDigit(.caption)())
+                .fixedSize()
             Text("-")
                 .font(.caption)
             statusText
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
         .onAppear {
             viewModel.startTimers()

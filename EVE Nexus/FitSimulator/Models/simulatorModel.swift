@@ -337,6 +337,9 @@ struct SimImplant {
 
     /// 修饰器（由Step3初始化）
     var attributeModifiers: [Int: [SimAttributeModifier]] = [:] // 属性ID: [修饰器]
+
+    /// 已启用的增效剂副作用惩罚属性 ID（默认空 = 全部副作用关闭）
+    var enabledSideEffectAttributeIDs: Set<Int> = []
 }
 
 /// 环境效果（如空间站、星系、信号场等带来的加成）

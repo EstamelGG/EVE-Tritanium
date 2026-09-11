@@ -338,6 +338,19 @@ private final class ContactEntityCache: ObservableObject {
         isLoaded = true
         lastContactIds = contactIds
 
+        let corpContactIds = Set(
+            contacts.filter { $0.contactType == "corporation" }.map(\.id)
+        )
+        let allianceContactIds = Set(
+            contacts.filter { $0.contactType == "alliance" }.map(\.id)
+        )
+
+        // 直接 corp/alliance 联系人自身的 logo 提前并发加载（ID 已知，不等归属信息）
+        async let directLogos: Void = loadLogos(
+            for: corpContactIds.union(allianceContactIds),
+            corpIds: corpContactIds
+        )
+
         // 1. 人物联系人并发拉 publicInfo、军团联系人拉 corpInfo（各自有 ESI 缓存层）
         var characterCorp: [Int: Int] = [:]
         var characterAlliance: [Int: Int] = [:]
@@ -374,18 +387,18 @@ private final class ContactEntityCache: ObservableObject {
             }
         }
 
-        // 2. 汇总唯一军团/联盟 ID（含军团/联盟联系人自身，供行首图标使用），名称一次批量解析
-        let corpContactIds = Set(
-            contacts.filter { $0.contactType == "corporation" }.map(\.id)
-        )
-        let allianceContactIds = Set(
-            contacts.filter { $0.contactType == "alliance" }.map(\.id)
-        )
+        // 2. 汇总唯一军团/联盟 ID（含军团/联盟联系人自身，供行首图标使用）
         let corpIdSet = Set(characterCorp.values).union(corpContactIds)
         let allianceIdSet = Set(characterAlliance.values)
             .union(corpAlliance.values)
             .union(allianceContactIds)
-        var entityIds = corpIdSet.union(allianceIdSet)
+        let entityIds = corpIdSet.union(allianceIdSet)
+
+        // character 联系人归属的剩余 logo 与名称解析并行
+        let remainingLogoIds = entityIds
+            .subtracting(corpContactIds)
+            .subtracting(allianceContactIds)
+        async let remainingLogos: Void = loadLogos(for: remainingLogoIds, corpIds: corpIdSet)
 
         var names: [Int: (name: String, category: String)] = [:]
         if !entityIds.isEmpty,
@@ -421,12 +434,18 @@ private final class ContactEntityCache: ObservableObject {
         }
         affiliations = result
 
-        // 4. 唯一实体 logo 并发预载（去重后同实体只请求一次）
-        entityIds = entityIds.filter { logos[$0] == nil }
-        guard !entityIds.isEmpty else { return }
+        // 等 logo 加载任务收尾（@Published 已在加载过程中增量刷新）
+        await directLogos
+        await remainingLogos
+    }
+
+    /// 并发预载一组实体 logo（去重后同实体只请求一次；corpIds 决定走军团还是联盟接口）
+    private func loadLogos(for ids: Set<Int>, corpIds: Set<Int>) async {
+        let missing = ids.filter { logos[$0] == nil }
+        guard !missing.isEmpty else { return }
         await withTaskGroup(of: (Int, UIImage?).self) { group in
-            for id in entityIds {
-                if corpIdSet.contains(id) {
+            for id in missing {
+                if corpIds.contains(id) {
                     group.addTask {
                         (id, try? await CorporationAPI.shared.fetchCorporationLogo(corporationId: id))
                     }

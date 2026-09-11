@@ -35,10 +35,6 @@ struct AssetSearchResultsList: View {
                         groups.count
                     )
                 )
-                .fontWeight(.semibold)
-                .font(.system(size: 18))
-                .foregroundColor(.primary)
-                .textCase(.none)
             }
         }
     }
@@ -107,10 +103,6 @@ struct AssetSearchItemLocationsView: View {
                 }
             } header: {
                 Text(NSLocalizedString("Assets_Search_Locations_Title", comment: ""))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             }
         }
         .listStyle(.insetGrouped)

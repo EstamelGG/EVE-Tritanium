@@ -605,10 +605,6 @@ struct CorpIndustryView: View {
                 // 工业槽位统计 Section - 始终显示
                 Section(
                     header: Text(NSLocalizedString("Industry_Task_List_Header", comment: "任务清单"))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 ) {
                     // 计算各类任务的活跃项目数量（参考人物工业项目的过滤逻辑）
                     let currentTime = Date()
@@ -724,10 +720,6 @@ struct CorpIndustryView: View {
                         Section(
                             header: HStack {
                                 Text(formatStatusGroupHeader(statusKey))
-                                    .fontWeight(.semibold)
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.primary)
-                                    .textCase(.none)
 
                                 Spacer()
 

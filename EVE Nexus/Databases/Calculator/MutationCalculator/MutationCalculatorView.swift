@@ -190,10 +190,6 @@ struct MutationCalculatorView: View {
 
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
-            .fontWeight(.semibold)
-            .font(.system(size: 18))
-            .foregroundColor(.primary)
-            .textCase(.none)
     }
 
     /// 属性 section footer：右对齐的随机 Roll 按钮（无属性数据时隐藏）
