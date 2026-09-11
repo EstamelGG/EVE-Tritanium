@@ -68,6 +68,11 @@ extension SDEMemoryStore {
         stations[id]
     }
 
+    static func stationEnglishName(for id: Int) -> String? {
+        let en = stations[id]?.names.en ?? ""
+        return en.isEmpty ? nil : en
+    }
+
     /// LP 商店属于指定军团的空间站，按 stationID 升序
     static func stationsWithLPStore(corporationId: Int) -> [StationInfo] {
         stations.values

@@ -98,6 +98,9 @@ struct QuickbarItem: Codable, Equatable {
 class MarketQuickbarManager {
     static let shared = MarketQuickbarManager()
 
+    /// 手动拖动排序的 UserDefaults key（存储 UUID 字符串数组）
+    private static let manualOrderKey = "MarketQuickbarManualOrder"
+
     private init() {
         createQuickbarDirectory()
     }
@@ -159,7 +162,7 @@ class MarketQuickbarManager {
                 }
             }
 
-            let ordered = MarketQuickbar.sortedForWatchListHome(quickbars)
+            let ordered = applyingManualOrder(to: quickbars)
             Logger.success("成功加载市场关注列表数量: \(ordered.count)")
             return ordered
 
@@ -167,6 +170,30 @@ class MarketQuickbarManager {
             Logger.error("读取市场关注列表目录失败: \(error)")
             return []
         }
+    }
+
+    /// 保存手动拖动排序（首页与添加物品的目标列表选择页共用此顺序）
+    func saveManualOrder(_ quickbars: [MarketQuickbar]) {
+        UserDefaults.standard.set(
+            quickbars.map(\.id.uuidString), forKey: Self.manualOrderKey
+        )
+    }
+
+    /// 应用手动排序：已记录顺序的按记录排，未记录的（新列表）按原默认排序追加在末尾
+    private func applyingManualOrder(to quickbars: [MarketQuickbar]) -> [MarketQuickbar] {
+        let savedOrder = UserDefaults.standard.stringArray(forKey: Self.manualOrderKey) ?? []
+        var rank: [String: Int] = [:]
+        for (index, id) in savedOrder.enumerated() where rank[id] == nil {
+            rank[id] = index
+        }
+
+        let known = quickbars
+            .filter { rank[$0.id.uuidString] != nil }
+            .sorted { rank[$0.id.uuidString]! < rank[$1.id.uuidString]! }
+        let unknown = MarketQuickbar.sortedForWatchListHome(
+            quickbars.filter { rank[$0.id.uuidString] == nil }
+        )
+        return known + unknown
     }
 
     func deleteQuickbar(_ quickbar: MarketQuickbar) {
@@ -179,5 +206,10 @@ class MarketQuickbarManager {
         } catch {
             Logger.error("删除市场关注列表失败: \(error)")
         }
+
+        // 同步清理手动排序记录
+        var order = UserDefaults.standard.stringArray(forKey: Self.manualOrderKey) ?? []
+        order.removeAll { $0 == quickbar.id.uuidString }
+        UserDefaults.standard.set(order, forKey: Self.manualOrderKey)
     }
 }

@@ -305,10 +305,6 @@ struct MarketItemSelectorItemListView: View {
                     } header: {
                         HStack(alignment: .firstTextBaseline) {
                             Text(group.name)
-                                .fontWeight(.semibold)
-                                .font(.system(size: 18))
-                                .foregroundColor(.primary)
-                                .textCase(.none)
                             // 「全选」按钮仅与多选功能绑定：未提供批量回调（单选场景）时不显示
                             if let batch = onBatchItemsSelected {
                                 Spacer(minLength: 8)

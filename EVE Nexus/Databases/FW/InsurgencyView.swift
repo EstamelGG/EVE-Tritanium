@@ -60,6 +60,20 @@ struct InsurgencySystemCell: View {
                                         systemImage: "doc.on.doc"
                                     )
                                 }
+
+                                // 显示名与英文名不同时，追加复制英文名
+                                if let enName = SDEMemoryStore.solarSystemEnglishName(
+                                    for: systemInfo.id
+                                ), enName != systemInfo.name {
+                                    Button {
+                                        UIPasteboard.general.string = enName
+                                    } label: {
+                                        Label(
+                                            NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                                            systemImage: "translate"
+                                        )
+                                    }
+                                }
                             }
                     }
 
@@ -323,6 +337,23 @@ struct InsurgencyView: View {
                                                         ),
                                                         systemImage: "doc.on.doc"
                                                     )
+                                                }
+
+                                                // 显示名与英文名不同时，追加复制英文名
+                                                if let enName = SDEMemoryStore
+                                                    .solarSystemEnglishName(for: systemInfo.id),
+                                                    enName != systemInfo.name
+                                                {
+                                                    Button {
+                                                        UIPasteboard.general.string = enName
+                                                    } label: {
+                                                        Label(
+                                                            NSLocalizedString(
+                                                                "Misc_Copy_Trans", comment: ""
+                                                            ),
+                                                            systemImage: "translate"
+                                                        )
+                                                    }
                                                 }
                                             }
                                     }

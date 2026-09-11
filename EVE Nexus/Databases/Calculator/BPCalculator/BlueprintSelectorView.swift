@@ -412,10 +412,6 @@ struct BlueprintItemsListView: View {
                 ForEach(groupedItems, id: \.id) { group in
                     Section(
                         header: Text(group.name)
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                     ) {
                         ForEach(group.items) { item in
                             BlueprintItemRowView(

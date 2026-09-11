@@ -313,10 +313,6 @@ struct AssetsFilterItemListView: View {
             } header: {
                 HStack(alignment: .firstTextBaseline) {
                     Text(title)
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                     Spacer(minLength: 8)
                     // 切换式：已全选时变"取消全选"并清空本节，否则全选本节已拥有物品
                     let ownedIds = Set(items.filter(\.isOwned).map(\.id))

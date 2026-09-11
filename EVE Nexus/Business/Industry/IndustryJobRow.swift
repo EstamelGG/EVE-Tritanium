@@ -342,16 +342,31 @@ struct IndustryJobRow: View {
 
             // 复制地点信息
             if let locationInfo = locationInfo {
+                let locationText =
+                    !locationInfo.stationName.isEmpty
+                        ? locationInfo.stationName : locationInfo.solarSystemName
                 Button {
-                    let locationText =
-                        !locationInfo.stationName.isEmpty
-                            ? locationInfo.stationName : locationInfo.solarSystemName
                     UIPasteboard.general.string = locationText
                 } label: {
                     Label(
                         NSLocalizedString("Misc_Copy_Location", comment: "复制地点"),
                         systemImage: "doc.on.doc"
                     )
+                }
+
+                // 显示名与英文名不同时，追加复制英文名
+                let englishText =
+                    !locationInfo.stationName.isEmpty
+                        ? locationInfo.stationEnglishName : locationInfo.solarSystemEnglishName
+                if let enName = englishText, enName != locationText {
+                    Button {
+                        UIPasteboard.general.string = enName
+                    } label: {
+                        Label(
+                            NSLocalizedString("Misc_Copy_Trans", comment: "复制翻译"),
+                            systemImage: "translate"
+                        )
+                    }
                 }
             }
         }

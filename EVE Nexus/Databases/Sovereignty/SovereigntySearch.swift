@@ -223,10 +223,6 @@ struct SovereigntySearchResultsView: View {
                     header: Text(
                         "\(NSLocalizedString("Sovereignty_Search_Results_Factions", comment: "主权势力")) (\(results.sovereignties.count))"
                     )
-                    .fontWeight(.semibold)
-                    .font(.system(size: 16))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
                 ) {
                     ForEach(results.sovereignties, id: \.id) { sovereignty in
                         NavigationLink(
@@ -247,10 +243,6 @@ struct SovereigntySearchResultsView: View {
                     header: Text(
                         "\(NSLocalizedString("Sovereignty_Search_Results_Systems", comment: "星系")) (\(results.systems.count))"
                     )
-                    .fontWeight(.semibold)
-                    .font(.system(size: 16))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
                 ) {
                     ForEach(results.systems) { hit in
                         systemHitRow(hit)
@@ -337,6 +329,20 @@ struct SovereigntySearchResultsView: View {
                     NSLocalizedString("Misc_Copy_Location", comment: ""),
                     systemImage: "doc.on.doc"
                 )
+            }
+
+            // 显示名与英文名不同时，追加复制英文名
+            if let enName = SDEMemoryStore.solarSystemEnglishName(
+                for: hit.system.systemId
+            ), enName != hit.system.systemName {
+                Button {
+                    UIPasteboard.general.string = enName
+                } label: {
+                    Label(
+                        NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                        systemImage: "translate"
+                    )
+                }
             }
         }
     }

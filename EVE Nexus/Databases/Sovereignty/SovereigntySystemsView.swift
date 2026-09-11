@@ -19,10 +19,6 @@ struct SovereigntySystemsView: View {
                 ForEach(constellationGroups, id: \.name) { group in
                     Section(
                         header: Text(group.name)
-                            .fontWeight(.semibold)
-                            .font(.system(size: 16))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                     ) {
                         ForEach(group.systems, id: \.systemId) { system in
                             systemRow(system)
@@ -51,6 +47,20 @@ struct SovereigntySystemsView: View {
                     NSLocalizedString("Misc_Copy_Location", comment: ""),
                     systemImage: "doc.on.doc"
                 )
+            }
+
+            // 显示名与英文名不同时，追加复制英文名
+            if let enName = SDEMemoryStore.solarSystemEnglishName(
+                for: system.systemId
+            ), enName != system.systemName {
+                Button {
+                    UIPasteboard.general.string = enName
+                } label: {
+                    Label(
+                        NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                        systemImage: "translate"
+                    )
+                }
             }
         }
     }

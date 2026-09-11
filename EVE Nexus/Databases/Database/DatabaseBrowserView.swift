@@ -230,10 +230,6 @@ private struct DatabaseSearchCategoryRows: View {
         if !publishedCategoryIDs.isEmpty {
             Section(
                 header: Text(NSLocalizedString("Main_Database_published", comment: "已发布"))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             ) {
                 categoryRows(for: publishedCategoryIDs)
             }
@@ -241,10 +237,6 @@ private struct DatabaseSearchCategoryRows: View {
         if !unpublishedCategoryIDs.isEmpty {
             Section(
                 header: Text(NSLocalizedString("Main_Database_unpublished", comment: "未发布"))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             ) {
                 categoryRows(for: unpublishedCategoryIDs)
             }
@@ -316,10 +308,6 @@ private struct DatabaseSearchGroupRows: View {
         if !publishedGroupIDs.isEmpty {
             Section(
                 header: Text(NSLocalizedString("Main_Database_published", comment: "已发布"))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             ) {
                 groupRows(for: publishedGroupIDs)
             }
@@ -327,10 +315,6 @@ private struct DatabaseSearchGroupRows: View {
         if !unpublishedGroupIDs.isEmpty {
             Section(
                 header: Text(NSLocalizedString("Main_Database_unpublished", comment: "未发布"))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             ) {
                 groupRows(for: unpublishedGroupIDs)
             }
@@ -381,10 +365,6 @@ private struct DatabaseSearchItemsView: View {
             ForEach(itemsByMetaGroup, id: \.id) { group in
                 Section(
                     header: Text(group.name)
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 ) {
                     ForEach(group.items) { item in
                         NavigationLink(destination: item.navigationDestination) {
@@ -398,10 +378,6 @@ private struct DatabaseSearchItemsView: View {
             if !unpublishedItems.isEmpty {
                 Section(
                     header: Text(NSLocalizedString("Main_Database_unpublished", comment: "未发布"))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 ) {
                     ForEach(unpublishedItems) { item in
                         NavigationLink(destination: item.navigationDestination) {

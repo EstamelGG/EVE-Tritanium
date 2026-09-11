@@ -479,6 +479,8 @@ enum SDEMemoryStore {
     static var typeMaterialEntries: [Int: [TypeMaterialEntry]] = [:]
     /// 虫洞列表（load 时按当前语言解析）
     static var wormholeList: [WormholeInfo] = []
+    /// 可模拟装配的飞船 typeID 集合（market group 4「Ships」子树，仅 show=true 分组）
+    static var simulatableShipTypeIDs: Set<Int> = []
 
     /// 全量加载（各域 loader 见同目录 extension 文件）
     /// - Parameter progress: 内存索引逐表构建进度回调 (已完成数, 总数)，在后台线程触发
@@ -494,6 +496,7 @@ enum SDEMemoryStore {
             ("metaGroups", loadMetaGroups),
             ("dogmaAttributes", loadDogmaAttributes),
             ("marketGroups", loadMarketGroups),
+            ("simulatableShips", loadSimulatableShips),
             ("regions", loadRegions),
             ("solarsystems", loadSolarSystems),
             ("universe", loadUniverseSystems),

@@ -28,6 +28,10 @@ struct FittingMainView: View {
     @State private var renameFitting: FittingItemNode?
     @State private var renameFittingName = ""
 
+    // 删除二次确认状态管理
+    @State private var isShowingDeleteConfirmation = false
+    @State private var deleteCandidate: FittingDeleteTarget?
+
     // 使用两个独立的视图模型
     @StateObject private var localViewModel: LocalFittingViewModel
     @StateObject private var onlineViewModel: OnlineFittingViewModel
@@ -231,6 +235,65 @@ struct FittingMainView: View {
         }
     }
 
+    /// 重命名弹窗内容（列表页 / 飞船页 / 搜索页三处复用）
+    @ViewBuilder
+    private func renameAlertContent() -> some View {
+        TextField(NSLocalizedString("Misc_Name", comment: ""), text: $renameFittingName)
+
+        Button(NSLocalizedString("Misc_Done", comment: "")) {
+            if let fitting = renameFitting, !renameFittingName.isEmpty {
+                renameFittingName(fitting: fitting, newName: renameFittingName)
+            }
+            renameFitting = nil
+            renameFittingName = ""
+        }
+        .disabled(renameFittingName.isEmpty)
+
+        Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
+            renameFitting = nil
+            renameFittingName = ""
+        }
+    }
+
+    /// 执行删除确认
+    private func performDeleteConfirmation() {
+        guard let target = deleteCandidate else { return }
+        switch target {
+        case let .fitting(item):
+            switch item.ref {
+            case let .online(fittingId):
+                onlineViewModel.deleteFitting(fittingId: fittingId)
+            case let .local(fittingId):
+                localViewModel.deleteFitting(fittingId: fittingId)
+            }
+        case let .unreadable(item):
+            localViewModel.deleteUnreadableFitting(fileName: item.fileName)
+        case .allUnreadable:
+            localViewModel.deleteAllUnreadableFittings()
+        }
+        deleteCandidate = nil
+    }
+
+    /// 删除确认弹窗消息（列表页 / 飞船页 / 搜索页三处复用）
+    private func deleteConfirmMessage() -> String {
+        switch deleteCandidate {
+        case let .fitting(item):
+            return String(
+                format: NSLocalizedString("Fitting_Delete_Confirm_Message", comment: ""),
+                item.name.isEmpty ? NSLocalizedString("Unnamed", comment: "") : item.name
+            )
+        case let .unreadable(item):
+            return String(
+                format: NSLocalizedString("Fitting_Delete_Confirm_Message", comment: ""),
+                item.displayName
+            )
+        case .allUnreadable:
+            return NSLocalizedString("Fitting_Unreadable_Clear_All_Confirm", comment: "")
+        case nil:
+            return ""
+        }
+    }
+
     /// 处理用户选择的飞船并重新导入
     private func importWithSelectedShip(selectedShipTypeId: Int) {
         Logger.info("用户选择了飞船ID: \(selectedShipTypeId)，重新导入配置")
@@ -282,18 +345,9 @@ struct FittingMainView: View {
 
     // MARK: - 三级列表（树驱动，纯渲染）
 
-    /// 第1层列表的 Section header 样式（“分组” / “无法解析”）；第2、3层由大标题页面 header 收缩承担，不设 Section header
-    private func sectionHeaderText(_ text: String) -> some View {
-        Text(text)
-            .fontWeight(.semibold)
-            .font(.system(size: 18))
-            .foregroundColor(.primary)
-            .textCase(.none)
-    }
-
     /// 主页：组列表
     private var hierarchyListContent: some View {
-        Section(header: sectionHeaderText(NSLocalizedString("Fitting_Section_Groups", comment: ""))) {
+        Section(header: Text(NSLocalizedString("Fitting_Section_Groups", comment: ""))) {
             ForEach(currentTree) { node in
                 groupRowView(node)
             }
@@ -310,10 +364,11 @@ struct FittingMainView: View {
             }
         } header: {
             HStack(alignment: .firstTextBaseline) {
-                sectionHeaderText(NSLocalizedString("Fitting_Unreadable", comment: ""))
+                Text(NSLocalizedString("Fitting_Unreadable", comment: ""))
                 Spacer(minLength: 8)
                 Button {
-                    localViewModel.deleteAllUnreadableFittings()
+                    deleteCandidate = .allUnreadable
+                    isShowingDeleteConfirmation = true
                 } label: {
                     Text(NSLocalizedString("Fitting_Unreadable_Clear_All", comment: ""))
                         .font(.subheadline.weight(.medium))
@@ -360,7 +415,8 @@ struct FittingMainView: View {
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             // 仅允许删除（无重命名/复制）
             Button(role: .destructive) {
-                localViewModel.deleteUnreadableFitting(fileName: item.fileName)
+                deleteCandidate = .unreadable(item)
+                isShowingDeleteConfirmation = true
             } label: {
                 Label(NSLocalizedString("Misc_Delete", comment: ""), systemImage: "trash")
             }
@@ -407,7 +463,7 @@ struct FittingMainView: View {
 
         return List {
             if let node, !node.children.isEmpty {
-                Section {
+                Section(header: Text(NSLocalizedString("Fitting_Section_Ships", comment: ""))) {
                     ForEach(node.children) { child in
                         childRowView(child)
                     }
@@ -419,6 +475,18 @@ struct FittingMainView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(node?.groupName ?? "")
         .navigationBarTitleDisplayMode(.large)
+        .alert(
+            NSLocalizedString("Misc_Rename", comment: ""),
+            isPresented: $isShowingRenameAlert
+        ) {
+            renameAlertContent()
+        }
+        .fittingDeleteConfirmation(
+            message: deleteConfirmMessage(),
+            isPresented: $isShowingDeleteConfirmation,
+            onConfirm: performDeleteConfirmation,
+            onCancel: { deleteCandidate = nil }
+        )
     }
 
     /// 组页子项行：多装配飞船 → 装配页；单装配拍平 → 直接是装配行
@@ -484,7 +552,7 @@ struct FittingMainView: View {
 
         return List {
             if let shipNode, !shipNode.fittings.isEmpty {
-                Section {
+                Section(header: Text(NSLocalizedString("Fitting_Section_Fittings", comment: ""))) {
                     ForEach(shipNode.fittings) { fitting in
                         fittingRowView(fitting)
                     }
@@ -496,6 +564,18 @@ struct FittingMainView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(shipNode?.shipInfo.name ?? "Unknown")
         .navigationBarTitleDisplayMode(.large)
+        .alert(
+            NSLocalizedString("Misc_Rename", comment: ""),
+            isPresented: $isShowingRenameAlert
+        ) {
+            renameAlertContent()
+        }
+        .fittingDeleteConfirmation(
+            message: deleteConfirmMessage(),
+            isPresented: $isShowingDeleteConfirmation,
+            onConfirm: performDeleteConfirmation,
+            onCancel: { deleteCandidate = nil }
+        )
     }
 
     // MARK: - 搜索结果
@@ -569,12 +649,8 @@ struct FittingMainView: View {
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             // 删除按钮（先添加，会在右边）
             Button(role: .destructive) {
-                switch item.ref {
-                case let .online(fittingId):
-                    onlineViewModel.deleteFitting(fittingId: fittingId)
-                case let .local(fittingId):
-                    localViewModel.deleteFitting(fittingId: fittingId)
-                }
+                deleteCandidate = .fitting(item)
+                isShowingDeleteConfirmation = true
             } label: {
                 Label(NSLocalizedString("Misc_Delete", comment: ""), systemImage: "trash")
             }
@@ -618,12 +694,8 @@ struct FittingMainView: View {
 
             // 删除选项
             Button(role: .destructive) {
-                switch item.ref {
-                case let .online(fittingId):
-                    onlineViewModel.deleteFitting(fittingId: fittingId)
-                case let .local(fittingId):
-                    localViewModel.deleteFitting(fittingId: fittingId)
-                }
+                deleteCandidate = .fitting(item)
+                isShowingDeleteConfirmation = true
             } label: {
                 Label(NSLocalizedString("Misc_Delete", comment: ""), systemImage: "trash")
             }
@@ -696,6 +768,18 @@ struct FittingMainView: View {
                         await onlineViewModel.loadOnlineFittings(forceRefresh: true)
                     }
                 }
+                .alert(
+                    NSLocalizedString("Misc_Rename", comment: ""),
+                    isPresented: $isShowingRenameAlert
+                ) {
+                    renameAlertContent()
+                }
+                .fittingDeleteConfirmation(
+                    message: deleteConfirmMessage(),
+                    isPresented: $isShowingDeleteConfirmation,
+                    onConfirm: performDeleteConfirmation,
+                    onCancel: { deleteCandidate = nil }
+                )
             }
         }
         .navigationTitle(NSLocalizedString("Main_Fitting", comment: ""))
@@ -834,6 +918,15 @@ struct FittingMainView: View {
                 }
             }
         }
+        .onReceive(
+            NotificationCenter.default.publisher(for: NSNotification.Name("RefreshLocalFittings"))
+        ) { _ in
+            // 从配置详情返回时刷新本地配置列表（设置 sheet 里改名 / 详情内删除后立即反映新名称）
+            guard sourceType == .local else { return }
+            Task {
+                await localViewModel.loadLocalFittings(forceRefresh: true)
+            }
+        }
         .alert(
             NSLocalizedString("Fitting_Import_Failed_Title", comment: "导入失败"),
             isPresented: $showingImportErrorAlert
@@ -841,23 +934,6 @@ struct FittingMainView: View {
             Button(NSLocalizedString("Common_OK", comment: "确定")) {}
         } message: {
             Text(importErrorMessage)
-        }
-        .alert(NSLocalizedString("Misc_Rename", comment: ""), isPresented: $isShowingRenameAlert) {
-            TextField(NSLocalizedString("Misc_Name", comment: ""), text: $renameFittingName)
-
-            Button(NSLocalizedString("Misc_Done", comment: "")) {
-                if let fitting = renameFitting, !renameFittingName.isEmpty {
-                    renameFittingName(fitting: fitting, newName: renameFittingName)
-                }
-                renameFitting = nil
-                renameFittingName = ""
-            }
-            .disabled(renameFittingName.isEmpty)
-
-            Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
-                renameFitting = nil
-                renameFittingName = ""
-            }
         }
         .sheet(
             item: Binding<ShipSelectionItem?>(
@@ -894,6 +970,13 @@ struct ShipSelectionItem: Identifiable {
     let id = UUID()
     let options: [(typeId: Int, name: String, iconFileName: String?)]
     let eftText: String
+}
+
+/// 删除二次确认的目标类型
+private enum FittingDeleteTarget {
+    case fitting(FittingItemNode)
+    case unreadable(UnreadableFitting)
+    case allUnreadable
 }
 
 /// 飞船选择弹窗视图

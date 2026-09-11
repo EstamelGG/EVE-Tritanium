@@ -131,6 +131,21 @@ struct ShowItemInfo: View {
         .listStyle(.insetGrouped)
         .navigationTitle(NSLocalizedString("Item_Info", comment: ""))
         .navigationBarBackButtonHidden(false)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if let details = itemDetails, SDEMemoryStore.isSimulatableShip(itemID) {
+                    NavigationLink {
+                        ShipFittingView(
+                            shipTypeId: itemID,
+                            shipInfo: (name: details.name, iconFileName: details.iconFileName),
+                            databaseManager: databaseManager
+                        )
+                    } label: {
+                        Text(NSLocalizedString("Main_Fitting", comment: ""))
+                    }
+                }
+            }
+        }
         .onAppear {
             getItemDetails(for: itemID)
             loadAttributes(for: itemID)

@@ -25,17 +25,121 @@ struct MarketQuickbarView: View {
     }
 
     var body: some View {
-        List {
-            if filteredQuickbars.isEmpty {
-                if searchText.isEmpty {
-                    Text(NSLocalizedString("Main_Market_Watch_List_Empty", comment: ""))
-                        .foregroundColor(.secondary)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
-                } else {
-                    Text(NSLocalizedString("Main_EVE_Mail_No_Results", comment: ""))
-                        .foregroundColor(.secondary)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
+        quickbarList
+            .searchable(
+                text: $searchText,
+                prompt: NSLocalizedString("Main_Database_Search", comment: "")
+            )
+            .navigationDestination(item: $autoNavigateQuickbarID) { id in
+                if let quickbar = quickbars.first(where: { $0.id == id }) {
+                    MarketQuickbarDetailView(
+                        databaseManager: databaseManager,
+                        quickbar: quickbar
+                    )
                 }
+            }
+            .navigationTitle(NSLocalizedString("Main_Market_Watch_List", comment: ""))
+            .toolbar {
+                if #available(iOS 26.0, *) {
+                    // iOS 26：搜索框与添加按钮共处底部同一 Liquid Glass 行（搜索框左、+ 右）
+                    DefaultToolbarItem(kind: .search, placement: .bottomBar)
+                    ToolbarSpacer(.flexible, placement: .bottomBar)
+                    ToolbarItem(placement: .bottomBar) {
+                        addQuickbarButton
+                    }
+                } else {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        addQuickbarButton
+                    }
+                }
+            }
+            .alert(
+                NSLocalizedString("Main_Market_Watch_List_Add", comment: ""),
+                isPresented: $isShowingAddAlert
+            ) {
+                TextField(
+                    NSLocalizedString("Main_Market_Watch_List_Name", comment: ""),
+                    text: $newQuickbarName
+                )
+
+                Button(NSLocalizedString("Misc_Done", comment: "")) {
+                    if !newQuickbarName.isEmpty {
+                        let newQuickbar = MarketQuickbar(
+                            name: newQuickbarName,
+                            items: []
+                        )
+                        quickbars.append(newQuickbar)
+                        MarketQuickbarManager.shared.saveQuickbar(newQuickbar)
+                        newQuickbarName = ""
+                        // 新建成功后自动进入该列表
+                        autoNavigateQuickbarID = newQuickbar.id
+                    }
+                }
+                .disabled(newQuickbarName.isEmpty)
+
+                Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
+                    newQuickbarName = ""
+                }
+            }
+            .alert(NSLocalizedString("Misc_Rename", comment: ""), isPresented: $isShowingRenameAlert) {
+                TextField(NSLocalizedString("Misc_Name", comment: ""), text: $renameQuickbarName)
+
+                Button(NSLocalizedString("Misc_Done", comment: "")) {
+                    if let quickbar = renameQuickbar, !renameQuickbarName.isEmpty {
+                        if let index = quickbars.firstIndex(where: { $0.id == quickbar.id }) {
+                            quickbars[index].name = renameQuickbarName
+                            MarketQuickbarManager.shared.saveQuickbar(quickbars[index])
+                        }
+                    }
+                    renameQuickbar = nil
+                    renameQuickbarName = ""
+                }
+                .disabled(renameQuickbarName.isEmpty)
+
+                Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
+                    renameQuickbar = nil
+                    renameQuickbarName = ""
+                }
+            }
+            .alert(
+                NSLocalizedString("Misc_Delete", comment: ""),
+                isPresented: Binding(
+                    get: { quickbarToDelete != nil },
+                    set: { if !$0 { quickbarToDelete = nil } }
+                ),
+                presenting: quickbarToDelete
+            ) { quickbar in
+                Button(NSLocalizedString("Misc_Delete", comment: ""), role: .destructive) {
+                    deleteQuickbar(quickbar)
+                    quickbarToDelete = nil
+                }
+                Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
+                    quickbarToDelete = nil
+                }
+            } message: { quickbar in
+                Text(
+                    String(
+                        format: NSLocalizedString("Main_Market_Watch_List_Delete_Confirm", comment: ""),
+                        quickbar.name
+                    )
+                )
+            }
+            .task {
+                quickbars = MarketQuickbarManager.shared.loadQuickbars()
+            }
+    }
+
+    /// 列表主体：长按拖动排序（onMove），导航/滑动/长按菜单
+    private var quickbarList: some View {
+        List {
+            if quickbars.isEmpty {
+                Text(NSLocalizedString("Main_Market_Watch_List_Empty", comment: ""))
+                    .foregroundColor(.secondary)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
+            } else if filteredQuickbars.isEmpty {
+                Text(NSLocalizedString("Main_EVE_Mail_No_Results", comment: ""))
+                    .foregroundColor(.secondary)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
             } else {
                 ForEach(filteredQuickbars) { quickbar in
                     NavigationLink {
@@ -79,108 +183,8 @@ struct MarketQuickbarView: View {
                     }
                     .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                 }
+                .onMove(perform: moveQuickbars)
             }
-        }
-        .navigationDestination(item: $autoNavigateQuickbarID) { id in
-            if let quickbar = quickbars.first(where: { $0.id == id }) {
-                MarketQuickbarDetailView(
-                    databaseManager: databaseManager,
-                    quickbar: quickbar
-                )
-            }
-        }
-        .navigationTitle(NSLocalizedString("Main_Market_Watch_List", comment: ""))
-        .searchable(
-            text: $searchText,
-            prompt: NSLocalizedString("Main_Database_Search", comment: "")
-        )
-        .toolbar {
-            if #available(iOS 26.0, *) {
-                // iOS 26：搜索框与添加按钮共处底部同一 Liquid Glass 行（搜索框左、+ 右）
-                DefaultToolbarItem(kind: .search, placement: .bottomBar)
-                ToolbarSpacer(.flexible, placement: .bottomBar)
-                ToolbarItem(placement: .bottomBar) {
-                    addQuickbarButton
-                }
-            } else {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    addQuickbarButton
-                }
-            }
-        }
-        .alert(
-            NSLocalizedString("Main_Market_Watch_List_Add", comment: ""),
-            isPresented: $isShowingAddAlert
-        ) {
-            TextField(
-                NSLocalizedString("Main_Market_Watch_List_Name", comment: ""),
-                text: $newQuickbarName
-            )
-
-            Button(NSLocalizedString("Misc_Done", comment: "")) {
-                if !newQuickbarName.isEmpty {
-                    let newQuickbar = MarketQuickbar(
-                        name: newQuickbarName,
-                        items: []
-                    )
-                    quickbars.append(newQuickbar)
-                    MarketQuickbarManager.shared.saveQuickbar(newQuickbar)
-                    newQuickbarName = ""
-                    // 新建成功后自动进入该列表
-                    autoNavigateQuickbarID = newQuickbar.id
-                }
-            }
-            .disabled(newQuickbarName.isEmpty)
-
-            Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
-                newQuickbarName = ""
-            }
-        }
-        .alert(NSLocalizedString("Misc_Rename", comment: ""), isPresented: $isShowingRenameAlert) {
-            TextField(NSLocalizedString("Misc_Name", comment: ""), text: $renameQuickbarName)
-
-            Button(NSLocalizedString("Misc_Done", comment: "")) {
-                if let quickbar = renameQuickbar, !renameQuickbarName.isEmpty {
-                    if let index = quickbars.firstIndex(where: { $0.id == quickbar.id }) {
-                        quickbars[index].name = renameQuickbarName
-                        MarketQuickbarManager.shared.saveQuickbar(quickbars[index])
-                    }
-                }
-                renameQuickbar = nil
-                renameQuickbarName = ""
-            }
-            .disabled(renameQuickbarName.isEmpty)
-
-            Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
-                renameQuickbar = nil
-                renameQuickbarName = ""
-            }
-        }
-        .alert(
-            NSLocalizedString("Misc_Delete", comment: ""),
-            isPresented: Binding(
-                get: { quickbarToDelete != nil },
-                set: { if !$0 { quickbarToDelete = nil } }
-            ),
-            presenting: quickbarToDelete
-        ) { quickbar in
-            Button(NSLocalizedString("Misc_Delete", comment: ""), role: .destructive) {
-                deleteQuickbar(quickbar)
-                quickbarToDelete = nil
-            }
-            Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
-                quickbarToDelete = nil
-            }
-        } message: { quickbar in
-            Text(
-                String(
-                    format: NSLocalizedString("Main_Market_Watch_List_Delete_Confirm", comment: ""),
-                    quickbar.name
-                )
-            )
-        }
-        .task {
-            quickbars = MarketQuickbarManager.shared.loadQuickbars()
         }
     }
 
@@ -256,5 +260,29 @@ struct MarketQuickbarView: View {
     private func deleteQuickbar(_ quickbar: MarketQuickbar) {
         MarketQuickbarManager.shared.deleteQuickbar(quickbar)
         quickbars.removeAll { $0.id == quickbar.id }
+    }
+
+    /// 拖动排序：先在（可能被搜索过滤的）显示数组内移动，再映射回全量数组；未过滤时等价于直接移动
+    private func moveQuickbars(from source: IndexSet, to destination: Int) {
+        let filtered = filteredQuickbars
+        guard !filtered.isEmpty else { return }
+
+        var newFiltered = filtered
+        newFiltered.move(fromOffsets: source, toOffset: destination)
+
+        var filteredIterator = newFiltered.makeIterator()
+        let filteredIDs = Set(filtered.map(\.id))
+        var reordered: [MarketQuickbar] = []
+        reordered.reserveCapacity(quickbars.count)
+        for quickbar in quickbars {
+            if filteredIDs.contains(quickbar.id), let moved = filteredIterator.next() {
+                reordered.append(moved)
+            } else {
+                reordered.append(quickbar)
+            }
+        }
+
+        quickbars = reordered
+        MarketQuickbarManager.shared.saveManualOrder(quickbars)
     }
 }

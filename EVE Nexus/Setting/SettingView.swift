@@ -818,10 +818,6 @@ struct SettingView: View {
                     }
                 } header: {
                     Text(group.header)
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(nil)
                 }
                 .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
             }
@@ -1269,9 +1265,6 @@ struct SDEUpdateDetailView: View {
                         }
                     } header: {
                         Text(NSLocalizedString("SDE_Data_Package", comment: "SDE数据包"))
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                            .textCase(nil)
                     }
 
                     Section {
@@ -1291,9 +1284,6 @@ struct SDEUpdateDetailView: View {
                         }
                     } header: {
                         Text(NSLocalizedString("SDE_Icon_Package", comment: "图标包"))
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                            .textCase(nil)
                     }
 
                     Section {
@@ -1508,10 +1498,6 @@ struct TokenScopesDetailView: View {
                     }
                 } header: {
                     Text(String(format: NSLocalizedString("Token_Scopes_Count", comment: "共 %d 个权限"), scopes.count))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(nil)
                 }
             }
         }

@@ -36,10 +36,6 @@ struct DatabaseListView: View {
         ForEach(groupedPublishedItems, id: \.id) { group in
             Section(
                 header: Text(group.name)
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             ) {
                 ForEach(group.items) { item in
                     itemRow(item)
@@ -51,10 +47,6 @@ struct DatabaseListView: View {
     private var unpublishedItemsView: some View {
         Section(
             header: Text(NSLocalizedString("Main_Database_unpublished", comment: "未发布"))
-                .fontWeight(.semibold)
-                .font(.system(size: 18))
-                .foregroundColor(.primary)
-                .textCase(.none)
         ) {
             ForEach(items.filter { !$0.published }) { item in
                 itemRow(item)
@@ -116,10 +108,6 @@ struct DatabaseListView: View {
                     ForEach(groupItemsByGroup(publishedItems), id: \.id) { group in
                         Section(
                             header: Text(group.name)
-                                .fontWeight(.semibold)
-                                .font(.system(size: 18))
-                                .foregroundColor(.primary)
-                                .textCase(.none)
                         ) {
                             ForEach(group.items) { item in
                                 itemRow(item)

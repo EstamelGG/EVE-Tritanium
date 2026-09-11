@@ -10,6 +10,8 @@ extension ShipFittingModulesView {
         missileMaxRangeRow(module: module)
         probeStrengthRow(module: module)
         energyNeutralizerRow(module: module)
+        stasisWebifierRow(module: module)
+        warpScrambleRow(module: module)
         powerTransferRow(module: module)
         shieldRepairRow(module: module)
         armorRepairRow(module: module)
@@ -38,22 +40,21 @@ extension ShipFittingModulesView {
                     .scaledToFit()
                     .frame(width: 20, height: 20)
 
-                HStack(spacing: 0) {
-                    Text("DPS: ")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(formatNumber(damage.dps, digits: 2))")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.secondary)
-                    Text(" | DPH: ")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(formatNumber(damage.dph, digits: 2))")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.secondary)
-                }
+                (Text("DPS: ")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    + Text(String(format: "%.1f", damage.dps))
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                    + Text(" / DPH: ")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    + Text(String(format: "%.1f", damage.dph))
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary))
+                    .lineLimit(1)
             }
         }
     }
@@ -175,6 +176,60 @@ extension ShipFittingModulesView {
                     .font(.caption)
                     .foregroundColor(.secondary)
                     Text("\(formatNumber(energyNeutralizerAmount, digits: 2)) GJ")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - 网子强度
+
+    @ViewBuilder
+    private func stasisWebifierRow(module: SimModule) -> some View {
+        let speedFactor = module.attributesByName["speedFactor"] ?? 0
+        if speedFactor < 0 { // 网子减速为负值（AB/MWD 的 speedFactor 为正值，不冲突）
+            HStack(spacing: 4) {
+                IconManager.shared.loadImage(for: "velocity")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 20, height: 20)
+
+                HStack(spacing: 0) {
+                    Text(
+                        "\(NSLocalizedString("Module_Attribute_webStrength", comment: "")): "
+                    )
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    Text("\(formatNumber(speedFactor, digits: 0))%")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - 反跳强度
+
+    @ViewBuilder
+    private func warpScrambleRow(module: SimModule) -> some View {
+        let warpScrambleStrength = module.attributesByName["warpScrambleStrength"] ?? 0
+        if warpScrambleStrength > 0 { // 扰断器/扰频器为正值（跃迁核心稳定器为负值，不触发）
+            HStack(spacing: 4) {
+                IconManager.shared.loadImage(for: "warp_speed")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 20, height: 20)
+
+                HStack(spacing: 0) {
+                    Text(
+                        "\(NSLocalizedString("Module_Attribute_warpScrambleStrength", comment: "")): "
+                    )
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    Text("\(formatNumber(warpScrambleStrength, digits: 0))")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(.secondary)

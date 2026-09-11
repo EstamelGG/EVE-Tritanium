@@ -128,8 +128,8 @@ struct SimCharacter {
 struct SimShip {
     let instanceId: UUID = .init() // 实例唯一标识符
     let typeId: Int // 飞船类型ID
-    let baseAttributes: [Int: Double] // 属性ID:值，适合高效计算
-    let baseAttributesByName: [String: Double] // 属性名:值，便于可读性和调试
+    var baseAttributes: [Int: Double] // 属性ID:值，适合高效计算（Step3 会补注入缺失的 dogma 默认值属性）
+    var baseAttributesByName: [String: Double] // 属性名:值，便于可读性和调试
     let effects: [Int] // 飞船自带效果ID列表
     let groupID: Int // 飞船分组ID
     let name: String // 飞船名称
@@ -337,6 +337,9 @@ struct SimImplant {
 
     /// 修饰器（由Step3初始化）
     var attributeModifiers: [Int: [SimAttributeModifier]] = [:] // 属性ID: [修饰器]
+
+    /// 已启用的增效剂副作用惩罚属性 ID（默认空 = 全部副作用关闭）
+    var enabledSideEffectAttributeIDs: Set<Int> = []
 }
 
 /// 环境效果（如空间站、星系、信号场等带来的加成）

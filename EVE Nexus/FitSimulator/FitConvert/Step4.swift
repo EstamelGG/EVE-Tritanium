@@ -494,6 +494,7 @@ class Step4 {
                 modifiers: operationModifiers,
                 currentValue: currentValue,
                 attributeId: attributeId,
+                itemType: itemType,
                 input: input,
                 cache: cache,
                 moduleInstanceMap: moduleInstanceMap
@@ -551,6 +552,7 @@ class Step4 {
         modifiers: [SimAttributeModifier],
         currentValue: Double,
         attributeId: Int,
+        itemType: ItemType,
         input: SimulationInput,
         cache: Cache,
         moduleInstanceMap: [UUID: (module: SimModule, index: Int)]
@@ -745,6 +747,13 @@ class Step4 {
                 )
 
                 let value = operation == "ModAdd" ? sourceValue : -sourceValue
+
+                // 跃迁干扰状态(104)只统计负贡献（跃迁稳定点数：船体固有值/跃迁核心稳定器/泰坦加成）；
+                // 正贡献（如激活旗舰模块使自身无法跃迁）属于战术状态叠加，不计入船体固有属性
+                if itemType == .ship, attributeId == 104, value > 0 {
+                    continue
+                }
+
                 newValue += value
 
                 if AppConfiguration.Fitting.showDebug {

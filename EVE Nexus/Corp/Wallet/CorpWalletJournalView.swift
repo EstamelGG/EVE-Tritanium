@@ -491,10 +491,6 @@ struct CorpWalletJournalView: View {
         Section(
             header: HStack {
                 Text(NSLocalizedString("Summary", comment: ""))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
                 Spacer()
                 Button(action: {
                     switch viewModel.timeRange {
@@ -610,10 +606,6 @@ struct CorpWalletJournalView: View {
                 } else {
                     Section(
                         header: Text(NSLocalizedString("Transaction Dates", comment: ""))
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                     ) {
                         ForEach(viewModel.filteredJournalGroups) { group in
                             NavigationLink(
@@ -771,7 +763,10 @@ struct CorpWalletJournalEntryRow: View {
                     language: LocalizationManager.currentLanguageCode
                 )
                 let sign = entry.amount >= 0 ? "+" : ""
-                let detailText = "[\(FormatUtil.formatUTCToLocalTime(entry.date))] \(processedDescription): \(sign)\(FormatUtil.format(entry.amount)) ISK, \(String.localizedStringWithFormat(NSLocalizedString("Reason", comment: ""), entry.reason))"
+                var detailText = "[\(FormatUtil.formatUTCToLocalTime(entry.date))] \(processedDescription): \(sign)\(FormatUtil.format(entry.amount)) ISK"
+                if !entry.reason.isEmpty {
+                    detailText += ", \(String.localizedStringWithFormat(NSLocalizedString("Reason", comment: ""), entry.reason))"
+                }
                 UIPasteboard.general.string = detailText
             } label: {
                 Label(

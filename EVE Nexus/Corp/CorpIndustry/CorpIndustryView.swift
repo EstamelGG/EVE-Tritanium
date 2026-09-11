@@ -605,10 +605,6 @@ struct CorpIndustryView: View {
                 // 工业槽位统计 Section - 始终显示
                 Section(
                     header: Text(NSLocalizedString("Industry_Task_List_Header", comment: "任务清单"))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 ) {
                     // 计算各类任务的活跃项目数量（参考人物工业项目的过滤逻辑）
                     let currentTime = Date()
@@ -724,10 +720,6 @@ struct CorpIndustryView: View {
                         Section(
                             header: HStack {
                                 Text(formatStatusGroupHeader(statusKey))
-                                    .fontWeight(.semibold)
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.primary)
-                                    .textCase(.none)
 
                                 Spacer()
 
@@ -1111,16 +1103,31 @@ struct CorpIndustryJobRow: View {
 
             // 复制地点信息
             if let locationInfo = locationInfo {
+                let locationText =
+                    !locationInfo.stationName.isEmpty
+                        ? locationInfo.stationName : locationInfo.solarSystemName
                 Button {
-                    let locationText =
-                        !locationInfo.stationName.isEmpty
-                            ? locationInfo.stationName : locationInfo.solarSystemName
                     UIPasteboard.general.string = locationText
                 } label: {
                     Label(
                         NSLocalizedString("Misc_Copy_Location", comment: "复制地点"),
                         systemImage: "doc.on.doc"
                     )
+                }
+
+                // 显示名与英文名不同时，追加复制英文名
+                let englishText =
+                    !locationInfo.stationName.isEmpty
+                        ? locationInfo.stationEnglishName : locationInfo.solarSystemEnglishName
+                if let enName = englishText, enName != locationText {
+                    Button {
+                        UIPasteboard.general.string = enName
+                    } label: {
+                        Label(
+                            NSLocalizedString("Misc_Copy_Trans", comment: "复制翻译"),
+                            systemImage: "translate"
+                        )
+                    }
                 }
             }
         }

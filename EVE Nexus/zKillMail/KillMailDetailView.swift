@@ -108,6 +108,21 @@ struct BRKillMailDetailView: View {
                                 } label: {
                                     Label(NSLocalizedString("Misc_Copy_Location", comment: ""), systemImage: "location")
                                 }
+
+                                // 显示名与英文名不同时，追加复制英文名
+                                if let systemId = solarSystemInfo?.systemId ?? detail.system?.systemId,
+                                   let enName = SDEMemoryStore.solarSystemEnglishName(for: systemId),
+                                   enName != systemName
+                                {
+                                    Button {
+                                        UIPasteboard.general.string = enName
+                                    } label: {
+                                        Label(
+                                            NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                                            systemImage: "translate"
+                                        )
+                                    }
+                                }
                             }
                         }
                 } else {
@@ -684,6 +699,21 @@ struct BRKillMailDetailView: View {
                             systemImage: "location"
                         )
                     }
+
+                    // 显示名与英文名不同时，追加复制英文名
+                    let systemId = solarSystemInfo?.systemId ?? sys.systemId
+                    if let enName = SDEMemoryStore.solarSystemEnglishName(for: systemId),
+                       enName != systemName
+                    {
+                        Button {
+                            UIPasteboard.general.string = enName
+                        } label: {
+                            Label(
+                                NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                                systemImage: "translate"
+                            )
+                        }
+                    }
                 }
             }
             .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
@@ -898,10 +928,6 @@ struct BRKillMailDetailView: View {
 
     private func kmSectionHeader(_ title: String) -> some View {
         Text(title)
-            .fontWeight(.semibold)
-            .font(.system(size: 18))
-            .foregroundColor(.primary)
-            .textCase(.none)
     }
 
     @ViewBuilder

@@ -93,6 +93,7 @@ final class SovereigntyViewModel: ObservableObject {
         for campaign in campaigns {
             if let systemInfo = systemInfoMap[campaign.solar_system_id] {
                 let locationInfo = PreparedSovereignty.LocationInfo(
+                    systemId: systemInfo.systemId,
                     systemName: systemInfo.systemName,
                     security: systemInfo.security,
                     constellationName: systemInfo.constellationName,
@@ -237,6 +238,20 @@ struct SovereigntyCell: View {
                                         systemImage: "doc.on.doc"
                                     )
                                 }
+
+                                // 显示名与英文名不同时，追加复制英文名
+                                if let enName = SDEMemoryStore.solarSystemEnglishName(
+                                    for: sovereignty.location.systemId
+                                ), enName != sovereignty.location.systemName {
+                                    Button {
+                                        UIPasteboard.general.string = enName
+                                    } label: {
+                                        Label(
+                                            NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                                            systemImage: "translate"
+                                        )
+                                    }
+                                }
                             }
                     }
 
@@ -279,10 +294,6 @@ struct SovereigntyView: View {
         List {
             Section(
                 header: Text(NSLocalizedString("Sovereignty_All", comment: "主权势力列表"))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             ) {
                 NavigationLink(
                     destination: SovereigntyListView(databaseManager: DatabaseManager.shared)
@@ -305,10 +316,6 @@ struct SovereigntyView: View {
                         header: HStack {
                             let regionCampaigns = viewModel.groupedCampaigns[regionName]
                             Text(regionName)
-                                .fontWeight(.semibold)
-                                .font(.system(size: 18))
-                                .foregroundColor(.primary)
-                                .textCase(.none)
                             Text("(\(regionCampaigns?.count ?? 0))")
                                 .foregroundColor(.secondary)
                             Spacer()

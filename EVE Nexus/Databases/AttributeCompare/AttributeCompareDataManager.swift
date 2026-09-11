@@ -67,6 +67,9 @@ struct AttributeCompareItem: Codable, Equatable {
 class AttributeCompareManager {
     static let shared = AttributeCompareManager()
 
+    /// 手动拖动排序的 UserDefaults key（存储 UUID 字符串数组）
+    private static let manualOrderKey = "AttributeCompareManualOrder"
+
     private init() {
         createCompareDirectory()
     }
@@ -130,13 +133,38 @@ class AttributeCompareManager {
             }
             .sorted { $0.lastUpdated < $1.lastUpdated }
 
-            Logger.success("成功加载属性对比列表数量: \(compares.count)")
-            return compares
+            let ordered = applyingManualOrder(to: compares)
+            Logger.success("成功加载属性对比列表数量: \(ordered.count)")
+            return ordered
 
         } catch {
             Logger.error("读取属性对比列表目录失败: \(error)")
             return []
         }
+    }
+
+    /// 保存手动拖动排序
+    func saveManualOrder(_ compares: [AttributeCompare]) {
+        UserDefaults.standard.set(
+            compares.map(\.id.uuidString), forKey: Self.manualOrderKey
+        )
+    }
+
+    /// 应用手动排序：已记录顺序的按记录排，未记录的（新列表）按更新时间升序追加在末尾
+    private func applyingManualOrder(to compares: [AttributeCompare]) -> [AttributeCompare] {
+        let savedOrder = UserDefaults.standard.stringArray(forKey: Self.manualOrderKey) ?? []
+        var rank: [String: Int] = [:]
+        for (index, id) in savedOrder.enumerated() where rank[id] == nil {
+            rank[id] = index
+        }
+
+        let known = compares
+            .filter { rank[$0.id.uuidString] != nil }
+            .sorted { rank[$0.id.uuidString]! < rank[$1.id.uuidString]! }
+        let unknown = compares
+            .filter { rank[$0.id.uuidString] == nil }
+            .sorted { $0.lastUpdated < $1.lastUpdated }
+        return known + unknown
     }
 
     func deleteCompare(_ compare: AttributeCompare) {
@@ -149,6 +177,11 @@ class AttributeCompareManager {
         } catch {
             Logger.error("删除属性对比列表失败: \(error)")
         }
+
+        // 同步清理手动排序记录
+        var order = UserDefaults.standard.stringArray(forKey: Self.manualOrderKey) ?? []
+        order.removeAll { $0 == compare.id.uuidString }
+        UserDefaults.standard.set(order, forKey: Self.manualOrderKey)
     }
 }
 

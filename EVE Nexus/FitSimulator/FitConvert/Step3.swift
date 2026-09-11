@@ -29,6 +29,14 @@ class Step3 {
         // 初始化技能对象
         initializeSkills(input: &updatedInput)
 
+        // 跃迁干扰状态(104)的 dogma 默认值为 0，但船体 typeAttributes 通常未显式声明该属性，
+        // 导致相关修饰器（跃迁核心稳定器、泰坦船体加成等）在挂载时被守卫丢弃。
+        // 补注入默认值使其能正常参与计算（正贡献在 Step4 中排除，最终值即跃迁稳定点数的负值）
+        if updatedInput.ship.baseAttributes[104] == nil {
+            updatedInput.ship.baseAttributes[104] = 0
+            updatedInput.ship.baseAttributesByName["warpScrambleStatus"] = 0
+        }
+
         // 获取所有修饰器
         let allModifiers = attributeModifiers.allModifiersBySourceType()
 
@@ -315,7 +323,17 @@ class Step3 {
         // 5. 处理所有植入体的修饰器
         for implant in updatedInput.implants {
             if let implantModifiers = allModifiers[implant.typeId] {
-                for modifier in implantModifiers {
+                // 增效剂副作用默认关闭：跳过未启用的副作用修饰器
+                let activeModifiers = implantModifiers.filter { modifier in
+                    guard SDEMemoryStore.isBoosterSideEffectAttribute(modifier.modifyingAttributeId)
+                    else {
+                        return true
+                    }
+                    return implant.enabledSideEffectAttributeIDs.contains(
+                        modifier.modifyingAttributeId
+                    )
+                }
+                for modifier in activeModifiers {
                     // 根据修饰器类型处理
                     switch modifier.modifierType {
                     case .itemModifier:

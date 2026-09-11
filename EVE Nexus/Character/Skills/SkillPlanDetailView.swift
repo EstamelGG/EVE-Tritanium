@@ -43,6 +43,8 @@ struct SkillPlanDetailView: View {
         [(name: String, icon: String, current: Int, optimal: Int, diff: Int)] = []
     /// 首次进入：完成 `loadCharacterData`（含注入器）及待添加技能后再展示主列表，避免 Unknown 名称等中间态
     @State private var isInitialLoadComplete = false
+    /// 核心数据（已学技能/角色属性）在缓存与强制网络加载均失败时，展示错误占位而非清零的列表
+    @State private var isInitialLoadFailed = false
     @State private var cachedCharacterTotalSP: Int?
 
     init(
@@ -62,12 +64,28 @@ struct SkillPlanDetailView: View {
             if !isInitialLoadComplete {
                 Section {
                     VStack(spacing: 16) {
-                        ProgressView()
-                        Text(initialLoadStatusText)
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
+                        if isInitialLoadFailed {
+                            Text(NSLocalizedString("Main_Skills_Plan_Load_Failed", comment: ""))
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+
+                            Button(NSLocalizedString("Misc_Retry", comment: "")) {
+                                Task {
+                                    isInitialLoadFailed = false
+                                    await performInitialLoad()
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                        } else {
+                            ProgressView()
+                            Text(initialLoadStatusText)
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 24)
@@ -673,6 +691,14 @@ struct SkillPlanDetailView: View {
 
     private func performInitialLoad() async {
         await loadCharacterData()
+
+        // 计划非空时，已学技能或角色属性仍缺失说明缓存与强制网络加载均失败：
+        // 不进入主列表，展示错误占位，避免出现“需要学习 0 / 全部 0 秒”的假数据
+        if !plan.skills.isEmpty, learnedSkills.isEmpty || characterAttributes == nil {
+            await MainActor.run { isInitialLoadFailed = true }
+            return
+        }
+
         calculateSkillDependencies()
         await loadInjectorPricesIfNeeded()
         await MainActor.run {
@@ -746,7 +772,16 @@ struct SkillPlanDetailView: View {
 
         if learnedSkills.isEmpty {
             await setNetworkLoadingPhase(.fetchingLearnedSkills)
-            let (learned, sp) = await getLearnedSkills(skillIds: skillIds)
+            var (learned, sp) = await getLearnedSkills(skillIds: skillIds)
+            // 缓存优先加载未取到数据时强制走一次网络刷新，确保进入页面即有已学技能数据
+            if learned.isEmpty, !skillIds.isEmpty {
+                Logger.error("技能计划：缓存优先加载已学技能失败，强制网络重试 - 角色ID: \(characterId)")
+                let retried = await getLearnedSkills(skillIds: skillIds, forceRefresh: true)
+                if !retried.learned.isEmpty {
+                    learned = retried.learned
+                    sp = retried.characterTotalSP
+                }
+            }
             learnedSkills = learned
             spForInjector = sp
         } else {
@@ -769,6 +804,12 @@ struct SkillPlanDetailView: View {
             characterAttributes = try? await CharacterSkillsAPI.shared.fetchAttributes(
                 characterId: characterId
             )
+            // 属性缺失会导致所有技能显示 0 秒，失败时强制网络重试一次
+            if characterAttributes == nil {
+                characterAttributes = try? await CharacterSkillsAPI.shared.fetchAttributes(
+                    characterId: characterId, forceRefresh: true
+                )
+            }
         }
         if implantBonuses == nil {
             await setNetworkLoadingPhase(.fetchingImplants)
@@ -961,12 +1002,13 @@ struct SkillPlanDetailView: View {
         }
     }
 
+    /// - Parameter forceRefresh: true 时跳过磁盘缓存，直接请求网络（用于缓存优先加载失败后的强制重试）
     /// - Returns: 已学技能映射，以及本次 ESI 响应中的角色总技能点（`total_sp + unallocated_sp`），失败时为 `nil`
-    private func getLearnedSkills(skillIds: [Int]) async -> (learned: [Int: CharacterSkill], characterTotalSP: Int?) {
+    private func getLearnedSkills(skillIds: [Int], forceRefresh: Bool = false) async -> (learned: [Int: CharacterSkill], characterTotalSP: Int?) {
         do {
             let (skillsResponse, queue) = try await CharacterSkillsAPI.shared.fetchCharacterSkillsAndQueue(
                 characterId: characterId,
-                forceRefresh: false
+                forceRefresh: forceRefresh
             )
 
             let totalSP = skillsResponse.total_sp + skillsResponse.unallocated_sp

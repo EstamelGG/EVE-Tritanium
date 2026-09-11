@@ -380,8 +380,7 @@ class MainViewModel: ObservableObject {
 
                 // 优先加载头像 - 在后台线程执行
                 if characterPortrait == nil {
-                    Task.detached(priority: .userInitiated) { [weak self] in
-                        guard let self = self else { return }
+                    Task.detached(priority: .userInitiated) {
                         await MainActor.run {
                             self.loadingState = .loadingPortrait
                         }
@@ -405,9 +404,7 @@ class MainViewModel: ObservableObject {
                 // 加载角色公共信息及关联的军团/联盟/势力信息
                 // 策略：先用缓存（哪怕过期）的 publicInfo 启动关联信息加载并刷新 UI，
                 //       再拉取最新 publicInfo；若关联 ID 变化，用新 ID 重新加载并刷新。
-                Task.detached(priority: .userInitiated) { [weak self] in
-                    guard let self = self else { return }
-
+                Task.detached(priority: .userInitiated) {
                     let cachedInfo = CharacterAPI.shared.loadCachedCharacterInfo(
                         characterId: character.CharacterID
                     )
@@ -445,8 +442,7 @@ class MainViewModel: ObservableObject {
                 }
 
                 // 加载技能信息 - 在后台线程执行
-                Task.detached(priority: .userInitiated) { [weak self] in
-                    guard let self = self else { return }
+                Task.detached(priority: .userInitiated) {
                     do {
                         Logger.info("正在刷新人物技能数据")
                         let (skillsResponse, queue) = try await self.retryOperation(named: "获取技能信息") {
@@ -463,8 +459,7 @@ class MainViewModel: ObservableObject {
                 }
 
                 // 加载钱包余额 - 在后台线程执行
-                Task.detached(priority: .userInitiated) { [weak self] in
-                    guard let self = self else { return }
+                Task.detached(priority: .userInitiated) {
                     do {
                         Logger.info("正在刷新钱包余额")
                         let balance = try await self.retryOperation(named: "获取钱包余额") {
@@ -482,8 +477,7 @@ class MainViewModel: ObservableObject {
                 }
 
                 // 加载位置信息 - 在后台线程执行
-                Task.detached(priority: .userInitiated) { [weak self] in
-                    guard let self = self else { return }
+                Task.detached(priority: .userInitiated) {
                     do {
                         Logger.info("正在刷新人物位置信息")
                         let location = try await self.retryOperation(named: "获取位置信息") {
@@ -500,8 +494,7 @@ class MainViewModel: ObservableObject {
                 }
 
                 // 加载克隆状态 - 在后台线程执行
-                Task.detached(priority: .userInitiated) { [weak self] in
-                    guard let self = self else { return }
+                Task.detached(priority: .userInitiated) {
                     do {
                         Logger.info("正在刷新人物克隆信息")
                         let cloneInfo = try await self.retryOperation(named: "获取克隆状态") {

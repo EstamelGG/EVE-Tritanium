@@ -113,10 +113,6 @@ struct AttributeCompareDetailView: View {
                     }
                 } header: {
                     Text(NSLocalizedString("Main_Attribute_Compare_Item_List", comment: ""))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 }
 
                 // 市场价格部分 - 只在超过2个物品时显示

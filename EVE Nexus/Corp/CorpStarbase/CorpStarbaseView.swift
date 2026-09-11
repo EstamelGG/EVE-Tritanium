@@ -146,19 +146,11 @@ struct CorpStarbaseView: View {
                             if let systemId = starbases.first?["system_id"] as? Int,
                                let securityLevel = viewModel.regionSecs[systemId]
                             {
-                                (Text(formatSystemSecurity(securityLevel))
+                                Text(formatSystemSecurity(securityLevel))
                                     .foregroundColor(getSecurityColor(securityLevel)) + Text(" ")
-                                    + Text(location))
-                                    .fontWeight(.semibold)
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.primary)
-                                    .textCase(nil)
+                                    + Text(location)
                             } else {
                                 Text(location)
-                                    .fontWeight(.semibold)
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.primary)
-                                    .textCase(nil)
                             }
                         }()
                     ) {
@@ -865,8 +857,8 @@ class CorpStarbaseViewModel: ObservableObject {
             characterId: characterId,
             forceRefresh: forceRefresh,
             progressCallback: { current, total in
-                Task { @MainActor [weak self] in
-                    self?.loadingDetailProgress = String(
+                Task { @MainActor in
+                    self.loadingDetailProgress = String(
                         format: NSLocalizedString(
                             "Corp_Starbase_Loading_Detail_Progress",
                             comment: "正在加载星堡详细信息 %d/%d"

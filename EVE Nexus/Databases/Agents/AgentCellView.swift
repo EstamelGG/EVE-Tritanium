@@ -154,6 +154,21 @@ struct AgentCellView: View {
                             systemImage: "doc.on.doc"
                         )
                     }
+
+                    // 显示名与英文名不同时，追加复制英文名
+                    if agent.locationID > 0,
+                       let enName = SDEMemoryStore.stationEnglishName(for: Int(agent.locationID)),
+                       enName != agent.locationName
+                    {
+                        Button {
+                            UIPasteboard.general.string = enName
+                        } label: {
+                            Label(
+                                NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                                systemImage: "translate"
+                            )
+                        }
+                    }
                 } else if let systemName = agent.solarSystemName, !systemName.isEmpty {
                     // 空间代理人，复制星系名称
                     Button {
@@ -163,6 +178,21 @@ struct AgentCellView: View {
                             NSLocalizedString("Misc_Copy_Location", comment: ""),
                             systemImage: "doc.on.doc"
                         )
+                    }
+
+                    // 显示名与英文名不同时，追加复制英文名
+                    if let solarSystemID = agent.solarSystemID,
+                       let enName = SDEMemoryStore.solarSystemEnglishName(for: solarSystemID),
+                       enName != systemName
+                    {
+                        Button {
+                            UIPasteboard.general.string = enName
+                        } label: {
+                            Label(
+                                NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                                systemImage: "translate"
+                            )
+                        }
                     }
                 }
             }

@@ -51,6 +51,90 @@ struct AttributeCompareView: View {
     }
 
     var body: some View {
+        compareList
+            .searchable(
+                text: $searchText,
+                prompt: NSLocalizedString("Main_Database_Search", comment: "")
+            )
+            .navigationDestination(item: $autoNavigateCompareID) { id in
+                if let compare = compares.first(where: { $0.id == id }) {
+                    AttributeCompareDetailView(
+                        databaseManager: databaseManager,
+                        compare: compare
+                    )
+                }
+            }
+            .navigationTitle(NSLocalizedString("Main_Attribute_Compare", comment: ""))
+            .toolbar {
+                if #available(iOS 26.0, *) {
+                    // iOS 26：搜索框与添加按钮共处底部同一 Liquid Glass 行（搜索框左、+ 右）
+                    DefaultToolbarItem(kind: .search, placement: .bottomBar)
+                    ToolbarSpacer(.flexible, placement: .bottomBar)
+                    ToolbarItem(placement: .bottomBar) {
+                        addCompareButton
+                    }
+                } else {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        addCompareButton
+                    }
+                }
+            }
+            .alert(
+                NSLocalizedString("Main_Attribute_Compare_Add", comment: ""),
+                isPresented: $isShowingAddAlert
+            ) {
+                TextField(
+                    NSLocalizedString("Main_Attribute_Compare_Name", comment: ""),
+                    text: $tempCompareName
+                )
+
+                Button(NSLocalizedString("Misc_Done", comment: "")) {
+                    Logger.info("用户新增对比列表: \(tempCompareName)")
+                    if !tempCompareName.isEmpty {
+                        let newCompare = AttributeCompare(
+                            name: tempCompareName,
+                            items: []
+                        )
+                        compares.append(newCompare)
+                        AttributeCompareManager.shared.saveCompare(newCompare)
+                        tempCompareName = ""
+                        // 新建成功后自动进入该列表
+                        autoNavigateCompareID = newCompare.id
+                    }
+                }
+                .disabled(tempCompareName.isEmpty)
+
+                Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
+                    tempCompareName = ""
+                }
+            }
+            .alert(NSLocalizedString("Misc_Rename", comment: ""), isPresented: $isShowingRenameAlert) {
+                TextField(NSLocalizedString("Misc_Name", comment: ""), text: $renameCompareName)
+
+                Button(NSLocalizedString("Misc_Done", comment: "")) {
+                    if let compare = renameCompare, !renameCompareName.isEmpty {
+                        if let index = compares.firstIndex(where: { $0.id == compare.id }) {
+                            compares[index].name = renameCompareName
+                            AttributeCompareManager.shared.saveCompare(compares[index])
+                        }
+                    }
+                    renameCompare = nil
+                    renameCompareName = ""
+                }
+                .disabled(renameCompareName.isEmpty)
+
+                Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
+                    renameCompare = nil
+                    renameCompareName = ""
+                }
+            }
+            .task {
+                compares = AttributeCompareManager.shared.loadCompares()
+            }
+    }
+
+    /// 列表主体：长按拖动排序（onMove），导航/滑动/长按菜单
+    private var compareList: some View {
         List {
             if filteredCompares.isEmpty {
                 if searchText.isEmpty {
@@ -107,89 +191,10 @@ struct AttributeCompareView: View {
                             Label(NSLocalizedString("Misc_Delete", comment: ""), systemImage: "trash")
                         }
                     }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                 }
-                .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
+                .onMove(perform: moveCompares)
             }
-        }
-        .navigationDestination(item: $autoNavigateCompareID) { id in
-            if let compare = compares.first(where: { $0.id == id }) {
-                AttributeCompareDetailView(
-                    databaseManager: databaseManager,
-                    compare: compare
-                )
-            }
-        }
-        .navigationTitle(NSLocalizedString("Main_Attribute_Compare", comment: ""))
-        .searchable(
-            text: $searchText,
-            // placement: .navigationBarDrawer(displayMode: .always),
-            prompt: NSLocalizedString("Main_Database_Search", comment: "")
-        )
-        .toolbar {
-            if #available(iOS 26.0, *) {
-                // iOS 26：搜索框与添加按钮共处底部同一 Liquid Glass 行（搜索框左、+ 右）
-                DefaultToolbarItem(kind: .search, placement: .bottomBar)
-                ToolbarSpacer(.flexible, placement: .bottomBar)
-                ToolbarItem(placement: .bottomBar) {
-                    addCompareButton
-                }
-            } else {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    addCompareButton
-                }
-            }
-        }
-        .alert(
-            NSLocalizedString("Main_Attribute_Compare_Add", comment: ""),
-            isPresented: $isShowingAddAlert
-        ) {
-            TextField(
-                NSLocalizedString("Main_Attribute_Compare_Name", comment: ""),
-                text: $tempCompareName
-            )
-
-            Button(NSLocalizedString("Misc_Done", comment: "")) {
-                Logger.info("用户新增对比列表: \(tempCompareName)")
-                if !tempCompareName.isEmpty {
-                    let newCompare = AttributeCompare(
-                        name: tempCompareName,
-                        items: []
-                    )
-                    compares.append(newCompare)
-                    AttributeCompareManager.shared.saveCompare(newCompare)
-                    tempCompareName = ""
-                    // 新建成功后自动进入该列表
-                    autoNavigateCompareID = newCompare.id
-                }
-            }
-            .disabled(tempCompareName.isEmpty)
-
-            Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
-                tempCompareName = ""
-            }
-        }
-        .alert(NSLocalizedString("Misc_Rename", comment: ""), isPresented: $isShowingRenameAlert) {
-            TextField(NSLocalizedString("Misc_Name", comment: ""), text: $renameCompareName)
-
-            Button(NSLocalizedString("Misc_Done", comment: "")) {
-                if let compare = renameCompare, !renameCompareName.isEmpty {
-                    if let index = compares.firstIndex(where: { $0.id == compare.id }) {
-                        compares[index].name = renameCompareName
-                        AttributeCompareManager.shared.saveCompare(compares[index])
-                    }
-                }
-                renameCompare = nil
-                renameCompareName = ""
-            }
-            .disabled(renameCompareName.isEmpty)
-
-            Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
-                renameCompare = nil
-                renameCompareName = ""
-            }
-        }
-        .task {
-            compares = AttributeCompareManager.shared.loadCompares()
         }
     }
 
@@ -249,5 +254,29 @@ struct AttributeCompareView: View {
                 compares.remove(at: index)
             }
         }
+    }
+
+    /// 拖动排序：先在（可能被搜索过滤的）显示数组内移动，再映射回全量数组；未过滤时等价于直接移动
+    private func moveCompares(from source: IndexSet, to destination: Int) {
+        let filtered = filteredCompares
+        guard !filtered.isEmpty else { return }
+
+        var newFiltered = filtered
+        newFiltered.move(fromOffsets: source, toOffset: destination)
+
+        var filteredIterator = newFiltered.makeIterator()
+        let filteredIDs = Set(filtered.map(\.id))
+        var reordered: [AttributeCompare] = []
+        reordered.reserveCapacity(compares.count)
+        for compare in compares {
+            if filteredIDs.contains(compare.id), let moved = filteredIterator.next() {
+                reordered.append(moved)
+            } else {
+                reordered.append(compare)
+            }
+        }
+
+        compares = reordered
+        AttributeCompareManager.shared.saveManualOrder(compares)
     }
 }

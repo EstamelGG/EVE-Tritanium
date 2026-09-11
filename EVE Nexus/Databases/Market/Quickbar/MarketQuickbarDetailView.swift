@@ -167,10 +167,6 @@ struct MarketQuickbarDetailView: View {
                     }
                 } header: {
                     Text(NSLocalizedString("Main_Market_QuickBar_info", comment: ""))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 }
                 .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
 
@@ -198,10 +194,6 @@ struct MarketQuickbarDetailView: View {
                         Text(
                             "\(NSLocalizedString("Main_Market_Item_List", comment: ""))(\(sortedItems.count))"
                         )
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                         Spacer()
                         Button(
                             isEditingQuantity

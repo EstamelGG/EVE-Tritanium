@@ -143,6 +143,10 @@ final class CorpWalletTransactionsViewModel: ObservableObject {
         return locationInfoCache[locationId]?.stationName
     }
 
+    func getLocationEnglishName(for locationId: Int64) -> String? {
+        return locationInfoCache[locationId]?.stationEnglishName
+    }
+
     /// 合并相似交易记录
     private func mergeSimilarTransactions(_ entries: [CorpWalletTransactionEntry])
         -> [CorpMergedTransactionEntry]
@@ -624,6 +628,20 @@ struct CorpWalletTransactionEntryRow: View {
                         systemImage: "doc.on.doc"
                     )
                 }
+
+                // 显示名与英文名不同时，追加复制英文名
+                if let enName = viewModel.getLocationEnglishName(for: entry.location_id),
+                   enName != locationName
+                {
+                    Button {
+                        UIPasteboard.general.string = enName
+                    } label: {
+                        Label(
+                            NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                            systemImage: "translate"
+                        )
+                    }
+                }
             }
         }
         .task {
@@ -785,6 +803,20 @@ struct CorpMergedTransactionEntryRow: View {
                         NSLocalizedString("Misc_Copy_Location", comment: ""),
                         systemImage: "doc.on.doc"
                     )
+                }
+
+                // 显示名与英文名不同时，追加复制英文名
+                if let enName = viewModel.getLocationEnglishName(for: entry.location_id),
+                   enName != locationName
+                {
+                    Button {
+                        UIPasteboard.general.string = enName
+                    } label: {
+                        Label(
+                            NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                            systemImage: "translate"
+                        )
+                    }
                 }
             }
         }

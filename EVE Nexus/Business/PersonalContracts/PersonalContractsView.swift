@@ -380,30 +380,18 @@ struct PersonalContractsView: View {
                                             ), start, end
                                         )
                                     )
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                    .textCase(nil)
                                 }
                             } else {
                                 // 根据分组方式显示不同的标题
                                 if viewModel.groupingMode == .byCompletionDate && group.date == Date.distantFuture {
                                     // 未完成分组
                                     Text(NSLocalizedString("Contract_Group_Incomplete", comment: ""))
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                        .textCase(nil)
                                 } else if viewModel.groupingMode == .byIssueDate {
                                     // 按发起时间分组
                                     Text(NSLocalizedString("Contract_Group_Issued_On", comment: "") + " " + FormatUtil.formatDateToLocalDate(group.date))
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                        .textCase(nil)
                                 } else {
                                     // 按完成时间分组
                                     Text(NSLocalizedString("Contract_Group_Completed_On", comment: "") + " " + FormatUtil.formatDateToLocalDate(group.date))
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                        .textCase(nil)
                                 }
                             }
                         }

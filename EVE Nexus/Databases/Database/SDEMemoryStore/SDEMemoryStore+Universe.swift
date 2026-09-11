@@ -124,6 +124,11 @@ extension SDEMemoryStore {
         solarSystemNames[id]?.resolvedNonEmpty()
     }
 
+    static func solarSystemEnglishName(for id: Int) -> String? {
+        let en = solarSystemNames[id]?.en ?? ""
+        return en.isEmpty ? nil : en
+    }
+
     static func constellationName(for id: Int) -> String? {
         constellationNames[id]?.resolvedNonEmpty()
     }

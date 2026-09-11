@@ -18,6 +18,17 @@ public struct LocationInfoDetail {
         return structureName ?? ""
     }
 
+    /// 星系英文名（无翻译时为 nil）
+    public var solarSystemEnglishName: String? {
+        SDEMemoryStore.solarSystemEnglishName(for: systemId)
+    }
+
+    /// 空间站英文名（NPC 站有 SDE 译名；玩家建筑来自 ESI 无翻译，返回 nil）
+    public var stationEnglishName: String? {
+        guard let stationId else { return nil }
+        return SDEMemoryStore.stationEnglishName(for: stationId)
+    }
+
     public init(systemId: Int, security: Double, stationId: Int? = nil, structureName: String? = nil) {
         self.systemId = systemId
         self.security = security

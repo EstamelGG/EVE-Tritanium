@@ -87,6 +87,11 @@ struct ShipFittingView: View {
             if let viewModel {
                 clearSelectorPreferences(viewModel: viewModel)
             }
+            // 返回配置列表时刷新本地配置（详情内改名/删除后立即反映）
+            NotificationCenter.default.post(
+                name: NSNotification.Name("RefreshLocalFittings"),
+                object: nil
+            )
         }
     }
 

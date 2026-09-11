@@ -18,6 +18,7 @@ class PreparedSovereignty: NSObject, Identifiable, @unchecked Sendable, Observab
     }
 
     struct LocationInfo: Codable {
+        let systemId: Int
         let systemName: String
         let security: Double
         let constellationName: String

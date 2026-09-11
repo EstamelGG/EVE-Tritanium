@@ -78,10 +78,6 @@ struct CharacterIndustryView: View {
                 Section(
                     header: HStack {
                         Text(NSLocalizedString("Industry_Slots_Header", comment: "工业槽位"))
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                         Spacer()
                         Button(action: {
                             showSlotDetailSheet = true
@@ -279,10 +275,6 @@ struct CharacterIndustryView: View {
                         Section(
                             header: HStack {
                                 Text(formatStatusGroupHeader(statusKey))
-                                    .fontWeight(.semibold)
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.primary)
-                                    .textCase(.none)
 
                                 Spacer()
 

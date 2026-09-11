@@ -51,6 +51,21 @@ struct LocationInfoView: View {
                                 systemImage: "doc.on.doc"
                             )
                         }
+
+                        // 显示名与英文名不同时，追加复制英文名
+                        if let locationId = locationId,
+                           let enName = SDEMemoryStore.stationEnglishName(for: Int(locationId)),
+                           enName != stationName
+                        {
+                            Button {
+                                UIPasteboard.general.string = enName
+                            } label: {
+                                Label(
+                                    NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                                    systemImage: "translate"
+                                )
+                            }
+                        }
                     }
             } else {
                 // 如果空间站名称不以星系名开头

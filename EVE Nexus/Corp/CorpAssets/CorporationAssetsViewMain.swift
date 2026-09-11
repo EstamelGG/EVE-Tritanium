@@ -268,11 +268,7 @@ struct CorporationAssetsView: View {
                                 .foregroundColor(.yellow)
                                 .font(.system(size: 16))
                             Text(NSLocalizedString("Assets_Pinned_Locations", comment: ""))
-                                .fontWeight(.semibold)
-                                .font(.system(size: 18))
-                                .foregroundColor(.primary)
                         }
-                        .textCase(.none)
                     ) {
                         ForEach(viewModel.pinnedLocations, id: \.item_id) { location in
                             NavigationLink(
@@ -305,10 +301,6 @@ struct CorporationAssetsView: View {
                 ForEach(viewModel.unpinnedLocationsByRegion, id: \.region) { group in
                     Section(
                         header: Text(group.region)
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                     ) {
                         ForEach(
                             group.locations.sorted(by: { $0.location_id < $1.location_id }),

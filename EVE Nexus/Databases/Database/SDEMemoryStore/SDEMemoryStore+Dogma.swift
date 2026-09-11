@@ -233,4 +233,38 @@ extension SDEMemoryStore {
         }
         return nil
     }
+
+    // MARK: - 增效剂副作用
+
+    /// 增效剂「副作用」对应的惩罚属性 ID。
+    /// 从 dogmaAttributes 动态推导：attribute_key 以 `booster` 开头且以 `Penalty` 结尾（如 boosterArmorHpPenalty）。
+    static let boosterSideEffectPenaltyAttributeIDs: Set<Int> = Set(
+        dogmaAttributes.values
+            .filter { $0.name.hasPrefix("booster") && $0.name.hasSuffix("Penalty") }
+            .map(\.id)
+    )
+
+    /// 判断某属性是否为增效剂副作用惩罚属性
+    static func isBoosterSideEffectAttribute(_ attributeID: Int) -> Bool {
+        boosterSideEffectPenaltyAttributeIDs.contains(attributeID)
+    }
+
+    /// 某个增效剂实际存在的副作用列表（按属性 ID 升序）
+    static func boosterSideEffects(forType typeID: Int) -> [BoosterSideEffect] {
+        boosterSideEffectPenaltyAttributeIDs.compactMap { attributeID in
+            guard let value = typeAttributeValue(for: typeID, attributeID: attributeID) else {
+                return nil
+            }
+            let name = dogmaAttribute(for: attributeID)?.displayName ?? "Attribute \(attributeID)"
+            return BoosterSideEffect(attributeID: attributeID, name: name, value: value)
+        }
+        .sorted { $0.attributeID < $1.attributeID }
+    }
+
+    /// 单条增效剂副作用
+    struct BoosterSideEffect {
+        let attributeID: Int
+        let name: String
+        let value: Double
+    }
 }

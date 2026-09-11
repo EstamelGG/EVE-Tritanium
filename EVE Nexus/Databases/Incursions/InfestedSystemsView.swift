@@ -122,9 +122,23 @@ struct InfestedSystemsView: View {
                 UIPasteboard.general.string = row.systemName
             } label: {
                 Label(
-                    NSLocalizedString("Misc_Copy_Solar", comment: ""),
+                    NSLocalizedString("Misc_Copy_Location", comment: ""),
                     systemImage: "doc.on.doc"
                 )
+            }
+
+            // 显示名与英文名不同时，追加复制英文名
+            if let enName = SDEMemoryStore.solarSystemEnglishName(
+                for: row.systemId
+            ), enName != row.systemName {
+                Button {
+                    UIPasteboard.general.string = enName
+                } label: {
+                    Label(
+                        NSLocalizedString("Misc_Copy_Trans", comment: ""),
+                        systemImage: "translate"
+                    )
+                }
             }
         }
     }

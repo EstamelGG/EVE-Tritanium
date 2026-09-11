@@ -51,10 +51,6 @@ struct CorpMoonMiningView: View {
             } else {
                 Section(
                     header: Text(viewModel.selectedMonthHeader)
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 ) {
                     ForEach(viewModel.filteredExtractions, id: \.moon_id) { extraction in
                         MoonExtractionRow(

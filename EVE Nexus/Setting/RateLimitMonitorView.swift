@@ -24,9 +24,6 @@ struct RateLimitMonitorView: View {
                         }
                     } header: {
                         Text(group.group)
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                            .textCase(nil)
                     }
                 }
             }

@@ -197,10 +197,6 @@ struct BlueprintCalculatorResultView: View {
                 }
             } header: {
                 Text(NSLocalizedString("Blueprint_Calculator_Production_Info", comment: "生产信息"))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             }
             .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
 
@@ -376,10 +372,6 @@ struct BlueprintCalculatorResultView: View {
 
                 } header: {
                     Text(NSLocalizedString("Blueprint_Calculator_Product_Output", comment: "产出"))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                 }
                 .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
             }
@@ -477,10 +469,6 @@ struct BlueprintCalculatorResultView: View {
                             "Blueprint_Calculator_Material_Market_Settings", comment: "材料市场设置"
                         )
                     )
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
 
                     Spacer()
 
@@ -519,10 +507,6 @@ struct BlueprintCalculatorResultView: View {
                             "Blueprint_Calculator_Materials_Required", comment: "所需材料"
                         )
                     )
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
 
                     Spacer()
 

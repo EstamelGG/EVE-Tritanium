@@ -1128,10 +1128,6 @@ struct CharacterPlanetaryView: View {
                                     Section(
                                         header:
                                         Text(NSLocalizedString("Planetary_MultiSelect_Planet_Type_Summary", comment: ""))
-                                            .fontWeight(.semibold)
-                                            .font(.system(size: 18))
-                                            .foregroundColor(.primary)
-                                            .textCase(.none)
                                     ) {
                                         ForEach(viewModel.aggregatedPlanetTypeSummariesForMultiSelect) { summary in
                                             HStack(spacing: 12) {
@@ -1161,9 +1157,6 @@ struct CharacterPlanetaryView: View {
                                                 CharacterPortraitView(characterId: group.characterId)
                                                     .frame(width: 24, height: 24)
                                                 Text(group.characterName)
-                                                    .fontWeight(.semibold)
-                                                    .font(.system(size: 18))
-                                                    .foregroundColor(.primary)
                                                 Spacer()
                                                 deployedColoniesCountCaption(
                                                     deployed: group.planets.count,
@@ -1180,7 +1173,6 @@ struct CharacterPlanetaryView: View {
                                                 .foregroundColor(.secondary)
                                                 .accessibilityHidden(true)
                                             }
-                                            .textCase(.none)
                                             .contentShape(Rectangle())
                                             .onTapGesture {
                                                 toggleMultiCharacterSectionExpansion(characterId: group
@@ -1218,9 +1210,6 @@ struct CharacterPlanetaryView: View {
                                                 CharacterPortraitView(characterId: group.characterId)
                                                     .frame(width: 24, height: 24)
                                                 Text(group.characterName)
-                                                    .fontWeight(.semibold)
-                                                    .font(.system(size: 18))
-                                                    .foregroundColor(.primary)
                                                 Spacer()
                                                 deployedColoniesCountCaption(
                                                     deployed: group.planets.count,
@@ -1231,7 +1220,6 @@ struct CharacterPlanetaryView: View {
                                                     )
                                                 )
                                             }
-                                            .textCase(.none)
                                         ) {
                                             ForEach(group.planets, id: \.planetId) { planet in
                                                 PlanetRow(
@@ -1269,9 +1257,6 @@ struct CharacterPlanetaryView: View {
                             Section(
                                 header: HStack {
                                     Text(NSLocalizedString("Main_Planetary_of_Mine", comment: ""))
-                                        .fontWeight(.semibold)
-                                        .font(.system(size: 18))
-                                        .foregroundColor(.primary)
                                     Spacer()
                                     deployedColoniesCountCaption(
                                         deployed: viewModel.planets.count,
@@ -1279,7 +1264,6 @@ struct CharacterPlanetaryView: View {
                                         needsAttention: headerNeedsAttention
                                     )
                                 }
-                                .textCase(.none)
                             ) {
                                 ForEach(viewModel.planets, id: \.planetId) { planet in
                                     PlanetRow(
