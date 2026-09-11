@@ -319,6 +319,9 @@ struct ImplantSettingsView: View {
                       boosterSlots.contains(slotNumber)
             {
                 boosterRows[slotNumber]?.selectedBooster = item
+                // 恢复会话内的副作用开关状态（不落盘，仅在内存中保留）
+                boosterRows[slotNumber]?.enabledSideEffectAttributeIDs =
+                    implant.enabledSideEffectAttributeIDs
             }
         }
     }
@@ -351,10 +354,29 @@ struct ImplantSettingsView: View {
             }
         }
 
-        // 检查配置是否发生变化
-        let currentImplantIds = Set(viewModel.simulationInput.implants.map { $0.typeId })
-        let newImplantIds = Set(implantIds + boosterIds)
-        let hasChanges = currentImplantIds != newImplantIds
+        // 检查配置是否发生变化（包含增效剂副作用开关状态）
+        let currentSignature = viewModel.simulationInput.implants
+            .map {
+                implantSignature(
+                    typeId: $0.typeId, enabledSideEffects: $0.enabledSideEffectAttributeIDs
+                )
+            }
+            .sorted()
+            .joined(separator: "|")
+
+        var newSignatures: [String] = implantSlotMap.values.map {
+            implantSignature(typeId: $0.id, enabledSideEffects: [])
+        }
+        for (slot, item) in boosterSlotMap {
+            newSignatures.append(
+                implantSignature(
+                    typeId: item.id,
+                    enabledSideEffects: boosterRows[slot]?.enabledSideEffectAttributeIDs ?? []
+                )
+            )
+        }
+        let newSignature = newSignatures.sorted().joined(separator: "|")
+        let hasChanges = currentSignature != newSignature
 
         // 如果没有植入体和增效剂，则清空现有的并返回
         if implantIds.isEmpty, boosterIds.isEmpty {
@@ -441,7 +463,9 @@ struct ImplantSettingsView: View {
                     requiredSkills: FitConvert.extractRequiredSkills(attributes: attributes),
                     groupID: groupID,
                     name: item.name,
-                    iconFileName: item.iconFileName
+                    iconFileName: item.iconFileName,
+                    enabledSideEffectAttributeIDs:
+                    boosterRows[slot]?.enabledSideEffectAttributeIDs ?? []
                 )
 
                 newImplants.append(booster)
@@ -465,6 +489,12 @@ struct ImplantSettingsView: View {
 
         // 自动保存配置
         viewModel.saveConfiguration()
+    }
+
+    /// 生成植入体/增效剂的变更签名（typeId + 副作用开关），用于判断是否需要重算属性
+    private func implantSignature(typeId: Int, enabledSideEffects: Set<Int>) -> String {
+        let effects = enabledSideEffects.sorted().map(String.init).joined(separator: ",")
+        return "\(typeId):\(effects)"
     }
 
     private func getImplantSlotName(_ slot: Int) -> String {
@@ -501,6 +531,7 @@ struct ImplantSettingsView: View {
         }
         for (slot, _) in boosterRows {
             boosterRows[slot]?.selectedBooster = nil
+            boosterRows[slot]?.enabledSideEffectAttributeIDs = []
         }
     }
 
@@ -554,6 +585,7 @@ struct ImplantSettingsView: View {
                 // 应用增效剂
                 if let proxy = boosterRows[info.slotNumber] {
                     proxy.selectedBooster = item
+                    proxy.enabledSideEffectAttributeIDs = []
                 }
             }
         }
@@ -571,6 +603,7 @@ struct ImplantSettingsView: View {
     private func handleBoosterSelection(item: DatabaseListItem, slotNumber: Int) {
         if let proxy = boosterRows[slotNumber] {
             proxy.selectedBooster = item
+            proxy.enabledSideEffectAttributeIDs = []
             Logger.info("选择增效剂: \(item.name), 槽位: \(slotNumber)")
         }
     }
@@ -674,6 +707,8 @@ class ImplantSlotRowProxy: ObservableObject {
 /// 增效剂行代理类
 class BoosterSlotRowProxy: ObservableObject {
     @Published var selectedBooster: DatabaseListItem?
+    /// 已启用的副作用惩罚属性 ID（默认空 = 全部关闭，仅当前会话有效）
+    @Published var enabledSideEffectAttributeIDs: Set<Int> = []
 }
 
 /// 植入体插槽行组件
@@ -751,8 +786,7 @@ struct BoosterSlotRow: View {
     let slotNumber: Int
     let slotName: String
     let databaseManager: DatabaseManager
-    @State private var showingSelector = false
-    @State private var showingItemInfo = false
+    @State private var showingDetail = false
 
     var body: some View {
         HStack {
@@ -765,23 +799,6 @@ struct BoosterSlotRow: View {
 
                 Text(booster.name)
                     .font(.body)
-
-                Spacer()
-
-                // 添加物品信息按钮
-                Button {
-                    showingItemInfo = true
-                } label: {
-                    Image(systemName: "info.circle")
-                        .foregroundColor(.blue)
-                }
-                .buttonStyle(BorderlessButtonStyle())
-                .sheet(isPresented: $showingItemInfo) {
-                    NavigationStack {
-                        ShowItemInfo(databaseManager: databaseManager, itemID: booster.id)
-                    }
-                    .presentationDragIndicator(.visible)
-                }
             } else {
                 IconManager.shared.loadImage(for: "add_item")
                     .resizable()
@@ -790,13 +807,134 @@ struct BoosterSlotRow: View {
 
                 Text(slotName)
                     .font(.body)
-
-                Spacer()
             }
+
+            Spacer()
+
+            // 副作用启用数量摘要
+            if proxy.selectedBooster != nil, !sideEffects.isEmpty {
+                Text(sideEffectSummary)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            showingSelector = true
+            showingDetail = true
+        }
+        .sheet(isPresented: $showingDetail) {
+            BoosterDetailView(
+                proxy: proxy,
+                slotNumber: slotNumber,
+                slotName: slotName,
+                databaseManager: databaseManager
+            )
+        }
+    }
+
+    /// 当前增效剂的副作用列表
+    private var sideEffects: [SDEMemoryStore.BoosterSideEffect] {
+        guard let booster = proxy.selectedBooster else { return [] }
+        return SDEMemoryStore.boosterSideEffects(forType: booster.id)
+    }
+
+    /// 副作用启用数量 / 总数 摘要
+    private var sideEffectSummary: String {
+        let enabledCount = sideEffects.filter {
+            proxy.enabledSideEffectAttributeIDs.contains($0.attributeID)
+        }.count
+        let label = NSLocalizedString("Booster_Side_Effects", comment: "副作用")
+        return "\(label) \(enabledCount)/\(sideEffects.count)"
+    }
+}
+
+/// 增效剂详情页：统一管理更换增效剂与副作用开关
+struct BoosterDetailView: View {
+    @ObservedObject var proxy: BoosterSlotRowProxy
+    let slotNumber: Int
+    let slotName: String
+    let databaseManager: DatabaseManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var showingSelector = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                // 当前增效剂
+                Section {
+                    Button {
+                        showingSelector = true
+                    } label: {
+                        HStack {
+                            if let booster = proxy.selectedBooster {
+                                IconManager.shared.loadImage(for: booster.iconFileName)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 32, height: 32)
+
+                                Text(booster.name)
+                                    .font(.body)
+                            } else {
+                                IconManager.shared.loadImage(for: "add_item")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 32, height: 32)
+
+                                Text(slotName)
+                                    .font(.body)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .foregroundColor(.primary)
+                }
+
+                // 副作用
+                if proxy.selectedBooster != nil {
+                    Section(
+                        header: Text(NSLocalizedString("Booster_Side_Effects", comment: "副作用"))
+                    ) {
+                        if sideEffects.isEmpty {
+                            Text(NSLocalizedString("Booster_No_Side_Effects", comment: "无副作用"))
+                                .foregroundColor(.secondary)
+                        } else {
+                            ForEach(sideEffects, id: \.attributeID) { sideEffect in
+                                HStack {
+                                    Text(sideEffect.name)
+                                    Spacer()
+                                    Text(penaltyText(sideEffect.value))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Toggle("", isOn: sideEffectBinding(sideEffect.attributeID))
+                                        .labelsHidden()
+                                        .tint(.blue)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle(proxy.selectedBooster?.name ?? slotName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .foregroundColor(.primary)
+                    }
+                }
+            }
         }
         .sheet(isPresented: $showingSelector) {
             BoosterSelectorView(
@@ -805,11 +943,38 @@ struct BoosterSlotRow: View {
                 hasExistingItem: proxy.selectedBooster != nil,
                 onSelect: { item in
                     proxy.selectedBooster = item
+                    proxy.enabledSideEffectAttributeIDs = []
                 },
                 onRemove: {
                     proxy.selectedBooster = nil
+                    proxy.enabledSideEffectAttributeIDs = []
                 }
             )
         }
+    }
+
+    /// 当前增效剂的副作用列表
+    private var sideEffects: [SDEMemoryStore.BoosterSideEffect] {
+        guard let booster = proxy.selectedBooster else { return [] }
+        return SDEMemoryStore.boosterSideEffects(forType: booster.id)
+    }
+
+    /// 某个副作用属性的开关绑定
+    private func sideEffectBinding(_ attributeID: Int) -> Binding<Bool> {
+        Binding(
+            get: { proxy.enabledSideEffectAttributeIDs.contains(attributeID) },
+            set: { enabled in
+                if enabled {
+                    proxy.enabledSideEffectAttributeIDs.insert(attributeID)
+                } else {
+                    proxy.enabledSideEffectAttributeIDs.remove(attributeID)
+                }
+            }
+        )
+    }
+
+    /// 惩罚值显示（如 -20%、+20%）
+    private func penaltyText(_ value: Double) -> String {
+        String(format: "%+g%%", value)
     }
 }

@@ -226,10 +226,6 @@ struct DynamicItemDetailView: View {
 
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
-            .fontWeight(.semibold)
-            .font(.system(size: 18))
-            .foregroundColor(.primary)
-            .textCase(.none)
     }
 
     // MARK: - 数据加载

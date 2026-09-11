@@ -51,10 +51,6 @@ struct AttributeQuickCompareSheet: View {
                                 items.count
                             )
                         )
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.primary)
-                        .textCase(.none)
                     }
 
                     if isCalculating {

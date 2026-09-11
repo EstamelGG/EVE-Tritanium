@@ -146,19 +146,11 @@ struct CorpStarbaseView: View {
                             if let systemId = starbases.first?["system_id"] as? Int,
                                let securityLevel = viewModel.regionSecs[systemId]
                             {
-                                (Text(formatSystemSecurity(securityLevel))
+                                Text(formatSystemSecurity(securityLevel))
                                     .foregroundColor(getSecurityColor(securityLevel)) + Text(" ")
-                                    + Text(location))
-                                    .fontWeight(.semibold)
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.primary)
-                                    .textCase(nil)
+                                    + Text(location)
                             } else {
                                 Text(location)
-                                    .fontWeight(.semibold)
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.primary)
-                                    .textCase(nil)
                             }
                         }()
                     ) {

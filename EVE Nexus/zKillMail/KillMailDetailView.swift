@@ -898,10 +898,6 @@ struct BRKillMailDetailView: View {
 
     private func kmSectionHeader(_ title: String) -> some View {
         Text(title)
-            .fontWeight(.semibold)
-            .font(.system(size: 18))
-            .foregroundColor(.primary)
-            .textCase(.none)
     }
 
     @ViewBuilder

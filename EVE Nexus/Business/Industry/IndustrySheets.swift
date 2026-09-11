@@ -14,10 +14,6 @@ struct IndustrySlotDetailSheet: View {
                             CharacterPortraitView(characterId: detail.characterId)
                                 .padding(.trailing, 8)
                             Text(detail.characterName)
-                                .fontWeight(.semibold)
-                                .font(.system(size: 18))
-                                .foregroundColor(.primary)
-                                .textCase(.none)
                         }
                     ) {
                         // 加工任务槽位

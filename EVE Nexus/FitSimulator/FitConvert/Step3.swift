@@ -315,7 +315,17 @@ class Step3 {
         // 5. 处理所有植入体的修饰器
         for implant in updatedInput.implants {
             if let implantModifiers = allModifiers[implant.typeId] {
-                for modifier in implantModifiers {
+                // 增效剂副作用默认关闭：跳过未启用的副作用修饰器
+                let activeModifiers = implantModifiers.filter { modifier in
+                    guard SDEMemoryStore.isBoosterSideEffectAttribute(modifier.modifyingAttributeId)
+                    else {
+                        return true
+                    }
+                    return implant.enabledSideEffectAttributeIDs.contains(
+                        modifier.modifyingAttributeId
+                    )
+                }
+                for modifier in activeModifiers {
                     // 根据修饰器类型处理
                     switch modifier.modifierType {
                     case .itemModifier:

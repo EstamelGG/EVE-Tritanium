@@ -218,10 +218,6 @@ struct MarketBaseView<Content: View>: View {
         if let batch = sectionBatchAction {
             HStack(alignment: .firstTextBaseline) {
                 Text(group.name)
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
                 Spacer(minLength: 8)
                 Button {
                     batch(group.items)
@@ -235,10 +231,6 @@ struct MarketBaseView<Content: View>: View {
             }
         } else {
             Text(group.name)
-                .fontWeight(.semibold)
-                .font(.system(size: 18))
-                .foregroundColor(.primary)
-                .textCase(.none)
         }
     }
 }
@@ -409,10 +401,6 @@ private struct MarketSearchItemsView: View {
                 } header: {
                     HStack(alignment: .firstTextBaseline) {
                         Text(title)
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                         Spacer(minLength: 8)
                         Button {
                             batch(items)
@@ -612,10 +600,6 @@ struct MarketItemListView: View {
                 ForEach(groupedItems, id: \.id) { group in
                     Section(
                         header: Text(group.name)
-                            .fontWeight(.semibold)
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                            .textCase(.none)
                     ) {
                         ForEach(group.items) { item in
                             NavigationLink {

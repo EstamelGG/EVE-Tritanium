@@ -279,10 +279,6 @@ struct SovereigntyView: View {
         List {
             Section(
                 header: Text(NSLocalizedString("Sovereignty_All", comment: "主权势力列表"))
-                    .fontWeight(.semibold)
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
-                    .textCase(.none)
             ) {
                 NavigationLink(
                     destination: SovereigntyListView(databaseManager: DatabaseManager.shared)
@@ -305,10 +301,6 @@ struct SovereigntyView: View {
                         header: HStack {
                             let regionCampaigns = viewModel.groupedCampaigns[regionName]
                             Text(regionName)
-                                .fontWeight(.semibold)
-                                .font(.system(size: 18))
-                                .foregroundColor(.primary)
-                                .textCase(.none)
                             Text("(\(regionCampaigns?.count ?? 0))")
                                 .foregroundColor(.secondary)
                             Spacer()
