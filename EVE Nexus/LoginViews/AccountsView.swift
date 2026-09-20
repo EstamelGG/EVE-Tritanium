@@ -405,7 +405,11 @@ struct AccountsView: View {
             NSLocalizedString("Account_Remove_Confirm_Title", comment: ""),
             isPresented: .init(
                 get: { characterToRemove != nil },
-                set: { if !$0 { characterToRemove = nil } }
+                set: {
+                    if !$0 {
+                        characterToRemove = nil
+                    }
+                }
             )
         ) {
             Button(NSLocalizedString("Account_Remove_Confirm_Cancel", comment: ""), role: .cancel) {

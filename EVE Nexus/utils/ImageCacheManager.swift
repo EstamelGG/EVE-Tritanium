@@ -401,7 +401,9 @@ class ImageCacheManager {
             var sizeToFree = totalSize - maxCacheSize + (maxCacheSize / 10) // 多清理10%
 
             for file in files {
-                if sizeToFree <= 0 { break }
+                if sizeToFree <= 0 {
+                    break
+                }
 
                 // 删除文件
                 try? fileManager.removeItem(at: file.url)

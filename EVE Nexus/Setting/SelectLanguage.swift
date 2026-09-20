@@ -386,7 +386,9 @@ extension Bundle {
            let enBundle = Bundle(path: enPath)
         {
             let enResult = enBundle.localizedString(forKey: key, value: key, table: tableName)
-            if enResult != key { return enResult }
+            if enResult != key {
+                return enResult
+            }
         }
         // 都未找到时：有 value 用 value，否则用 key，避免显示空
         return result.isEmpty ? (fallbackValue.isEmpty ? key : fallbackValue) : result

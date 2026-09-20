@@ -347,7 +347,9 @@ extension FittingEditorViewModel {
     func updateModuleSpoolUpFull(flag: FittingFlag, isFull: Bool) {
         guard let index = simulationInput.modules.firstIndex(where: { $0.flag == flag }) else { return }
         let currentModule = simulationInput.modules[index]
-        if currentModule.isSpoolUpFull == isFull { return }
+        if currentModule.isSpoolUpFull == isFull {
+            return
+        }
 
         simulationInput.modules[index] = updatedModule(currentModule, isSpoolUpFull: isFull)
 
@@ -364,7 +366,9 @@ extension FittingEditorViewModel {
                 continue
             }
             let currentModule = simulationInput.modules[index]
-            if currentModule.isSpoolUpFull == isFull { continue }
+            if currentModule.isSpoolUpFull == isFull {
+                continue
+            }
             didChange = true
             simulationInput.modules[index] = updatedModule(currentModule, isSpoolUpFull: isFull)
         }

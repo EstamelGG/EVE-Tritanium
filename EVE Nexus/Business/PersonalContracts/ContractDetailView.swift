@@ -846,7 +846,11 @@ struct ContractDetailView: View {
             NSLocalizedString("Contract_Load_Error_Title", comment: ""),
             isPresented: .init(
                 get: { viewModel.errorMessage != nil },
-                set: { if !$0 { viewModel.errorMessage = nil } }
+                set: {
+                    if !$0 {
+                        viewModel.errorMessage = nil
+                    }
+                }
             )
         ) {
             Button("OK", role: .cancel) {

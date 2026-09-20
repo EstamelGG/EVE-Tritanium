@@ -106,7 +106,9 @@ enum MasteryEvaluator {
             tierLoop: for tier in stride(from: 5, through: 1, by: -1) {
                 for requirement in requirements {
                     let requiredLevel = requirement.tierLevels[tier - 1]
-                    if requiredLevel == 0 { continue } // 该档不要求此技能
+                    if requiredLevel == 0 {
+                        continue
+                    } // 该档不要求此技能
                     let trainedLevel = characterSkills[requirement.skillID] ?? 0
                     if trainedLevel < requiredLevel {
                         continue tierLoop

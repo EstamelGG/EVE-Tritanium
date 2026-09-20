@@ -501,3 +501,8 @@ Fixes & Improvements:
 4. Fitting deletion now uses a unified confirmation alert; returning from a fitting detail refreshes the list automatically
 5. Dead code cleanup and performance optimizations
 
+# v1.14.5 September 20, 2026
+
+1. Jump navigation: fixed unnecessary detours between systems within direct jump range
+2. Market quickbar: Jita comparison prices are now calculated from ESI market orders
+3. Update SDE

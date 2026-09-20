@@ -108,24 +108,58 @@ struct CorpStarbaseView: View {
         }
     }
 
+    @ViewBuilder
     private var starbaseListView: some View {
-        Group {
-            // 需要关注的POS section（置顶）
-            if !viewModel.attentionStarbases.isEmpty {
+        if !viewModel.attentionStarbases.isEmpty {
+            Section(
+                header: Text(NSLocalizedString("Corp_Starbase_Attention_Header", comment: "需要关注"))
+                    .fontWeight(.semibold)
+                    .font(.system(size: 18))
+                    .foregroundColor(.red)
+                    .textCase(nil)
+            ) {
+                ForEach(0 ..< viewModel.attentionStarbases.count, id: \.self) { index in
+                    let starbase = viewModel.attentionStarbases[index]
+                    if let typeId = starbase["type_id"] as? Int {
+                        StarbaseCell(
+                            starbase: starbase,
+                            iconName: viewModel.getIconName(typeId: typeId),
+                            displayName: viewModel.getDisplayName(for: starbase, in: viewModel.attentionStarbases),
+                            detailInfo: viewModel.getStarbaseDetail(starbaseId: starbase["starbase_id"] as? Int),
+                            fuelItemNames: viewModel.fuelItemNames,
+                            fuelItemIcons: viewModel.fuelItemIcons,
+                            fuelThreshold: viewModel.getFuelThreshold(typeId: typeId),
+                            hasLowFuel: viewModel.hasLowFuel(starbaseId: starbase["starbase_id"] as? Int ?? 0),
+                            viewModel: viewModel
+                        )
+                    }
+                }
+            }
+        }
+
+        // 其他POS按位置分组
+        ForEach(viewModel.filteredLocationKeys, id: \.self) { location in
+            if let starbases = viewModel.filteredGroupedStarbases[location] {
                 Section(
-                    header: Text(NSLocalizedString("Corp_Starbase_Attention_Header", comment: "需要关注"))
-                        .fontWeight(.semibold)
-                        .font(.system(size: 18))
-                        .foregroundColor(.red)
-                        .textCase(nil)
+                    header: {
+                        if let systemId = starbases.first?["system_id"] as? Int,
+                           let securityLevel = viewModel.regionSecs[systemId]
+                        {
+                            Text(formatSystemSecurity(securityLevel))
+                                .foregroundColor(getSecurityColor(securityLevel)) + Text(" ")
+                                + Text(location)
+                        } else {
+                            Text(location)
+                        }
+                    }()
                 ) {
-                    ForEach(0 ..< viewModel.attentionStarbases.count, id: \.self) { index in
-                        let starbase = viewModel.attentionStarbases[index]
+                    ForEach(0 ..< starbases.count, id: \.self) { index in
+                        let starbase = starbases[index]
                         if let typeId = starbase["type_id"] as? Int {
                             StarbaseCell(
                                 starbase: starbase,
                                 iconName: viewModel.getIconName(typeId: typeId),
-                                displayName: viewModel.getDisplayName(for: starbase, in: viewModel.attentionStarbases),
+                                displayName: viewModel.getDisplayName(for: starbase, in: starbases),
                                 detailInfo: viewModel.getStarbaseDetail(starbaseId: starbase["starbase_id"] as? Int),
                                 fuelItemNames: viewModel.fuelItemNames,
                                 fuelItemIcons: viewModel.fuelItemIcons,
@@ -133,43 +167,7 @@ struct CorpStarbaseView: View {
                                 hasLowFuel: viewModel.hasLowFuel(starbaseId: starbase["starbase_id"] as? Int ?? 0),
                                 viewModel: viewModel
                             )
-                        }
-                    }
-                }
-            }
-
-            // 其他POS按位置分组
-            ForEach(viewModel.filteredLocationKeys, id: \.self) { location in
-                if let starbases = viewModel.filteredGroupedStarbases[location] {
-                    Section(
-                        header: {
-                            if let systemId = starbases.first?["system_id"] as? Int,
-                               let securityLevel = viewModel.regionSecs[systemId]
-                            {
-                                Text(formatSystemSecurity(securityLevel))
-                                    .foregroundColor(getSecurityColor(securityLevel)) + Text(" ")
-                                    + Text(location)
-                            } else {
-                                Text(location)
-                            }
-                        }()
-                    ) {
-                        ForEach(0 ..< starbases.count, id: \.self) { index in
-                            let starbase = starbases[index]
-                            if let typeId = starbase["type_id"] as? Int {
-                                StarbaseCell(
-                                    starbase: starbase,
-                                    iconName: viewModel.getIconName(typeId: typeId),
-                                    displayName: viewModel.getDisplayName(for: starbase, in: starbases),
-                                    detailInfo: viewModel.getStarbaseDetail(starbaseId: starbase["starbase_id"] as? Int),
-                                    fuelItemNames: viewModel.fuelItemNames,
-                                    fuelItemIcons: viewModel.fuelItemIcons,
-                                    fuelThreshold: viewModel.getFuelThreshold(typeId: typeId),
-                                    hasLowFuel: viewModel.hasLowFuel(starbaseId: starbase["starbase_id"] as? Int ?? 0),
-                                    viewModel: viewModel
-                                )
-                                .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
-                            }
+                            .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                         }
                     }
                 }

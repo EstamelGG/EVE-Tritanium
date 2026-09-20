@@ -1,11 +1,7 @@
 ---
 name: release-check
 description: 发布版本前的检查：校验 main 分支提交、更新日志、本地化覆盖与死代码扫描。当用户准备发布新版本或请求发布前检查时触发。
-tools:
-  - type: shell
-    description: 执行 git 命令、periphery 死代码扫描等
-  - type: read_file
-    description: 读取代码、更新日志、本地化文件内容
+tools: [execute, read]
 ---
 
 ## 系统指令
@@ -53,6 +49,8 @@ tools:
    grep -iE 'Unused (Enum|Property|Function|Initializer|Class|struct)' log.txt
    ```
 2. 结果为空 = 通过；非空则列出需优化的行。除匹配此正则的结果外，其余扫描结果（如 `Assign-only`、`Redundant public accessibility`）无需处理。
+3. 已知误报：periphery 不识别 SwiftUI 的 `$` 投影引用，仅通过绑定使用（如 `.sheet(isPresented: $x)`、`NavigationStack(path: $x)`、`isExpanded: $x`）的 `@State` 属性会被报成 `Unused property`。
+4. 判定规则：同文件中存在 `$<name>` 引用 = 误报，保留；完全没有任何引用（含 `$` 形式）才是真死代码，需要删除。
 
 
 ## 输出

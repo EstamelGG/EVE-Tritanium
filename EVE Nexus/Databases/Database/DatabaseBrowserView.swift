@@ -167,7 +167,9 @@ struct DatabaseBrowserView: View {
         items.sorted { a, b in
             let metaA = a.metaGroupID ?? -1
             let metaB = b.metaGroupID ?? -1
-            if metaA != metaB { return metaA < metaB }
+            if metaA != metaB {
+                return metaA < metaB
+            }
             return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
         }
     }

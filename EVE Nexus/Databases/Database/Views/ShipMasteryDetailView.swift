@@ -29,7 +29,9 @@ struct ShipMasteryDetailView: View {
 
     /// 当前角色的专精等级（未登录/加载中/驾驶技能不满足时为 0）
     private func currentMasteryLevel(from state: MasteryLevelState?) -> Int {
-        if case let .level(level) = state ?? .locked { return level }
+        if case let .level(level) = state ?? .locked {
+            return level
+        }
         return 0
     }
 
@@ -338,7 +340,9 @@ struct MasteryCertRow: View {
             .sorted { lhs, rhs in
                 let lhsUnmet = (characterSkills[lhs.skillID] ?? 0) < lhs.level
                 let rhsUnmet = (characterSkills[rhs.skillID] ?? 0) < rhs.level
-                if lhsUnmet != rhsUnmet { return lhsUnmet }
+                if lhsUnmet != rhsUnmet {
+                    return lhsUnmet
+                }
                 return lhs.skillID < rhs.skillID
             }
     }

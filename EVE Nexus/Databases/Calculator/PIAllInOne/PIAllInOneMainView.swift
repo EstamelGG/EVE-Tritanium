@@ -421,7 +421,9 @@ class SinglePlanetProductAnalyzer {
     /// 预加载所有缓存数据
     private func preloadCacheData() {
         // 只加载一次
-        if cachedPlanetTypes != nil { return }
+        if cachedPlanetTypes != nil {
+            return
+        }
 
         // 加载行星类型信息
         cachedPlanetTypes = getPlanetTypeInfo()
@@ -503,7 +505,9 @@ class SinglePlanetProductAnalyzer {
 
         while !toProcess.isEmpty {
             let currentId = toProcess.removeFirst()
-            if processed.contains(currentId) { continue }
+            if processed.contains(currentId) {
+                continue
+            }
             processed.insert(currentId)
 
             // 检查是否是P0资源

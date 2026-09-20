@@ -21,7 +21,9 @@ final class AgentDataStore {
     private init() {}
 
     func ensureLoaded(databaseManager: DatabaseManager) {
-        if isLoaded(for: databaseManager) || isLoading { return }
+        if isLoaded(for: databaseManager) || isLoading {
+            return
+        }
         isLoading = true
         defer { isLoading = false }
         load(databaseManager: databaseManager)
@@ -153,14 +155,24 @@ final class AgentDataStore {
         }
         .sorted {
             let loc = $0.sortLocation.localizedStandardCompare($1.sortLocation)
-            if loc != .orderedSame { return loc == .orderedAscending }
+            if loc != .orderedSame {
+                return loc == .orderedAscending
+            }
             let fac = $0.factionName.localizedStandardCompare($1.factionName)
-            if fac != .orderedSame { return fac == .orderedAscending }
+            if fac != .orderedSame {
+                return fac == .orderedAscending
+            }
             let corp = $0.corporationName.localizedStandardCompare($1.corporationName)
-            if corp != .orderedSame { return corp == .orderedAscending }
+            if corp != .orderedSame {
+                return corp == .orderedAscending
+            }
             let div = $0.divisionName.localizedStandardCompare($1.divisionName)
-            if div != .orderedSame { return div == .orderedAscending }
-            if $0.level != $1.level { return $0.level > $1.level }
+            if div != .orderedSame {
+                return div == .orderedAscending
+            }
+            if $0.level != $1.level {
+                return $0.level > $1.level
+            }
             return $0.name.localizedStandardCompare($1.name) == .orderedAscending
         }
     }
@@ -255,15 +267,27 @@ final class AgentDataStore {
 
     func search(_ filter: SearchFilter) -> [AgentItem] {
         agents.filter { agent in
-            if let divisionID = filter.divisionID, agent.divisionID != divisionID { return false }
-            if let level = filter.level, agent.level != level { return false }
-            if let factionID = filter.factionID, agent.factionID != factionID { return false }
+            if let divisionID = filter.divisionID, agent.divisionID != divisionID {
+                return false
+            }
+            if let level = filter.level, agent.level != level {
+                return false
+            }
+            if let factionID = filter.factionID, agent.factionID != factionID {
+                return false
+            }
             if let corporationID = filter.corporationID, agent.corporationID != corporationID {
                 return false
             }
-            if filter.isLocatorOnly, !agent.isLocator { return false }
-            if filter.isSpaceAgentOnly, agent.solarSystemID == nil { return false }
-            if let agentType = filter.agentType, agent.agentType != agentType { return false }
+            if filter.isLocatorOnly, !agent.isLocator {
+                return false
+            }
+            if filter.isSpaceAgentOnly, agent.solarSystemID == nil {
+                return false
+            }
+            if let agentType = filter.agentType, agent.agentType != agentType {
+                return false
+            }
 
             if let regionID = filter.regionID {
                 guard agent.regionID == regionID else { return false }
@@ -280,9 +304,15 @@ final class AgentDataStore {
             if let securityLevel = filter.securityLevel {
                 let display = calculateDisplaySecurity(agent.security ?? 0)
                 switch securityLevel {
-                case "highsec": if display < 0.5 { return false }
-                case "lowsec": if display >= 0.5 || display < 0.0 { return false }
-                case "nullsec": if display >= 0.0 { return false }
+                case "highsec": if display < 0.5 {
+                        return false
+                    }
+                case "lowsec": if display >= 0.5 || display < 0.0 {
+                        return false
+                    }
+                case "nullsec": if display >= 0.0 {
+                        return false
+                    }
                 default: break
                 }
             }

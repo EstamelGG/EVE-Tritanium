@@ -111,7 +111,9 @@ final class CorpWalletTransactionsViewModel: ObservableObject {
 
     /// 批量加载所有物品信息
     private func loadAllItemInfo(for typeIds: [Int]) {
-        if typeIds.isEmpty { return }
+        if typeIds.isEmpty {
+            return
+        }
 
         for typeId in typeIds {
             if let info = ItemInfoMap.typeInfo(for: typeId), !info.name.isEmpty {

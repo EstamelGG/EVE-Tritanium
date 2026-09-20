@@ -55,8 +55,12 @@ struct LocalizedText: Equatable {
         case "zh": primary = zh
         default: primary = en
         }
-        if !primary.isEmpty { return primary }
-        if !en.isEmpty { return en }
+        if !primary.isEmpty {
+            return primary
+        }
+        if !en.isEmpty {
+            return en
+        }
         return [zh, de, fr, ja, ko, ru, es].first { !$0.isEmpty } ?? ""
     }
 

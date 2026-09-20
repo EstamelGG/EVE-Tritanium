@@ -125,7 +125,9 @@ struct BRKillMailFittingView: View {
         for item in convertedItems where item.count >= 4 {
             let slotId = item[0]
             let typeId = item[1]
-            if slotItems[slotId] == nil { slotItems[slotId] = [] }
+            if slotItems[slotId] == nil {
+                slotItems[slotId] = []
+            }
             slotItems[slotId]?.append(item)
             uniqueTypeIds.insert(typeId)
             // 装配槽位装备行附带弹药 type_id（item[6]），也需收集以获取图标
@@ -146,13 +148,19 @@ struct BRKillMailFittingView: View {
             var firstAmmoIcon: String?
             var hasDropped = false
             for item in items {
-                if item.count > 2, item[2] > 0 { hasDropped = true }
+                if item.count > 2, item[2] > 0 {
+                    hasDropped = true
+                }
                 guard let typeInfo = typeInfos[item[1]] else { continue }
                 if typeInfo.1 == 8 {
                     // 非装配槽位的弹药（如货仓中的弹药货物）
-                    if firstAmmoIcon == nil { firstAmmoIcon = typeInfo.0 }
+                    if firstAmmoIcon == nil {
+                        firstAmmoIcon = typeInfo.0
+                    }
                 } else {
-                    if firstNonAmmoIcon == nil { firstNonAmmoIcon = typeInfo.0 }
+                    if firstNonAmmoIcon == nil {
+                        firstNonAmmoIcon = typeInfo.0
+                    }
                     // 装配槽位装备行：从 charge 字段（item[6]）读取弹药图标
                     if item.count > 6, item[6] > 0,
                        let chargeTypeInfo = typeInfos[item[6]],
@@ -162,7 +170,9 @@ struct BRKillMailFittingView: View {
                     }
                 }
             }
-            if hasDropped { newDroppedSlots.insert(slotId) }
+            if hasDropped {
+                newDroppedSlots.insert(slotId)
+            }
             if let name = firstNonAmmoIcon {
                 newEquipmentIcons[slotId] = IconManager.shared.loadImage(for: name)
             }

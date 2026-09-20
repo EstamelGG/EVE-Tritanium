@@ -497,7 +497,9 @@ public class CorporationAssetsJsonAPI {
         case "station", "solar_system":
             return nil
         default:
-            if let name = meta?.name { return name }
+            if let name = meta?.name {
+                return name
+            }
             if let typeId = meta?.typeId {
                 return ItemInfoMap.typeName(for: typeId)
             }

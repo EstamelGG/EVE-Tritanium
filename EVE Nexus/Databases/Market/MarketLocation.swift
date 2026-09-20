@@ -27,13 +27,17 @@ enum MarketLocation: Equatable, Codable {
     }
 
     var isStructure: Bool {
-        if case .structure = self { return true }
+        if case .structure = self {
+            return true
+        }
         return false
     }
 
     /// 建筑 ID（仅建筑市场有值）
     var structureID: Int64? {
-        if case let .structure(id) = self { return id }
+        if case let .structure(id) = self {
+            return id
+        }
         return nil
     }
 
@@ -100,7 +104,9 @@ enum MarketLocationType {
 
     /// 星系 ID（仅星系有值，用于订单过滤）
     var systemID: Int? {
-        if case let .system(id, _) = self { return id }
+        if case let .system(id, _) = self {
+            return id
+        }
         return nil
     }
 

@@ -433,7 +433,9 @@ struct DroneSettingsView: View {
         debounceTask = Task {
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             await MainActor.run {
                 validateInput(value)

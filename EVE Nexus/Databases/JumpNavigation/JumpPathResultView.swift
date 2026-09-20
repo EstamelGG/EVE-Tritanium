@@ -112,7 +112,9 @@ struct JumpPathResultView: View {
 
     /// 加载入侵星系数据
     private func loadIncursionSystems() {
-        if isLoadingIncursions { return }
+        if isLoadingIncursions {
+            return
+        }
         isLoadingIncursions = true
 
         Task {

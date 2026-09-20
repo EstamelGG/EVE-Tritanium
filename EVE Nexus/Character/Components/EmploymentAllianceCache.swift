@@ -23,7 +23,9 @@ final class EmploymentAllianceCache: ObservableObject {
         if let allianceId = recordAlliance[recordId] {
             return allianceId.map { .alliance($0) } ?? .none
         }
-        if failedRecordIds.contains(recordId) { return .failed }
+        if failedRecordIds.contains(recordId) {
+            return .failed
+        }
         return .loading
     }
 

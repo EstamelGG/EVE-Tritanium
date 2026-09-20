@@ -33,14 +33,26 @@ struct RateLimitQuota: Hashable, Codable {
     /// 支持 `15m` / `15min` / `1h` / `60s` / 纯数字(秒)
     private static func parseDuration(_ text: String) -> TimeInterval? {
         let lower = text.lowercased()
-        if let value = Double(lower) { return value }
+        if let value = Double(lower) {
+            return value
+        }
         let number = Double(lower.prefix(while: { $0.isNumber || $0 == "." })) ?? 0
         guard number > 0 else { return nil }
-        if lower.hasSuffix("ms") { return number / 1000 }
-        if lower.hasSuffix("min") { return number * 60 }
-        if lower.hasSuffix("h") { return number * 3600 }
-        if lower.hasSuffix("m") { return number * 60 }
-        if lower.hasSuffix("s") { return number }
+        if lower.hasSuffix("ms") {
+            return number / 1000
+        }
+        if lower.hasSuffix("min") {
+            return number * 60
+        }
+        if lower.hasSuffix("h") {
+            return number * 3600
+        }
+        if lower.hasSuffix("m") {
+            return number * 60
+        }
+        if lower.hasSuffix("s") {
+            return number
+        }
         return nil
     }
 }
@@ -105,9 +117,15 @@ enum ESIPathNormalizer {
     static func template(for url: URL) -> String {
         let segments = url.path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
         let normalized = segments.map { segment -> String in
-            if segment.allSatisfy(\.isNumber) { return "{id}" }
-            if UUID(uuidString: segment) != nil { return "{uuid}" }
-            if isHashLike(segment) { return "{hash}" }
+            if segment.allSatisfy(\.isNumber) {
+                return "{id}"
+            }
+            if UUID(uuidString: segment) != nil {
+                return "{uuid}"
+            }
+            if isHashLike(segment) {
+                return "{hash}"
+            }
             return segment
         }
         return "/" + normalized.joined(separator: "/")

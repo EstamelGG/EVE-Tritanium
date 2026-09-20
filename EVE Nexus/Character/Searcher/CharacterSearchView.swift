@@ -25,7 +25,9 @@ struct CharacterSearchView {
                 strict: strictMatch
             )
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             // 解析搜索结果
             let searchResponse = try JSONDecoder().decode(
@@ -50,7 +52,9 @@ struct CharacterSearchView {
                     )
                 }.sortedBySearchPrefix(searchText)
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 // 更新结果
                 searchResults = results

@@ -203,8 +203,12 @@ struct StorageFacilityView: View {
                                     let priceData = marketPrices[type.id]
                                     let unitForEstimate: Double = {
                                         guard let p = priceData else { return 0 }
-                                        if p.averagePrice > 0 { return p.averagePrice }
-                                        if p.adjustedPrice > 0 { return p.adjustedPrice }
+                                        if p.averagePrice > 0 {
+                                            return p.averagePrice
+                                        }
+                                        if p.adjustedPrice > 0 {
+                                            return p.adjustedPrice
+                                        }
                                         return 0
                                     }()
                                     if unitForEstimate > 0 {

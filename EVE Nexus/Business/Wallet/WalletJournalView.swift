@@ -157,7 +157,9 @@ final class WalletJournalViewModel: ObservableObject {
                     throw NetworkError.invalidResponse
                 }
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 guard let jsonData = jsonString.data(using: .utf8),
                       let entries = try? JSONDecoder().decode(
@@ -167,7 +169,9 @@ final class WalletJournalViewModel: ObservableObject {
                     throw NetworkError.invalidResponse
                 }
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 // 检查数据量
                 totalEntries = entries.count
@@ -205,7 +209,9 @@ final class WalletJournalViewModel: ObservableObject {
                     groupedEntries[dayDate, default: []].append(entry)
                 }
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 let groups = groupedEntries.map { date, entries -> WalletJournalGroup in
                     WalletJournalGroup(date: date, entries: entries.sorted { $0.id > $1.id })
@@ -281,12 +287,16 @@ final class WalletJournalViewModel: ObservableObject {
                     if selectedTransactionTypes.contains(.expense), entry.amount < 0 {
                         matches = true
                     }
-                    if !matches { return false }
+                    if !matches {
+                        return false
+                    }
                 }
 
                 // 然后检查 ref_type
                 if !selectedRefTypes.isEmpty {
-                    if !selectedRefTypes.contains(entry.ref_type) { return false }
+                    if !selectedRefTypes.contains(entry.ref_type) {
+                        return false
+                    }
                 }
 
                 return true

@@ -105,7 +105,11 @@ struct MarketQuickbarView: View {
                 NSLocalizedString("Misc_Delete", comment: ""),
                 isPresented: Binding(
                     get: { quickbarToDelete != nil },
-                    set: { if !$0 { quickbarToDelete = nil } }
+                    set: {
+                        if !$0 {
+                            quickbarToDelete = nil
+                        }
+                    }
                 ),
                 presenting: quickbarToDelete
             ) { quickbar in

@@ -133,7 +133,9 @@ struct WealthDetailView: View {
     }
 
     private var shouldShowEmptyState: Bool {
-        if isLoading { return false }
+        if isLoading {
+            return false
+        }
         switch wealthType {
         case .contracts:
             return viewModel.valuedContracts.isEmpty

@@ -146,7 +146,9 @@ struct AssetSearchItemGroup: Identifiable {
                 let occurrences = items
                     .map { AssetSearchOccurrence.make(from: $0, itemInfoCache: itemInfoCache) }
                     .sorted { lhs, rhs in
-                        if lhs.ownerId != rhs.ownerId { return lhs.ownerId < rhs.ownerId }
+                        if lhs.ownerId != rhs.ownerId {
+                            return lhs.ownerId < rhs.ownerId
+                        }
                         if lhs.rootLocation.location_id != rhs.rootLocation.location_id {
                             return lhs.rootLocation.location_id < rhs.rootLocation.location_id
                         }
@@ -297,7 +299,9 @@ struct AssetTypeFilterContext {
     }
 
     func subtreeContainsMatch(_ node: AssetTreeNode) -> Bool {
-        if matches(node.type_id) { return true }
+        if matches(node.type_id) {
+            return true
+        }
         return node.items?.contains(where: subtreeContainsMatch) ?? false
     }
 
@@ -316,7 +320,9 @@ struct AssetTypeFilterContext {
 
     /// 进入匹配过滤条件的容器后，展示其全部内容
     func containerContext(for node: AssetTreeNode) -> AssetTypeFilterContext {
-        if isActive, matches(node.type_id) { return .inactive }
+        if isActive, matches(node.type_id) {
+            return .inactive
+        }
         return self
     }
 }
@@ -591,8 +597,12 @@ class CharacterAssetsViewModel: ObservableObject {
 
         return regionDict.map { (region: $0.key, locations: sortMergedLocations($0.value)) }
             .sorted { pair1, pair2 in
-                if pair1.region == unknownRegion { return false }
-                if pair2.region == unknownRegion { return true }
+                if pair1.region == unknownRegion {
+                    return false
+                }
+                if pair2.region == unknownRegion {
+                    return true
+                }
                 return pair1.region < pair2.region
             }
     }
@@ -618,7 +628,9 @@ class CharacterAssetsViewModel: ObservableObject {
             if let system1 = loc1.representativeLocation.system_id,
                let system2 = loc2.representativeLocation.system_id
             {
-                if system1 != system2 { return system1 < system2 }
+                if system1 != system2 {
+                    return system1 < system2
+                }
             }
             return loc1.locationId < loc2.locationId
         }
@@ -711,8 +723,12 @@ class CharacterAssetsViewModel: ObservableObject {
             let n1 = loc1.location
             let n2 = loc2.location
             if let system1 = n1.system_id, let system2 = n2.system_id {
-                if system1 != system2 { return system1 < system2 }
-                if loc1.ownerId != loc2.ownerId { return loc1.ownerId < loc2.ownerId }
+                if system1 != system2 {
+                    return system1 < system2
+                }
+                if loc1.ownerId != loc2.ownerId {
+                    return loc1.ownerId < loc2.ownerId
+                }
                 return n1.location_id < n2.location_id
             }
             return n1.system_id != nil
@@ -894,8 +910,12 @@ class CharacterAssetsViewModel: ObservableObject {
         unpinnedLocationsByRegion = grouped.filter { !$0.value.isEmpty }
             .map { (region: $0.key, locations: sortLocations($0.value)) }
             .sorted { pair1, pair2 in
-                if pair1.region == unknownRegion { return false }
-                if pair2.region == unknownRegion { return true }
+                if pair1.region == unknownRegion {
+                    return false
+                }
+                if pair2.region == unknownRegion {
+                    return true
+                }
                 return pair1.region < pair2.region
             }
 
@@ -981,10 +1001,14 @@ class CharacterAssetsViewModel: ObservableObject {
 
         if !Task.isCancelled {
             if forceRefresh {
-                if characterIds.count == 1 { loadingProgress = .loading(page: 1) }
+                if characterIds.count == 1 {
+                    loadingProgress = .loading(page: 1)
+                }
             } else {
                 isLoading = true
-                if characterIds.count == 1 { loadingProgress = .loading(page: 1) }
+                if characterIds.count == 1 {
+                    loadingProgress = .loading(page: 1)
+                }
             }
         }
 
@@ -1021,7 +1045,9 @@ class CharacterAssetsViewModel: ObservableObject {
     }
 
     private func isCancellation(_ error: Error) -> Bool {
-        if error is CancellationError { return true }
+        if error is CancellationError {
+            return true
+        }
         if let nsError = error as NSError?,
            nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled
         {
@@ -1084,7 +1110,9 @@ class CharacterAssetsViewModel: ObservableObject {
             }
 
             for await (charId, result) in group {
-                if Task.isCancelled { break }
+                if Task.isCancelled {
+                    break
+                }
                 await progressActor.increment()
                 switch result {
                 case let .success(wrapper?):
@@ -1096,7 +1124,9 @@ class CharacterAssetsViewModel: ObservableObject {
                     )
                 case let .failure(error):
                     Logger.error("加载角色\(charId)资产失败: \(error)")
-                    if firstError == nil { firstError = error }
+                    if firstError == nil {
+                        firstError = error
+                    }
                 case .success(nil):
                     break
                 }
@@ -1109,7 +1139,9 @@ class CharacterAssetsViewModel: ObservableObject {
         if latestUpdateTime > 0 {
             dataLoadTime = Date(timeIntervalSince1970: latestUpdateTime)
         }
-        if allLocations.isEmpty, let firstError { throw firstError }
+        if allLocations.isEmpty, let firstError {
+            throw firstError
+        }
     }
 
     private func finalizeLoadedAssets() async {
@@ -1140,7 +1172,9 @@ class CharacterAssetsViewModel: ObservableObject {
                 }
             }
             for await (id, image) in group {
-                if let image { ownerPortraits[id] = image }
+                if let image {
+                    ownerPortraits[id] = image
+                }
             }
         }
     }

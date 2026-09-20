@@ -245,12 +245,16 @@ final class CharacterPlanetaryViewModel: ObservableObject {
                         }
                     }
 
-                    if Task.isCancelled { return }
+                    if Task.isCancelled {
+                        return
+                    }
 
                     // 获取所有行星ID
                     let planetIds = allPlanets.map { $0.planetId }
 
-                    if Task.isCancelled { return }
+                    if Task.isCancelled {
+                        return
+                    }
 
                     var tempSystemSecurities: [Int: Double] = [:]
 
@@ -263,7 +267,9 @@ final class CharacterPlanetaryViewModel: ObservableObject {
 
                     let tempPlanetNames = DatabaseManager.shared.getCelestialNames(itemIDs: planetIds)
 
-                    if Task.isCancelled { return }
+                    if Task.isCancelled {
+                        return
+                    }
 
                     await MainActor.run {
                         self.planets = allPlanets
@@ -372,8 +378,12 @@ final class CharacterPlanetaryViewModel: ObservableObject {
     /// 与 `PlanetRow` 采集器提示共用：该殖民地是否应以红色突出采集器状态（已停工、约 1 小时内停工、或最早到期已过期 / 不足 24h）
     func planetNeedsExtractorAttention(planetId: Int, characterId: Int) -> Bool {
         if let status = getExtractorStatus(for: planetId, characterId: characterId), status.totalCount > 0 {
-            if status.expiredCount > 0 { return true }
-            if status.expiringSoonCount > 0 { return true }
+            if status.expiredCount > 0 {
+                return true
+            }
+            if status.expiringSoonCount > 0 {
+                return true
+            }
         }
         guard let expiryDate = getEarliestExtractorExpiry(for: planetId, characterId: characterId) else {
             return false
@@ -551,8 +561,12 @@ final class CharacterPlanetaryViewModel: ObservableObject {
             await withTaskGroup(of: (String, PlanetaryDetail?, CachedPlanetaryResults?).self) { group in
                 // 初始添加并发数量的任务
                 for _ in 0 ..< min(maxConcurrent, pendingPlanets.count) {
-                    if Task.isCancelled { break }
-                    if pendingPlanets.isEmpty { break }
+                    if Task.isCancelled {
+                        break
+                    }
+                    if pendingPlanets.isEmpty {
+                        break
+                    }
 
                     let planetWithOwner = pendingPlanets.removeFirst()
                     let planetKey = "\(planetWithOwner.ownerId)_\(planetWithOwner.planet.planetId)"
@@ -574,7 +588,9 @@ final class CharacterPlanetaryViewModel: ObservableObject {
 
                 // 处理结果并添加新任务
                 while let (planetKey, detail, cachedResults) = await group.next() {
-                    if Task.isCancelled { break }
+                    if Task.isCancelled {
+                        break
+                    }
 
                     if let detail = detail {
                         allDetails.append(detail)
@@ -627,7 +643,9 @@ final class CharacterPlanetaryViewModel: ObservableObject {
                 }
             }
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             // 第二步：从所有行星详情中收集所有需要的 schematicId 和采集器输出的 typeId
             var schematicIds = Set<Int>()
@@ -659,14 +677,18 @@ final class CharacterPlanetaryViewModel: ObservableObject {
                 )
             }
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             // 第四步：处理所有行星数据
             // 1. 对于有缓存结果的行星，从 typeCache 获取图标信息并更新UI
             // 2. 对于没有缓存结果的行星，进行计算并保存到缓存
             await withTaskGroup(of: (String, Date?, [FinalProduct], ExtractorStatus?, Bool).self) { group in
                 for planetWithOwner in planetsWithOwner {
-                    if Task.isCancelled { break }
+                    if Task.isCancelled {
+                        break
+                    }
 
                     let planetKey = "\(planetWithOwner.ownerId)_\(planetWithOwner.planet.planetId)"
 
@@ -802,7 +824,9 @@ final class CharacterPlanetaryViewModel: ObservableObject {
 
                 // 增量更新UI：每计算完一个行星就立即更新
                 for await (planetKey, expiry, products, status, _) in group {
-                    if Task.isCancelled { break }
+                    if Task.isCancelled {
+                        break
+                    }
 
                     // 立即更新该行星的数据
                     await MainActor.run {

@@ -1591,7 +1591,11 @@ struct TokenViewerView: View {
             NSLocalizedString("Token_Viewer_Force_Expire", comment: "强制过期"),
             isPresented: .init(
                 get: { forceExpireCharacterId != nil },
-                set: { if !$0 { forceExpireCharacterId = nil } }
+                set: {
+                    if !$0 {
+                        forceExpireCharacterId = nil
+                    }
+                }
             )
         ) {
             Button(NSLocalizedString("Common_Cancel", comment: "取消"), role: .cancel) {
@@ -1630,8 +1634,12 @@ struct TokenViewerView: View {
             // 读取 access token（内存缓存，不触发刷新）
             let accessToken = await AuthTokenManager.shared.getCachedAccessToken(for: characterId)
             await MainActor.run {
-                if let rt = refreshToken { refreshTokens[characterId] = rt }
-                if let at = accessToken { accessTokens[characterId] = at }
+                if let rt = refreshToken {
+                    refreshTokens[characterId] = rt
+                }
+                if let at = accessToken {
+                    accessTokens[characterId] = at
+                }
             }
         }
 

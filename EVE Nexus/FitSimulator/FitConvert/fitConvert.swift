@@ -314,7 +314,7 @@ class FitConvert {
 
         // 从SimFighterSquad转换为FighterSquad
         let fighters = input.fighters?.map { simFighter -> FighterSquad in
-            return FighterSquad(
+            FighterSquad(
                 type_id: simFighter.typeId,
                 quantity: simFighter.quantity,
                 tubeId: simFighter.tubeId
@@ -336,7 +336,7 @@ class FitConvert {
             input.cargo.items.isEmpty
                 ? nil
                 : input.cargo.items.map { item -> CargoItem in
-                    return CargoItem(
+                    CargoItem(
                         type_id: item.typeId,
                         quantity: item.quantity
                     )
@@ -347,7 +347,7 @@ class FitConvert {
             input.implants.isEmpty
                 ? nil
                 : input.implants.map { implant -> Int in
-                    return implant.typeId
+                    implant.typeId
                 }
 
         // 创建并返回LocalFitting

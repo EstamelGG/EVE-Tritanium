@@ -228,8 +228,14 @@ extension SDEMemoryStore {
         while low <= high {
             let mid = (low + high) / 2
             let midID = typeAttrIDs[mid]
-            if midID == target { return typeAttrValues[mid] }
-            if midID < target { low = mid + 1 } else { high = mid - 1 }
+            if midID == target {
+                return typeAttrValues[mid]
+            }
+            if midID < target {
+                low = mid + 1
+            } else {
+                high = mid - 1
+            }
         }
         return nil
     }

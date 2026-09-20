@@ -1220,7 +1220,9 @@ class SearcherViewModel: ObservableObject {
                 )
                 await characterSearch.search()
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 // 使用 viewModel 当前的过滤条件（最新值），避免搜索期间过滤开关变更导致不同步
                 filterSearchResults(

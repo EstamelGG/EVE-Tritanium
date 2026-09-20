@@ -183,7 +183,9 @@ struct StructureSearchView {
                     )
                 }
             } catch {
-                if error is CancellationError { throw error }
+                if error is CancellationError {
+                    throw error
+                }
                 Logger.error("批量获取空间站信息失败: \(error)")
             }
         }
@@ -219,7 +221,9 @@ struct StructureSearchView {
 
                                 return (structureId, info.name, info.type_id, info.solar_system_id)
                             } catch {
-                                if error is CancellationError { throw error }
+                                if error is CancellationError {
+                                    throw error
+                                }
                                 Logger.error("获取建筑物信息失败 - ID: \(structureId), 错误: \(error)")
                                 return nil
                             }

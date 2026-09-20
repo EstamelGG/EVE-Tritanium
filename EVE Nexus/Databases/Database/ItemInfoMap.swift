@@ -45,7 +45,9 @@ class SharedSkillsManager: ObservableObject {
             return
         }
 
-        if isLoading { return }
+        if isLoading {
+            return
+        }
 
         isLoading = true
         Logger.debug("SharedSkillsManager开始预加载技能数据 - 角色ID: \(currentCharacterId)")
@@ -95,8 +97,12 @@ class SharedSkillsManager: ObservableObject {
 
     /// - Returns: nil 正在加载，-1 未拥有，-2 无角色登录
     func getSkillLevel(for skillID: Int) -> Int? {
-        if currentCharacterId == 0 { return -2 }
-        if isLoading { return nil }
+        if currentCharacterId == 0 {
+            return -2
+        }
+        if isLoading {
+            return nil
+        }
         return characterSkills[skillID] ?? -1
     }
 

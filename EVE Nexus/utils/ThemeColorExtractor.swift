@@ -85,7 +85,9 @@ func extractThemeColor(from image: UIImage) -> ThemeColor? {
             let a = Double(ptr[offset + 3])
 
             // 忽略透明像素
-            if a < 25 { continue }
+            if a < 25 {
+                continue
+            }
 
             totalR += r
             totalG += g

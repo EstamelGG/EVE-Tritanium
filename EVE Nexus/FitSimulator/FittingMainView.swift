@@ -545,7 +545,9 @@ struct FittingMainView: View {
         let shipNode = currentTree
             .flatMap(\.children)
             .compactMap { child -> FittingShipNode? in
-                if case let .ship(node) = child, node.typeId == typeId { return node }
+                if case let .ship(node) = child, node.typeId == typeId {
+                    return node
+                }
                 return nil
             }
             .first
@@ -581,15 +583,14 @@ struct FittingMainView: View {
     // MARK: - 搜索结果
 
     /// 搜索结果视图：平铺显示命中的装配
+    @ViewBuilder
     private var searchResultsSection: some View {
-        Group {
-            if searchMatches.isEmpty {
-                NoDataSection(icon: "magnifyingglass")
-            } else {
-                Section {
-                    ForEach(searchMatches) { fitting in
-                        fittingRowView(fitting)
-                    }
+        if searchMatches.isEmpty {
+            NoDataSection(icon: "magnifyingglass")
+        } else {
+            Section {
+                ForEach(searchMatches) { fitting in
+                    fittingRowView(fitting)
                 }
             }
         }

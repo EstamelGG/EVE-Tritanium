@@ -157,23 +157,21 @@ struct StructureMarketRowViewWithNavigation: View {
     @State private var isAccessDenied = false
 
     var body: some View {
-        Group {
-            if isAccessDenied {
-                // 建筑无法访问，禁用跳转
+        if isAccessDenied {
+            // 建筑无法访问，禁用跳转
+            StructureMarketRowView(
+                structure: structure,
+                allianceIconLoader: allianceIconLoader,
+                isAccessDenied: $isAccessDenied
+            )
+        } else {
+            // 建筑可访问，允许跳转
+            NavigationLink(destination: StructureMarketDetailView(structure: structure)) {
                 StructureMarketRowView(
                     structure: structure,
                     allianceIconLoader: allianceIconLoader,
                     isAccessDenied: $isAccessDenied
                 )
-            } else {
-                // 建筑可访问，允许跳转
-                NavigationLink(destination: StructureMarketDetailView(structure: structure)) {
-                    StructureMarketRowView(
-                        structure: structure,
-                        allianceIconLoader: allianceIconLoader,
-                        isAccessDenied: $isAccessDenied
-                    )
-                }
             }
         }
     }

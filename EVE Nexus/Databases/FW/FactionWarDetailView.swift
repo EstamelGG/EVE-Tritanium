@@ -184,7 +184,9 @@ final class FactionWarDetailViewModel: ObservableObject {
                 Logger.info("开始获取FW星系数据")
                 let (systems, _) = try await FWAPI.shared.fetchFWData(forceRefresh: forceRefresh)
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 // 获取所有星系ID
                 let systemIds = systems.map { $0.solar_system_id }
@@ -226,7 +228,9 @@ final class FactionWarDetailViewModel: ObservableObject {
                     Logger.error("没有可显示的完整数据")
                 }
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 self.isLoading = false
 
@@ -260,7 +264,9 @@ final class FactionWarDetailViewModel: ObservableObject {
                     Logger.info("开始加载势力图标: \(faction.name) (ID: \(factionId))")
                     let uiImage = IconManager.shared.loadUIImage(for: faction.iconName)
 
-                    if Task.isCancelled { return }
+                    if Task.isCancelled {
+                        return
+                    }
 
                     // 更新所有相关星系的图标
                     for system in preparedSystems {

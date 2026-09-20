@@ -219,9 +219,15 @@ enum EnvironmentEffectNaming {
 
     static func category(for typeId: Int) -> EnvironmentOptions.Category? {
         let options = EnvironmentOptions.shared
-        if options.wormhole.contains(typeId) { return .wormhole }
-        if options.abyssal.contains(typeId) { return .abyssal }
-        if options.other.contains(typeId) { return .other }
+        if options.wormhole.contains(typeId) {
+            return .wormhole
+        }
+        if options.abyssal.contains(typeId) {
+            return .abyssal
+        }
+        if options.other.contains(typeId) {
+            return .other
+        }
         return nil
     }
 

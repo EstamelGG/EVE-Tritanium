@@ -465,8 +465,12 @@ enum FormatUtil {
     /// 带符号的本地化百分比（`value` 为 0–100 数值，如 +7.5 → +7.5%）
     static func formatSignedPercentFrom100(_ value: Double, fractionDigits: Int = 1) -> String {
         let formatted = formatPercentFrom100(abs(value), fractionDigits: fractionDigits)
-        if value > 0 { return "+\(formatted)" }
-        if value < 0 { return "-\(formatted)" }
+        if value > 0 {
+            return "+\(formatted)"
+        }
+        if value < 0 {
+            return "-\(formatted)"
+        }
         return formatted
     }
 
@@ -536,7 +540,9 @@ enum FormatUtil {
     static func formatMinutesSinceUpdate(
         _ minutes: Int, justUpdated: String, minutesAgoFormat: String
     ) -> String {
-        if minutes < 1 { return justUpdated }
+        if minutes < 1 {
+            return justUpdated
+        }
         return String.localizedStringWithFormat(minutesAgoFormat, minutes)
     }
 
@@ -762,7 +768,9 @@ enum FormatUtil {
         let remainingSeconds = totalSeconds - Double(days * 86400 + hours * 3600 + minutes * 60)
 
         var result = ""
-        if days > 0 { result += "\(days)d " }
+        if days > 0 {
+            result += "\(days)d "
+        }
         if hours > 0 || (days > 0 && (minutes > 0 || remainingSeconds > 0)) {
             result += "\(hours)h "
         }
@@ -780,7 +788,9 @@ enum FormatUtil {
     private static func formatIntervalDuration(_ interval: TimeInterval, style: DurationDisplayStyle) -> String {
         switch style {
         case .relativePastShort:
-            if interval < 0 { return NSLocalizedString("Time_Just_Now", comment: "") }
+            if interval < 0 {
+                return NSLocalizedString("Time_Just_Now", comment: "")
+            }
             let days = Int(interval / (24 * 3600))
             if days > 0 {
                 return String.localizedStringWithFormat(NSLocalizedString("Time_Days_Ago_short", comment: ""), days)

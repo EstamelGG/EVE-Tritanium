@@ -264,17 +264,23 @@ class CharacterIndustryViewModel: ObservableObject {
                 // 加载数据
                 let jobs = try await fetchJobs(forceRefresh: forceRefresh)
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 // 更新数据
                 self.jobs = jobs
                 await loadItemNames()
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 await loadLocationNames()
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 groupJobsByStatus()
 

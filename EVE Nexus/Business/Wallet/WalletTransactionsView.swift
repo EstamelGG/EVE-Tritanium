@@ -156,7 +156,9 @@ final class WalletTransactionsViewModel: ObservableObject {
     /// 一次性加载所有物品信息
     private func loadAllItemInfo(from entries: [WalletTransactionEntry]) {
         let typeIds = Set(entries.map { $0.type_id })
-        if typeIds.isEmpty { return }
+        if typeIds.isEmpty {
+            return
+        }
 
         for typeId in typeIds {
             if let info = ItemInfoMap.typeInfo(for: typeId), !info.name.isEmpty {
@@ -245,7 +247,9 @@ final class WalletTransactionsViewModel: ObservableObject {
                     throw NetworkError.invalidResponse
                 }
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 guard let jsonData = jsonString.data(using: .utf8),
                       let entries = try? JSONDecoder().decode(
@@ -255,7 +259,9 @@ final class WalletTransactionsViewModel: ObservableObject {
                     throw NetworkError.invalidResponse
                 }
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 // 收集所有位置ID
                 let locationIds = Set(entries.map { $0.location_id })
@@ -266,12 +272,16 @@ final class WalletTransactionsViewModel: ObservableObject {
                 )
                 locationInfoCache = await locationLoader.loadLocationInfo(locationIds: locationIds)
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 // 一次性加载所有物品信息
                 loadAllItemInfo(from: entries)
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 var groupedEntries: [Date: [WalletTransactionEntry]] = [:]
                 for entry in entries {
@@ -289,7 +299,9 @@ final class WalletTransactionsViewModel: ObservableObject {
                     groupedEntries[dayDate, default: []].append(entry)
                 }
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 let groups = groupedEntries.map { date, entries -> WalletTransactionGroup in
                     let sortedEntries = entries.sorted { $0.transaction_id > $1.transaction_id }

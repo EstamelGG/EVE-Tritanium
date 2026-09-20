@@ -134,7 +134,9 @@ extension DatabaseManager {
 
     /// 加载 MetaGroup 名称
     func loadMetaGroupNames(for metaGroupIDs: [Int]) -> [Int: String] {
-        if metaGroupIDs.isEmpty { return [:] }
+        if metaGroupIDs.isEmpty {
+            return [:]
+        }
         var names: [Int: String] = [:]
         for id in metaGroupIDs {
             if let name = SDEMemoryStore.metaGroupName(for: id) {

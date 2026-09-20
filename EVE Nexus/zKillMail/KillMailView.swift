@@ -885,8 +885,12 @@ struct BRKillMailCell: View {
     }
 
     private var organizationIcon: UIImage? {
-        if let allyId = entity.allianceId, allyId > 0, let icon = allianceIcon { return icon }
-        if entity.corporationId > 0, let icon = corporationIcon { return icon }
+        if let allyId = entity.allianceId, allyId > 0, let icon = allianceIcon {
+            return icon
+        }
+        if entity.corporationId > 0, let icon = corporationIcon {
+            return icon
+        }
         return nil
     }
 

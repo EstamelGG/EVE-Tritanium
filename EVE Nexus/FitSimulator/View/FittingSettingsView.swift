@@ -113,7 +113,9 @@ struct FittingSettingsView: View {
 
     private func fetchEnvironmentEnglishName(typeId: Int) -> String? {
         guard let info = ItemInfoMap.typeInfo(for: typeId) else { return nil }
-        if !info.enName.isEmpty { return info.enName }
+        if !info.enName.isEmpty {
+            return info.enName
+        }
         return info.name.isEmpty ? nil : info.name
     }
 

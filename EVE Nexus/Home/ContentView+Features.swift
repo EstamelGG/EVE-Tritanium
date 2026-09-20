@@ -83,7 +83,9 @@ extension ContentView {
     }
 
     func hasVisibleFeatures(in section: FeatureSection) -> Bool {
-        if isCustomizeMode { return true }
+        if isCustomizeMode {
+            return true
+        }
         return FeatureRegistry.features(in: section).contains { feature in
             guard feature.isAvailableOnCurrentPlatform else { return false }
             let isHidden = feature.participatesInHiding && isFeatureHidden(feature.id.rawValue)

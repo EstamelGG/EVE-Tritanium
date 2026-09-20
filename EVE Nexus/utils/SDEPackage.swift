@@ -263,7 +263,9 @@ final class SDEDownloader {
 
     func clearDownloadDirectory() throws {
         let dir = downloadDirectory
-        if fm.fileExists(atPath: dir.path) { try fm.removeItem(at: dir) }
+        if fm.fileExists(atPath: dir.path) {
+            try fm.removeItem(at: dir)
+        }
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
     }
 
@@ -283,12 +285,16 @@ final class SDEDownloader {
                 count += 1
             }
         }
-        if count > 0 { Logger.info("已清理 \(count) 个 CloudKit Asset 缓存文件") }
+        if count > 0 {
+            Logger.info("已清理 \(count) 个 CloudKit Asset 缓存文件")
+        }
     }
 
     func stageAsset(_ source: URL, as fileName: String) throws -> URL {
         let dest = downloadDirectory.appendingPathComponent(fileName)
-        if fm.fileExists(atPath: dest.path) { try fm.removeItem(at: dest) }
+        if fm.fileExists(atPath: dest.path) {
+            try fm.removeItem(at: dest)
+        }
         try fm.copyItem(at: source, to: dest)
         try? fm.removeItem(at: source)
         return dest
@@ -445,7 +451,9 @@ final class SDEDownloader {
     }
 
     private func unzipFile(_ zip: URL, to destination: URL, progress: @escaping (Double) -> Void) async throws {
-        if fm.fileExists(atPath: destination.path) { try fm.removeItem(at: destination) }
+        if fm.fileExists(atPath: destination.path) {
+            try fm.removeItem(at: destination)
+        }
         try fm.createDirectory(at: destination, withIntermediateDirectories: true)
 
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
@@ -540,7 +548,9 @@ final class SDECloudKitManager {
     }
 
     private static func recordTypeIssue(_ name: String) -> String? {
-        if name.isEmpty { return "不能为空" }
+        if name.isEmpty {
+            return "不能为空"
+        }
         if let bad = name.first(where: { !$0.isLetter && !$0.isNumber && $0 != "_" }) {
             return "含非法字符「\(bad)」（仅允许字母、数字、下划线）"
         }
@@ -591,7 +601,9 @@ final class SDECloudKitManager {
         return try await run(op, timeout: queryTimeout) { finish in
             var records: [CKRecord] = []
             op.recordMatchedBlock = { _, result in
-                if case let .success(record) = result { records.append(record) }
+                if case let .success(record) = result {
+                    records.append(record)
+                }
             }
             op.queryResultBlock = { result in
                 switch result {
@@ -740,7 +752,9 @@ final class SDECloudKitManager {
 
             let fm = FileManager.default
             try fm.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-            if fm.fileExists(atPath: destination.path) { try fm.removeItem(at: destination) }
+            if fm.fileExists(atPath: destination.path) {
+                try fm.removeItem(at: destination)
+            }
             // FileHandle(forWritingTo:) 不会创建文件，必须先建空文件
             guard fm.createFile(atPath: destination.path, contents: nil) else {
                 throw SDEGitHubError.createFileFailed(destination.lastPathComponent)
@@ -760,10 +774,14 @@ final class SDECloudKitManager {
                 if buffer.count >= 1 << 20 { // 每累积 1MB 落盘一次
                     try handle.write(contentsOf: buffer)
                     buffer.removeAll(keepingCapacity: true)
-                    if expected > 0 { progress(Double(received) / Double(expected)) }
+                    if expected > 0 {
+                        progress(Double(received) / Double(expected))
+                    }
                 }
             }
-            if !buffer.isEmpty { try handle.write(contentsOf: buffer) }
+            if !buffer.isEmpty {
+                try handle.write(contentsOf: buffer)
+            }
             progress(1)
         }
     }

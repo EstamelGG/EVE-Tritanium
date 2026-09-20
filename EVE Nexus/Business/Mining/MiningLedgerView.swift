@@ -197,7 +197,9 @@ final class MiningLedgerViewModel: ObservableObject {
                 // 获取挖矿记录数据
                 let allEntries = try await fetchMiningData(forceRefresh: forceRefresh)
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 Logger.debug("获取到挖矿记录：\(allEntries.count)条")
 
@@ -230,7 +232,9 @@ final class MiningLedgerViewModel: ObservableObject {
                     groupedByMonth[monthDate]?[entry.type_id, default: 0] += entry.quantity
                 }
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 Logger.debug("分组后的月份数：\(groupedByMonth.count)")
 
@@ -257,7 +261,9 @@ final class MiningLedgerViewModel: ObservableObject {
                     return MiningMonthGroup(yearMonth: date, entries: summaries)
                 }.sorted { $0.yearMonth > $1.yearMonth }
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 Logger.debug("最终生成的月份组数：\(groups.count)")
 

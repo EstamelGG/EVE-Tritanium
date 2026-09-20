@@ -71,12 +71,16 @@ final class CorpWalletJournalViewModel: ObservableObject {
                     if selectedTransactionTypes.contains(.expense), entry.amount < 0 {
                         matches = true
                     }
-                    if !matches { return false }
+                    if !matches {
+                        return false
+                    }
                 }
 
                 // 然后检查 ref_type
                 if !selectedRefTypes.isEmpty {
-                    if !selectedRefTypes.contains(entry.ref_type) { return false }
+                    if !selectedRefTypes.contains(entry.ref_type) {
+                        return false
+                    }
                 }
 
                 return true

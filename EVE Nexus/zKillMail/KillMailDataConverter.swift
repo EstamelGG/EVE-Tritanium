@@ -92,7 +92,9 @@ class KillMailDataConverter {
         await withTaskGroup(of: (Int, ESIKillMail?).self) { group in
             // 初始添加并发数量的任务
             for _ in 0 ..< min(maxConcurrentRequests, pendingEntries.count) {
-                if pendingEntries.isEmpty { break }
+                if pendingEntries.isEmpty {
+                    break
+                }
 
                 let entry = pendingEntries.removeFirst()
                 group.addTask {

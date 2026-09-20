@@ -24,10 +24,14 @@ struct RichTextView: View {
             .alert(NSLocalizedString("Misc_OpenLink", comment: ""), isPresented: $showingURLAlert) {
                 Button(NSLocalizedString("Common_Cancel", comment: ""), role: .cancel) {}
                 Button(NSLocalizedString("Misc_Yes", comment: "")) {
-                    if let url = urlToConfirm { UIApplication.shared.open(url) }
+                    if let url = urlToConfirm {
+                        UIApplication.shared.open(url)
+                    }
                 }
             } message: {
-                if let url = urlToConfirm { Text(url.absoluteString) }
+                if let url = urlToConfirm {
+                    Text(url.absoluteString)
+                }
             }
             .sheet(item: fittingSheetBinding) { item in fittingSheetContent(item) }
             .sheet(item: killReportSheetBinding) { item in killReportSheetContent(item) }
@@ -74,7 +78,11 @@ struct RichTextView: View {
     private var itemSheetBinding: Binding<SheetItem?> {
         Binding(
             get: { selectedItem.map { SheetItem(itemID: $0.itemID, categoryID: $0.categoryID) } },
-            set: { if $0 == nil { selectedItem = nil } }
+            set: {
+                if $0 == nil {
+                    selectedItem = nil
+                }
+            }
         )
     }
 
@@ -97,7 +105,11 @@ struct RichTextView: View {
     private var fittingSheetBinding: Binding<FittingSheetItem?> {
         Binding(
             get: { fittingToShow.map { FittingSheetItem(fitting: $0) } },
-            set: { if $0 == nil { fittingToShow = nil } }
+            set: {
+                if $0 == nil {
+                    fittingToShow = nil
+                }
+            }
         )
     }
 
@@ -119,7 +131,11 @@ struct RichTextView: View {
     private var killReportSheetBinding: Binding<KillReportSheetItem?> {
         Binding(
             get: { killReportToShow.map { KillReportSheetItem(killId: $0) } },
-            set: { if $0 == nil { killReportToShow = nil } }
+            set: {
+                if $0 == nil {
+                    killReportToShow = nil
+                }
+            }
         )
     }
 

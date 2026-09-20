@@ -75,7 +75,9 @@ struct PinnedLocation: Identifiable {
 
     /// 是否为建筑
     var isStructure: Bool {
-        if case .structure = kind { return true }
+        if case .structure = kind {
+            return true
+        }
         return false
     }
 
@@ -137,7 +139,9 @@ struct MarketRegionPickerView: View {
     /// 已置顶的星域 ID 集合（用于从「所有星域」中过滤）
     private var pinnedRegionIDSet: Set<Int> {
         Set(pinnedLocations.compactMap { loc in
-            if case let .region(id) = loc.kind { return id }
+            if case let .region(id) = loc.kind {
+                return id
+            }
             return nil
         })
     }

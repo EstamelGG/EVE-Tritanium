@@ -1016,7 +1016,9 @@ struct BRKillMailDetailView: View {
                 zkb: listEntity.zkb
             )
 
-            if let zkb = detail.zkb { zkbInfoFromAPI = zkb }
+            if let zkb = detail.zkb {
+                zkbInfoFromAPI = zkb
+            }
 
             loadAllItemInfo(from: detail)
             await loadIcons(from: detail)
@@ -1217,7 +1219,9 @@ struct ItemRow: View {
 
     /// BPC 单价统一为 0.01 ISK
     private var effectiveUnitPrice: Double? {
-        if isBPC { return 0.01 }
+        if isBPC {
+            return 0.01
+        }
         return resolvedUnitPrice
     }
 
@@ -1459,7 +1463,9 @@ struct KillMailAttackersView: View {
         return detailData.attackers
             .filter { $0.character_id == myCharId }
             .sorted { a, b in
-                if a.damage_done != b.damage_done { return a.damage_done > b.damage_done }
+                if a.damage_done != b.damage_done {
+                    return a.damage_done > b.damage_done
+                }
                 return sortKey(a) < sortKey(b)
             }
     }
@@ -1467,7 +1473,9 @@ struct KillMailAttackersView: View {
     /// 所有人：按 damage_done 降序，次按 character_id
     private var allAttackers: [ESIAttacker] {
         detailData.attackers.sorted { a, b in
-            if a.damage_done != b.damage_done { return a.damage_done > b.damage_done }
+            if a.damage_done != b.damage_done {
+                return a.damage_done > b.damage_done
+            }
             return sortKey(a) < sortKey(b)
         }
     }
@@ -1579,9 +1587,15 @@ struct KillMailAttackersView: View {
 
         var ids = Set<Int>()
         for atk in detailData.attackers {
-            if let c = atk.character_id { ids.insert(c) }
-            if let c = atk.corporation_id { ids.insert(c) }
-            if let a = atk.alliance_id, a > 0 { ids.insert(a) }
+            if let c = atk.character_id {
+                ids.insert(c)
+            }
+            if let c = atk.corporation_id {
+                ids.insert(c)
+            }
+            if let a = atk.alliance_id, a > 0 {
+                ids.insert(a)
+            }
         }
         let missing = ids.filter { detailData.names[$0] == nil }
         guard !missing.isEmpty else { return }
@@ -1634,9 +1648,15 @@ private struct AttackerRowView: View {
     }
 
     private var displayName: String {
-        if let id = attacker.character_id { return entityNameMap[id] ?? "Character \(id)" }
-        if let id = attacker.alliance_id, id > 0 { return entityNameMap[id] ?? "Alliance \(id)" }
-        if let id = attacker.corporation_id { return entityNameMap[id] ?? "Corporation \(id)" }
+        if let id = attacker.character_id {
+            return entityNameMap[id] ?? "Character \(id)"
+        }
+        if let id = attacker.alliance_id, id > 0 {
+            return entityNameMap[id] ?? "Alliance \(id)"
+        }
+        if let id = attacker.corporation_id {
+            return entityNameMap[id] ?? "Corporation \(id)"
+        }
         return NSLocalizedString("Unknown", comment: "")
     }
 

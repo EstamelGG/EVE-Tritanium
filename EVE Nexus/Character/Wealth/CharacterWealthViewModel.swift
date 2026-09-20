@@ -162,7 +162,9 @@ class CharacterWealthViewModel: ObservableObject {
 
     /// 获取多个物品的信息（内存索引，保持行字典结构供调用方使用）
     func getItemsInfo(typeIds: [Int]) -> [[String: Any]] {
-        if typeIds.isEmpty { return [] }
+        if typeIds.isEmpty {
+            return []
+        }
 
         var rows: [[String: Any]] = []
         for typeId in typeIds.sorted() {

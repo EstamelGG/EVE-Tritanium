@@ -645,7 +645,9 @@ struct SkillPlanDetailView: View {
 
         let queueInfo = plan.skills.compactMap {
             skill -> (skillId: Int, remainingSP: Int, startDate: Date?, finishDate: Date?)? in
-            if !freshQueue, skill.isCompleted { return nil }
+            if !freshQueue, skill.isCompleted {
+                return nil
+            }
 
             let remainingSP: Int
             if freshQueue {
@@ -1570,7 +1572,9 @@ struct SkillPlanDetailView: View {
     ) -> [(skillId: Int, requiredLevel: Int)] {
         var depthCache: [Int: Int] = [:]
         func skillDepth(for id: Int) -> Int {
-            if let cached = depthCache[id] { return cached }
+            if let cached = depthCache[id] {
+                return cached
+            }
             let directReqs = SkillTreeManager.shared.directSkillRequirements(for: id)
             let depth: Int
             if directReqs.isEmpty {

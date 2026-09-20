@@ -100,7 +100,9 @@ final class SDEUpdateChecker: ObservableObject {
         let start = Date()
         await checkForUpdates(force: true)
         let remain = max(0, 2.0 - Date().timeIntervalSince(start))
-        if remain > 0 { try? await Task.sleep(nanoseconds: UInt64(remain * 1e9)) }
+        if remain > 0 {
+            try? await Task.sleep(nanoseconds: UInt64(remain * 1e9))
+        }
         isButtonDisabled = false
     }
 

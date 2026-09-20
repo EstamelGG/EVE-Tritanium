@@ -324,7 +324,9 @@ class FittingEditorViewModel: ObservableObject {
     private func syncSelectedCharacterIdFromPreferencesIfNeeded() {
         guard UserDefaults.standard.string(forKey: "skillsModePreference") == "character" else { return }
         let id = UserDefaults.standard.integer(forKey: "selectedSkillCharacterId")
-        if id != 0 { currentSelectedCharacterId = id }
+        if id != 0 {
+            currentSelectedCharacterId = id
+        }
     }
 
     /// 保存当前配置

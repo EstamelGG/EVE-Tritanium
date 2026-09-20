@@ -143,7 +143,9 @@ class ModuleGroupManager {
 
             var downgraded = 0
             for (moduleIndex, module) in sortedOnlineModules.reversed() {
-                if downgraded >= excessCount { break }
+                if downgraded >= excessCount {
+                    break
+                }
                 if let flag = module.flag, !excludeFlags.contains(flag) {
                     // 降级为离线状态
                     let updatedModule = SimModule(
@@ -186,7 +188,9 @@ class ModuleGroupManager {
 
             var downgraded = 0
             for (moduleIndex, module) in sortedActiveModules.reversed() {
-                if downgraded >= excessCount { break }
+                if downgraded >= excessCount {
+                    break
+                }
                 if let flag = module.flag, !excludeFlags.contains(flag) {
                     // 降级为在线状态
                     let updatedModule = SimModule(

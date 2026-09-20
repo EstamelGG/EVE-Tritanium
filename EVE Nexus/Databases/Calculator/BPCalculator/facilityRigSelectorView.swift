@@ -4,9 +4,7 @@ import SwiftUI
 struct FacilityRigSelectorView: View {
     @ObservedObject var databaseManager: DatabaseManager
     @State private var allowedTypeIDs: [Int] = []
-    @State private var equipmentInfos: [EquipmentInfo] = []
     @State private var marketGroupTree: [MarketGroupNode] = []
-    @State private var allowedMarketGroupIDs: Set<Int> = [] // 新增：存储允许的市场组ID
     @Environment(\.dismiss) private var dismiss
 
     // 建筑ID，用于查询匹配的插件
@@ -27,7 +25,6 @@ struct FacilityRigSelectorView: View {
             databaseManager: databaseManager, facilityTypeID: facilityTypeID
         )
         _allowedTypeIDs = State(initialValue: equipmentData.map { $0.typeId })
-        _equipmentInfos = State(initialValue: equipmentData)
 
         // 初始化市场组目录树
         let builder = MarketItemGroupTreeBuilder(
@@ -37,12 +34,6 @@ struct FacilityRigSelectorView: View {
         )
         let tree = builder.buildGroupTree()
         _marketGroupTree = State(initialValue: tree)
-
-        // 获取建筑改装件(ID: 2203)及其所有子组的ID列表（通过 MarketTree 索引展开子孙组）
-        let marketTree = MarketManager.shared.buildTree(
-            from: MarketManager.shared.loadMarketGroups(databaseManager: databaseManager)
-        )
-        _allowedMarketGroupIDs = State(initialValue: Set(marketTree.allSubGroupIDs(from: 2203)))
     }
 
     var body: some View {

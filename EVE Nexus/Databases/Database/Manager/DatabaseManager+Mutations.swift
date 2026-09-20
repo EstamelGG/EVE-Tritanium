@@ -11,7 +11,9 @@ extension DatabaseManager {
         var results: [(typeID: Int, name: String, iconFileName: String)] = []
         for mapping in mappings {
             let resultingType = mapping.resultingType
-            if seen.contains(resultingType) { continue }
+            if seen.contains(resultingType) {
+                continue
+            }
             seen.insert(resultingType)
             guard let info = SDEMemoryStore.type(for: resultingType) else { continue }
             results.append(
@@ -38,7 +40,9 @@ extension DatabaseManager {
         var results: [(typeID: Int, name: String, iconFileName: String)] = []
         for mapping in mappings {
             let mutaplasmidID = mapping.typeID
-            if seen.contains(mutaplasmidID) { continue }
+            if seen.contains(mutaplasmidID) {
+                continue
+            }
             seen.insert(mutaplasmidID)
             guard let info = SDEMemoryStore.type(for: mutaplasmidID) else { continue }
             results.append(

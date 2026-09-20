@@ -350,8 +350,12 @@ private struct ContainerVolumeRow: View {
 
     private var progressColor: Color {
         guard hasCapacity else { return .gray }
-        if ratio >= 1.0 { return .red }
-        if ratio >= 0.8 { return .yellow }
+        if ratio >= 1.0 {
+            return .red
+        }
+        if ratio >= 0.8 {
+            return .yellow
+        }
         return .green
     }
 
@@ -588,7 +592,11 @@ struct SubLocationAssetsView: View {
             NSLocalizedString("Assets_Export_Fitting_Alert_Title", comment: ""),
             isPresented: Binding(
                 get: { exportErrorMessage != nil },
-                set: { if !$0 { exportErrorMessage = nil } }
+                set: {
+                    if !$0 {
+                        exportErrorMessage = nil
+                    }
+                }
             ),
             actions: {
                 Button(NSLocalizedString("OK", comment: ""), role: .cancel) { exportErrorMessage = nil }
@@ -793,7 +801,9 @@ class LocationAssetsViewModel: ObservableObject {
 
     /// 优先容器 type_id 集合，首次访问时查库并缓存
     private var priorityContainerTypeIds: Set<Int> {
-        if let cached = cachedPriorityContainerTypeIds { return cached }
+        if let cached = cachedPriorityContainerTypeIds {
+            return cached
+        }
         let groups = Set(priorityMarketGroups)
         var typeIds = Set<Int>()
         for (typeId, info) in SDEMemoryStore.types {

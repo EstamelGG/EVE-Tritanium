@@ -139,14 +139,18 @@ struct ShowMutationInfo: View {
         let sorted = mappings.sorted { lhs, rhs in
             let lMeta = SDEMemoryStore.type(for: lhs.applicableType)?.metaGroupID ?? 0
             let rMeta = SDEMemoryStore.type(for: rhs.applicableType)?.metaGroupID ?? 0
-            if lMeta != rMeta { return lMeta < rMeta }
+            if lMeta != rMeta {
+                return lMeta < rMeta
+            }
             return lhs.applicableType < rhs.applicableType
         }
 
         var seenTypeIDs = Set<Int>()
         applicableItems = sorted.compactMap { mapping in
             let typeID = mapping.applicableType
-            if seenTypeIDs.contains(typeID) { return nil }
+            if seenTypeIDs.contains(typeID) {
+                return nil
+            }
             seenTypeIDs.insert(typeID)
             guard let info = SDEMemoryStore.type(for: typeID) else { return nil }
             return (typeID: typeID, name: info.name, iconFileName: info.iconFilename)

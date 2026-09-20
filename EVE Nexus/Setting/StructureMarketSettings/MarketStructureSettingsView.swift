@@ -463,19 +463,18 @@ struct StructureRowView: View {
     }
 
     /// 缓存统计文本（时间 + 订单数 + 物品数合并展示）
+    @ViewBuilder
     private var cacheSummaryText: some View {
-        Group {
-            if let updateDate = lastUpdateDate {
-                let minutesAgo = Int(Date().timeIntervalSince(updateDate) / 60)
-                if minutesAgo >= 0 {
-                    Text(cacheSummaryString(minutesAgo: minutesAgo))
-                        .fontWeight(.semibold)
-                        .transition(.opacity)
-                }
-            } else {
-                Text(NSLocalizedString("Structure_Orders_No_Cache", comment: ""))
+        if let updateDate = lastUpdateDate {
+            let minutesAgo = Int(Date().timeIntervalSince(updateDate) / 60)
+            if minutesAgo >= 0 {
+                Text(cacheSummaryString(minutesAgo: minutesAgo))
+                    .fontWeight(.semibold)
                     .transition(.opacity)
             }
+        } else {
+            Text(NSLocalizedString("Structure_Orders_No_Cache", comment: ""))
+                .transition(.opacity)
         }
     }
 

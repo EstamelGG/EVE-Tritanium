@@ -589,7 +589,9 @@ class RecipientPickerViewModel: ObservableObject {
             try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
 
             // 如果任务被取消了，就直接返回
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             // 执行实际的搜索
             await search(characterId: characterId, searchText: searchText)
@@ -624,7 +626,9 @@ class RecipientPickerViewModel: ObservableObject {
                 searchText: searchText
             )
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             // 解析搜索结果
             let searchResponse = try JSONDecoder().decode(SearchResponse.self, from: data)
@@ -632,15 +636,23 @@ class RecipientPickerViewModel: ObservableObject {
 
             // 获取所有需要查询的ID
             var allIds: Set<Int> = []
-            if let characters = searchResponse.character { allIds.formUnion(characters) }
-            if let corporations = searchResponse.corporation { allIds.formUnion(corporations) }
-            if let alliances = searchResponse.alliance { allIds.formUnion(alliances) }
+            if let characters = searchResponse.character {
+                allIds.formUnion(characters)
+            }
+            if let corporations = searchResponse.corporation {
+                allIds.formUnion(corporations)
+            }
+            if let alliances = searchResponse.alliance {
+                allIds.formUnion(alliances)
+            }
 
             // 一次性获取所有名称
             searchingStatus = NSLocalizedString("Main_Search_Status_Loading_Names", comment: "")
             let names = try await UniverseAPI.shared.getNamesWithFallback(ids: Array(allIds))
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             // 处理角色搜索结果
             if let characters = searchResponse.character {
@@ -717,7 +729,9 @@ class RecipientPickerViewModel: ObservableObject {
                 )
             }
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             // 按名称排序结果
             results.sort { $0.name < $1.name }

@@ -117,11 +117,15 @@ final class IncursionsViewModel: ObservableObject {
                     forceRefresh: forceRefresh
                 )
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 await processIncursions(incursions)
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 self.lastFetchTime = Date()
                 self.isLoading = false

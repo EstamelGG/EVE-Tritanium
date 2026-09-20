@@ -117,11 +117,17 @@ final class KillMailFavoritesStore: ObservableObject {
         guard let idx = records.firstIndex(where: { $0.killmailId == killmailId }) else { return }
         let old = records[idx]
         var v = old.value
-        if v == nil, let t = totalValue { v = t }
+        if v == nil, let t = totalValue {
+            v = t
+        }
         var d = old.droppedValue
-        if d == nil, let dv = droppedValue { d = dv }
+        if d == nil, let dv = droppedValue {
+            d = dv
+        }
         var des = old.destroyedValue
-        if des == nil, let dsv = destroyedValue { des = dsv }
+        if des == nil, let dsv = destroyedValue {
+            des = dsv
+        }
         guard v != old.value || d != old.droppedValue || des != old.destroyedValue else { return }
         var next = records
         next[idx] = FavoriteKillMailRecord(
@@ -173,8 +179,12 @@ private final class KillMailFavoritesListModel: ObservableObject {
             return rec.value == nil || rec.droppedValue == nil || rec.destroyedValue == nil
         }()
         guard needsListTotal || favoriteNeedsSupplement else { return }
-        if iskFetchInFlight.contains(id) { return }
-        if needsListTotal, asyncISKByKillmailId[id] != nil { return }
+        if iskFetchInFlight.contains(id) {
+            return
+        }
+        if needsListTotal, asyncISKByKillmailId[id] != nil {
+            return
+        }
         iskFetchInFlight.insert(id)
         var loading = iskLoadingKillmailIds
         loading.insert(id)
@@ -310,7 +320,9 @@ private final class KillMailFavoritesListModel: ObservableObject {
             return
         }
         isPaging = true
-        if !isInitial { isLoadingMore = true }
+        if !isInitial {
+            isLoadingMore = true
+        }
         defer {
             isPaging = false
             isLoadingMore = false
@@ -327,7 +339,9 @@ private final class KillMailFavoritesListModel: ObservableObject {
 
                 let batch = try await fetchListEntities(for: slice)
                 accumulated.append(contentsOf: batch)
-                if !batch.isEmpty { break }
+                if !batch.isEmpty {
+                    break
+                }
             }
 
             guard !accumulated.isEmpty else { return }
@@ -401,7 +415,9 @@ private final class KillMailFavoritesListModel: ObservableObject {
                 }
             }
             for await (id, zkb) in group {
-                if let zkb { idToEntry[id] = zkb }
+                if let zkb {
+                    idToEntry[id] = zkb
+                }
             }
         }
 
@@ -543,7 +559,9 @@ struct BRKillMailFavoritesView: View {
                 }
             }
             .onChange(of: favoritesStore.records) { oldRecords, newRecords in
-                if listModel.consumeSuppressReloadIfNeeded() { return }
+                if listModel.consumeSuppressReloadIfNeeded() {
+                    return
+                }
                 if KillMailFavoritesStore.listIdentityIgnoringValue(oldRecords)
                     == KillMailFavoritesStore.listIdentityIgnoringValue(newRecords)
                 {

@@ -193,16 +193,26 @@ enum AttributeDisplayConfig {
     /// 判断属性组是否应该显示
     static func shouldShowGroup(_ groupId: Int) -> Bool {
         // categoryID 为 0 的「其他」分类只在关闭「只展示重要属性」时显示
-        if groupId == 0 { return !showImportantOnly }
-        if activeHiddenGroups.contains(groupId) && showImportantOnly { return false }
+        if groupId == 0 {
+            return !showImportantOnly
+        }
+        if activeHiddenGroups.contains(groupId) && showImportantOnly {
+            return false
+        }
         return true
     }
 
     /// 判断具体属性是否应该显示
     static func shouldShowAttribute(_ attributeID: Int, attribute: DogmaAttribute) -> Bool {
-        if resistanceAttributeIDs.contains(attributeID) { return false }
-        if activeHiddenAttributes.contains(attributeID) && showImportantOnly { return false }
-        if showImportantOnly { return attribute.localizedDisplayName != nil }
+        if resistanceAttributeIDs.contains(attributeID) {
+            return false
+        }
+        if activeHiddenAttributes.contains(attributeID) && showImportantOnly {
+            return false
+        }
+        if showImportantOnly {
+            return attribute.localizedDisplayName != nil
+        }
         return !attribute.name.isEmpty
     }
 

@@ -106,14 +106,18 @@ final class CharacterOrdersViewModel: ObservableObject {
                     characterId: characterId,
                     forceRefresh: forceRefresh
                 ) {
-                    if Task.isCancelled { return }
+                    if Task.isCancelled {
+                        return
+                    }
 
                     // 解析JSON数据
                     let jsonData = jsonString.data(using: .utf8)!
                     let decoder = JSONDecoder()
                     let newOrders = try decoder.decode([CharacterMarketOrder].self, from: jsonData)
 
-                    if Task.isCancelled { return }
+                    if Task.isCancelled {
+                        return
+                    }
 
                     // 立即更新订单数据
                     await MainActor.run {
@@ -123,7 +127,9 @@ final class CharacterOrdersViewModel: ObservableObject {
                     // 同步加载所有信息
                     await loadAllInformation()
 
-                    if Task.isCancelled { return }
+                    if Task.isCancelled {
+                        return
+                    }
 
                     // 只在首次加载时初始化订单显示类型，刷新时保持用户当前选择
                     await MainActor.run {

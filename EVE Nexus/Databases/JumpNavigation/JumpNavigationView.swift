@@ -662,7 +662,7 @@ struct JumpNavigationView: View {
         let jumpMapFile = documentsPath.appendingPathComponent("jump_map/jump_map.json")
 
         // 获取当前应用版本
-        let currentAppVersion = AppConfiguration.Version.fullVersion
+        let currentAppVersion = "\(AppConfiguration.Version.fullVersion)-jump-map-\(JumpNavigationHandler.cacheVersion)"
         // 从UserDefaults获取保存的版本
         let savedVersion = UserDefaults.standard.string(forKey: "jump_map_app_version")
 
@@ -743,7 +743,7 @@ struct JumpNavigationView: View {
         }
 
         // 获取当前应用版本
-        let currentAppVersion = AppConfiguration.Version.fullVersion
+        let currentAppVersion = "\(AppConfiguration.Version.fullVersion)-jump-map-\(JumpNavigationHandler.cacheVersion)"
 
         // 使用带进度回调的方法
         DispatchQueue.global(qos: .userInitiated).async {

@@ -123,7 +123,9 @@ public enum SkillInjectorCalculator {
         while remaining > 0 {
             let injectorSP = getInjectorSkillPoints(isLarge: false, characterTotalSP: currentSP)
             count += 1
-            if injectorSP >= remaining { break }
+            if injectorSP >= remaining {
+                break
+            }
             remaining -= injectorSP
             currentSP += injectorSP
         }

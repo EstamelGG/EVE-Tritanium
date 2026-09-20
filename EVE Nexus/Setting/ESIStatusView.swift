@@ -140,7 +140,11 @@ struct ESIStatusView: View {
         }
         .alert(
             NSLocalizedString("ESI_Status_Load_Failed", comment: ""),
-            isPresented: .init(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+            isPresented: .init(get: { errorMessage != nil }, set: {
+                if !$0 {
+                    errorMessage = nil
+                }
+            })
         ) {
             Button(NSLocalizedString("ESI_Status_Button_OK", comment: ""), role: .cancel) {
                 errorMessage = nil

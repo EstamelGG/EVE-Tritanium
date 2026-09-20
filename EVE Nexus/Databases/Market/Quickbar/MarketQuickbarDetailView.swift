@@ -384,12 +384,24 @@ struct MarketQuickbarDetailView: View {
         let needsJitaComparison = !isSelectedMarketJita
 
         // 并行加载选定市场订单和 Jita 价格（Jita 价格与选定市场无关，仅随物品列表变化）
+        // Jita 对比价格改从 ESI 市场订单计算（与选定市场同源，口径一致）：
+        // 复用星域订单加载（同样的 3 小时缓存与并发控制），本地取最优买/卖价
         let jitaPriceTask = Task { () -> [Int: (buy: Double, sell: Double)] in
             guard needsJitaComparison else { return [:] }
-            return (try? await GitHubMarketPriceAPI.shared.fetchMarketPrices(
+            let jitaOrders = await MarketOrdersUtil.loadRegionOrders(
                 typeIds: typeIds,
+                regionID: MarketManager.theForgeRegionID,
                 forceRefresh: forceRefresh
-            )) ?? [:]
+            )
+            var prices: [Int: (buy: Double, sell: Double)] = [:]
+            for (typeId, orders) in jitaOrders {
+                // 只统计仍有剩余量的订单（volumeRemain == 0 的挂单无法成交）
+                let buyPrices = orders.filter { $0.isBuyOrder && $0.volumeRemain > 0 }.map(\.price)
+                let sellPrices = orders.filter { !$0.isBuyOrder && $0.volumeRemain > 0 }.map(\.price)
+                // 无买单或无卖单时对应方向记 0，与旧 GitHub 数据缺失时的行为一致
+                prices[typeId] = (buyPrices.max() ?? 0, sellPrices.min() ?? 0)
+            }
+            return prices
         }
 
         // 使用通用工具类加载订单（自动判断建筑/星域）

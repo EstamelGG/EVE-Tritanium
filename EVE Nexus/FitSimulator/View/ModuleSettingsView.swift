@@ -904,7 +904,9 @@ struct ModuleSettingsView: View {
         debounceTask = Task {
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             await MainActor.run {
                 validateInput(value)
@@ -1123,7 +1125,9 @@ struct MutationAttributeRowView: View {
 
     /// 获取数值颜色（与 MutationProgressBarView 逻辑一致，需考虑 originalValueIsNegative）
     private func getValueColor(_ value: Double) -> Color {
-        if abs(value - 1) < 0.0001 { return .secondary }
+        if abs(value - 1) < 0.0001 {
+            return .secondary
+        }
         let originalValueIsNegative = (attribute.originalValue ?? 0) < 0
         let multiplierIndicatesIncrease = originalValueIsNegative ? (value < 1) : (value > 1)
         let improved = attribute.highIsGood ? multiplierIndicatesIncrease : !multiplierIndicatesIncrease

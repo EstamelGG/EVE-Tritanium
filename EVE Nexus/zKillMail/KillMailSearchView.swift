@@ -340,7 +340,9 @@ struct BRKillMailSearchView: View {
             }
 
             // 该视角已有缓存数据：瞬时恢复，无需重载
-            if filterDataCache[trigger]?.isLoaded == true { return }
+            if filterDataCache[trigger]?.isLoaded == true {
+                return
+            }
 
             await loadKillMails(for: trigger)
 
@@ -424,7 +426,9 @@ struct BRKillMailSearchView: View {
             return (batch, hasMore)
         }
 
-        if Task.isCancelled { return }
+        if Task.isCancelled {
+            return
+        }
 
         // 如果当前批次不足10个，尝试加载下一页
         var finalBatch = batch
@@ -434,7 +438,9 @@ struct BRKillMailSearchView: View {
             }
             guard let selectedResult = viewModel.selectedResult else { return }
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             do {
                 let nextPageEntries = try await zKbToolAPI.shared.fetchZKBKillMailsBySearchResult(
@@ -480,14 +486,18 @@ struct BRKillMailSearchView: View {
         }
 
         // 转换数据
-        if Task.isCancelled { return }
+        if Task.isCancelled {
+            return
+        }
 
         do {
             let entities = try await KillMailDataConverter.shared.fetchKillMailListEntities(
                 zkbEntries: finalBatch
             )
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             await MainActor.run {
                 filterDataCache[trigger]?.killMails.append(contentsOf: entities)
@@ -496,7 +506,9 @@ struct BRKillMailSearchView: View {
             await loadShipInfo(for: trigger, entities: entities)
             await loadOrganizationIcons(for: trigger, entities: entities)
 
-            if Task.isCancelled { return }
+            if Task.isCancelled {
+                return
+            }
 
             // 检查是否还有更多数据
             await MainActor.run {
@@ -595,7 +607,9 @@ struct KillMailDirectSearchResultRow: View {
     }
 
     private var resolvedShipName: String {
-        if !shipName.isEmpty { return shipName }
+        if !shipName.isEmpty {
+            return shipName
+        }
         return String(
             format: NSLocalizedString("KillMail_Unknown_Item", comment: ""),
             entity.shipTypeId
@@ -737,7 +751,9 @@ class BRKillMailSearchViewModel: ObservableObject {
 
     /// 当前关键词搜索是否命中任意一条结果（本地舰船、联网分类、或 killmail ID）
     func hasAnyKeywordSearchResults() -> Bool {
-        if directKillMailEntity != nil { return true }
+        if directKillMailEntity != nil {
+            return true
+        }
         return searchResults.values.contains { !$0.isEmpty }
     }
 

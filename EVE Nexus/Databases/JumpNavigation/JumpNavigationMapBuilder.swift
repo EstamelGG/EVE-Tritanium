@@ -1,6 +1,9 @@
 import Foundation
 
 class JumpNavigationHandler {
+    /// 建图规则变更时递增，使旧连接缓存失效。
+    static let cacheVersion = 2
+
     /// 光年转换常量
     private static let LY_CONVERSION: Double = 1.0 / 9_460_000_000_000_000.0
 
@@ -34,7 +37,7 @@ class JumpNavigationHandler {
         progressUpdate?("Jump_Navigation_Preparing_Jump_Data", 0.005)
 
         // 使用传入的预加载星系数据
-        let jumpSystems = preloadedSystems
+        let jumpSystems = preloadedSystems.sorted { $0.id < $1.id }
 
         var nearbyPairs: [[String: Any]] = []
 
@@ -85,14 +88,12 @@ class JumpNavigationHandler {
                 }
 
                 if distanceLY <= 10 {
-                    // 只保存source_id < dest_id的情况，避免重复
-                    if sys1.solarsystem_id < sys2.solarsystem_id {
-                        nearbyPairs.append([
-                            "s_id": sys1.solarsystem_id,
-                            "d_id": sys2.solarsystem_id,
-                            "ly": distanceLY,
-                        ])
-                    }
+                    // j > i 已保证每对星系只处理一次；输入按 ID 排序。
+                    nearbyPairs.append([
+                        "s_id": sys1.solarsystem_id,
+                        "d_id": sys2.solarsystem_id,
+                        "ly": distanceLY,
+                    ])
                 }
             }
         }

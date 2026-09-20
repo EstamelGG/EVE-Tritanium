@@ -291,7 +291,9 @@ extension OreRefineryCalculatorView {
 
     /// 获取植入体精炼加成
     func getImplantRefineryBonus(implantID: Int) -> Double {
-        if implantID == 0 { return 1.0 } // 无植入体
+        if implantID == 0 {
+            return 1.0
+        } // 无植入体
 
         let query = "SELECT value FROM typeAttributes WHERE attribute_id = 379 AND type_id = ?"
 

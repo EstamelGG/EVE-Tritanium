@@ -43,7 +43,11 @@ struct ShipMasteryBrowserView: View {
             MasteryDisplayHelper.filterTitle(filter),
             isOn: Binding(
                 get: { selectedFilter == filter },
-                set: { if $0 { selectedFilter = filter } }
+                set: {
+                    if $0 {
+                        selectedFilter = filter
+                    }
+                }
             )
         )
     }

@@ -242,7 +242,9 @@ struct LanguageMapView: View {
             tableName: "types", idColumn: "type_id", searchText: searchText,
             typeIdMatch: typeIdToSearch, exact: &exact, prefix: &prefix, fuzzy: &fuzzy
         )
-        if typeIdToSearch != nil, !exact.isEmpty { hasTypeIdMatch = true }
+        if typeIdToSearch != nil, !exact.isEmpty {
+            hasTypeIdMatch = true
+        }
 
         // 2) 星系 / 星座 / 星域（内存 LocalizedText 字典遍历）
         appendLocalizedMatches(
@@ -357,7 +359,9 @@ struct LanguageMapView: View {
             matches.append((id, localizedNamesDict(text), text.en.count))
         }
         matches.sort {
-            if $0.enLen != $1.enLen { return $0.enLen < $1.enLen }
+            if $0.enLen != $1.enLen {
+                return $0.enLen < $1.enLen
+            }
             return ($0.names["en"] ?? "").localizedStandardCompare($1.names["en"] ?? "")
                 == .orderedAscending
         }

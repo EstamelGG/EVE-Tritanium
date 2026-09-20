@@ -117,7 +117,9 @@ struct MarketItemTreeSelectorView: View {
         let numericID = Int(keyword)
         let results = databaseManager.searchItemsMemory { typeID, info in
             guard let mg = info.marketGroupID, marketGroupIDs.contains(mg) else { return false }
-            if !allowTypeIDs.isEmpty, !allowTypeIDs.contains(typeID) { return false }
+            if !allowTypeIDs.isEmpty, !allowTypeIDs.contains(typeID) {
+                return false
+            }
             return info.names.matchesSearch(keyword) || numericID == typeID
         }
 
@@ -668,7 +670,9 @@ struct MarketNodeItemsView: View {
 
         items = databaseManager.searchItemsMemory { typeID, info in
             guard info.marketGroupID == group.id else { return false }
-            if !allowTypeIDs.isEmpty, !allowTypeIDs.contains(typeID) { return false }
+            if !allowTypeIDs.isEmpty, !allowTypeIDs.contains(typeID) {
+                return false
+            }
             return true
         }
 

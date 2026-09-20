@@ -734,7 +734,9 @@ struct OreRefineryCalculatorView: View {
         var availableQuantity: Int64 = 0
 
         for order in filteredOrders {
-            if remainingQuantity <= 0 { break }
+            if remainingQuantity <= 0 {
+                break
+            }
 
             let orderQuantity = min(remainingQuantity, Int64(order.volumeRemain))
             totalPrice += Double(orderQuantity) * order.price

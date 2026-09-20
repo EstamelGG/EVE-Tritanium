@@ -16,7 +16,9 @@ extension FitConvert {
         }
 
         func pickName(name: String?, enName: String?) -> String? {
-            if useEnglishNames, let en = enName, !en.isEmpty { return en }
+            if useEnglishNames, let en = enName, !en.isEmpty {
+                return en
+            }
             return name
         }
 

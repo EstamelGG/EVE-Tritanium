@@ -80,6 +80,13 @@ class JumpPathFinder {
             addConnection(sourceId: destId, destId: sourceId, distance: distance)
         }
 
+        // JSON 中的连接顺序不影响同等代价路线的选择。
+        for systemId in Array(jumpConnections.keys) {
+            jumpConnections[systemId]?.sort {
+                ($0.destId, $0.distance) < ($1.destId, $1.distance)
+            }
+        }
+
         Logger.info("已加载跳跃连接: \(jumpConnections.count) 个星系")
     }
 
@@ -110,7 +117,7 @@ class JumpPathFinder {
         return security < 0.5
     }
 
-    /// 使用A*算法寻找最佳路径
+    /// 使用 Dijkstra 算法寻找最少跳数、其次最短距离的路径
     func findPath(
         from startSystemId: Int,
         to destinationSystemIds: [Int],
@@ -166,7 +173,7 @@ class JumpPathFinder {
             }
 
             // 对每个新目的地，从当前位置开始搜索
-            let (path, segments, totalDistance) = aStarSearch(
+            let (path, segments, totalDistance) = dijkstraSearch(
                 from: currentSystemId,
                 to: destinationId,
                 maxJumpRange: maxJumpRange,
@@ -214,8 +221,8 @@ class JumpPathFinder {
         return baseRange * skillMultiplier
     }
 
-    /// A*算法核心实现
-    private func aStarSearch(
+    /// Dijkstra 算法核心实现；同等代价按星系 ID 决定处理顺序。
+    private func dijkstraSearch(
         from startSystemId: Int,
         to destinationSystemId: Int,
         maxJumpRange: Double,
@@ -240,7 +247,7 @@ class JumpPathFinder {
         }
 
         // 定义优先队列（使用数组模拟）
-        // 元素格式: (估计总跳跃次数, 估计总距离, 节点ID)
+        // 元素格式: (实际跳跃次数, 实际总距离, 节点ID)
         var openQueue: [(jumps: Double, distance: Double, systemId: Int)] = []
         var closedSet = Set<Int>()
 
@@ -258,7 +265,7 @@ class JumpPathFinder {
 
         while !openQueue.isEmpty {
             // 获取优先级最高的节点（跳跃次数最少，在跳跃次数相同的情况下总距离最短）
-            openQueue.sort { ($0.jumps, $0.distance) < ($1.jumps, $1.distance) }
+            openQueue.sort { ($0.jumps, $0.distance, $0.systemId) < ($1.jumps, $1.distance, $1.systemId) }
             let current = openQueue.removeFirst()
             let currentId = current.systemId
 
@@ -322,21 +329,13 @@ class JumpPathFinder {
                     // 记录节点间距离
                     nodeDistances[neighborId] = connection.distance
 
-                    // 估计到终点的代价 - 启发式函数
-                    let hJumps = estimateJumps(from: neighborId, to: destinationSystemId)
-                    let hDistance = estimateDistance(from: neighborId, to: destinationSystemId)
-
-                    // 计算f_score并添加到优先队列
-                    let fJumps = tentativeJumps + hJumps
-                    let fDistance = tentativeDistance + hDistance
-
                     // 如果这是新路径或者是更好的路径，添加到优先队列
                     if isNewPath {
-                        openQueue.append((fJumps, fDistance, neighborId))
+                        openQueue.append((tentativeJumps, tentativeDistance, neighborId))
                     } else {
                         // 移除旧的评估，添加新的评估
                         openQueue.removeAll { $0.systemId == neighborId }
-                        openQueue.append((fJumps, fDistance, neighborId))
+                        openQueue.append((tentativeJumps, tentativeDistance, neighborId))
                     }
                 }
             }
@@ -344,30 +343,6 @@ class JumpPathFinder {
 
         // 如果执行到这里，说明没有找到路径
         return ([], [], 0.0)
-    }
-
-    /// 估计从当前节点到目标节点的跳跃次数
-    private func estimateJumps(from sourceId: Int, to destId: Int) -> Double {
-        // 如果有直接连接，返回1
-        if let connections = jumpConnections[sourceId],
-           connections.contains(where: { $0.destId == destId })
-        {
-            return 1
-        }
-        // 否则返回一个合理的估计值，对A*来说必须是乐观的
-        return 2 // 假设至少需要2跳
-    }
-
-    /// 估计从当前节点到目标节点的距离
-    private func estimateDistance(from sourceId: Int, to destId: Int) -> Double {
-        // 如果有直接连接，返回实际距离
-        if let connections = jumpConnections[sourceId],
-           let connection = connections.first(where: { $0.destId == destId })
-        {
-            return connection.distance
-        }
-        // 否则返回一个非常乐观的估计值
-        return 1.0 // 假设距离很短
     }
 
     /// 使用距离信息重建路径

@@ -132,7 +132,9 @@ struct KillMailDetailData {
         func walk(_ list: [ESIItem]) {
             for item in list {
                 ids.insert(item.item_type_id)
-                if let nested = item.items { walk(nested) }
+                if let nested = item.items {
+                    walk(nested)
+                }
             }
         }
         walk(items)
@@ -244,9 +246,13 @@ struct KillMailDetailData {
         var charge: (typeId: Int, qty: Int)?
         for item in groupItems {
             if item.isCharge {
-                if charge == nil { charge = (item.typeId, item.qty) }
+                if charge == nil {
+                    charge = (item.typeId, item.qty)
+                }
             } else {
-                if module == nil { module = (item.typeId, item.qty) }
+                if module == nil {
+                    module = (item.typeId, item.qty)
+                }
             }
         }
         return (module, charge)
@@ -366,13 +372,19 @@ enum KillMailItemTreeBuilder {
         itemInfoCache: [Int: (iconFileName: String, bpcIconFileName: String, categoryID: Int)]
     ) -> [[Int]] {
         rows.sorted { a, b in
-            if a[0] != b[0] { return a[0] < b[0] }
+            if a[0] != b[0] {
+                return a[0] < b[0]
+            }
             let aDepth = a.count > depthIndex ? a[depthIndex] : 0
             let bDepth = b.count > depthIndex ? b[depthIndex] : 0
-            if aDepth != bDepth { return aDepth < bDepth }
+            if aDepth != bDepth {
+                return aDepth < bDepth
+            }
             let aAmmo = itemInfoCache[a[1]]?.categoryID == 8
             let bAmmo = itemInfoCache[b[1]]?.categoryID == 8
-            if aAmmo != bAmmo { return !aAmmo }
+            if aAmmo != bAmmo {
+                return !aAmmo
+            }
             return a[1] < b[1]
         }
     }
@@ -393,13 +405,17 @@ enum KillMailItemTreeBuilder {
         return items.sorted { lhs, rhs in
             let lhsStack = valueByType[lhs.item_type_id, default: 0]
             let rhsStack = valueByType[rhs.item_type_id, default: 0]
-            if lhsStack != rhsStack { return lhsStack > rhsStack }
+            if lhsStack != rhsStack {
+                return lhsStack > rhsStack
+            }
             if lhs.item_type_id != rhs.item_type_id {
                 return lhs.item_type_id < rhs.item_type_id
             }
             let ld = lhs.quantity_dropped ?? 0
             let rd = rhs.quantity_dropped ?? 0
-            if ld != rd { return ld > rd }
+            if ld != rd {
+                return ld > rd
+            }
             return (lhs.quantity_destroyed ?? 0) > (rhs.quantity_destroyed ?? 0)
         }
     }

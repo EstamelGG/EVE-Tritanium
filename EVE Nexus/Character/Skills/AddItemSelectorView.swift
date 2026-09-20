@@ -4,7 +4,6 @@ import SwiftUI
 struct ItemSelectorView: View {
     @ObservedObject var databaseManager: DatabaseManager
     @State private var allowedTypeIDs: [Int] = []
-    @State private var itemInfos: [SkillDependentItem] = []
     @State private var marketGroupTree: [MarketGroupNode] = []
     @State private var lastVisitedGroupID: Int? = nil
     @State private var lastSearchKeyword: String? = nil
@@ -18,7 +17,6 @@ struct ItemSelectorView: View {
         self.onSelect = onSelect
         let itemData = loadItemData(databaseManager: databaseManager)
         _allowedTypeIDs = State(initialValue: itemData.map { $0.typeId })
-        _itemInfos = State(initialValue: itemData)
 
         // 初始化市场组目录树 - 从根节点开始（marketGroupID = NULL的顶级节点）
         let builder = MarketItemGroupTreeBuilder(

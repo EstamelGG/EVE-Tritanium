@@ -25,7 +25,9 @@ class SkillPlanReaderTool {
         // 第一步：解析每一行，收集技能名称和等级
         for line in lines {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
-            if trimmedLine.isEmpty { continue }
+            if trimmedLine.isEmpty {
+                continue
+            }
 
             // 使用正则表达式匹配技能名称和等级
             let pattern = "^(.+?)\\s+([1-5])$"

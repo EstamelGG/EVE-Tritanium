@@ -13,7 +13,9 @@ extension SDEMemoryStore {
         estimatedCount: Int = 0, into target: inout [Int: LocalizedText]
     ) {
         var cache: [Int: LocalizedText] = [:]
-        if estimatedCount > 0 { cache.reserveCapacity(estimatedCount) }
+        if estimatedCount > 0 {
+            cache.reserveCapacity(estimatedCount)
+        }
         db.executeQueryMapped(
             "SELECT \(idColumn), \(nameColumns) FROM \(table)",
             context: table

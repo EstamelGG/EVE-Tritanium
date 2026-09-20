@@ -201,8 +201,12 @@ class CorporationAssetsViewModel: ObservableObject {
         unpinnedLocationsByRegion = grouped.filter { !$0.value.isEmpty }
             .map { (region: $0.key, locations: sortLocations($0.value)) }
             .sorted { pair1, pair2 in
-                if pair1.region == unknownRegion { return false }
-                if pair2.region == unknownRegion { return true }
+                if pair1.region == unknownRegion {
+                    return false
+                }
+                if pair2.region == unknownRegion {
+                    return true
+                }
                 return pair1.region < pair2.region
             }
     }
@@ -308,7 +312,9 @@ class CorporationAssetsViewModel: ObservableObject {
     }
 
     private func isCancellation(_ error: Error) -> Bool {
-        if error is CancellationError { return true }
+        if error is CancellationError {
+            return true
+        }
         if let nsError = error as NSError?,
            nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled
         {

@@ -274,7 +274,9 @@ struct SkillRequirementsView: View {
             .sorted { lhs, rhs in
                 let lhsUnmet = (characterSkills[lhs.skillID] ?? 0) < lhs.level
                 let rhsUnmet = (characterSkills[rhs.skillID] ?? 0) < rhs.level
-                if lhsUnmet != rhsUnmet { return lhsUnmet }
+                if lhsUnmet != rhsUnmet {
+                    return lhsUnmet
+                }
                 if lhs.level == rhs.level {
                     return lhs.skillID > rhs.skillID
                 }

@@ -83,7 +83,9 @@ final class FactionWarViewModel: ObservableObject {
                     self.insurgencyCampaigns = []
                 }
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 self.systems = systems
                 self.wars = wars
@@ -105,7 +107,9 @@ final class FactionWarViewModel: ObservableObject {
                     systems.flatMap { [$0.occupier_faction_id, $0.owner_faction_id] }
                 ).sorted()
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 // 势力信息走内存缓存
                 self.factions = factionIds

@@ -48,11 +48,15 @@ final class SovereigntyViewModel: ObservableObject {
                     forceRefresh: forceRefresh
                 )
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 await processCampaigns(campaigns)
 
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    return
+                }
 
                 // 更新分组数据
                 updateGroupedCampaigns()
@@ -143,7 +147,9 @@ final class SovereigntyViewModel: ObservableObject {
                             allianceID: allianceId
                         )
 
-                        if Task.isCancelled { return }
+                        if Task.isCancelled {
+                            return
+                        }
 
                         let icon = Image(uiImage: uiImage)
                         // 更新所有使用这个联盟图标的战役

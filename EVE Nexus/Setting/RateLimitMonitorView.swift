@@ -98,8 +98,12 @@ struct RateLimitMonitorView: View {
     }
 
     private func barColor(_ usedFraction: Double) -> Color {
-        if usedFraction >= 0.95 { return .red }
-        if usedFraction >= 0.8 { return .orange }
+        if usedFraction >= 0.95 {
+            return .red
+        }
+        if usedFraction >= 0.8 {
+            return .orange
+        }
         return .green
     }
 

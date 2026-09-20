@@ -512,8 +512,12 @@ class CorpMemberListViewModel: ObservableObject {
                     ) == .orderedAscending
                 }
                 // 如果其中一个是空，空的排在后面
-                if ship1.isEmpty { return false }
-                if ship2.isEmpty { return true }
+                if ship1.isEmpty {
+                    return false
+                }
+                if ship2.isEmpty {
+                    return true
+                }
                 // 都不为空，则按船名排序
                 return ship1.localizedCaseInsensitiveCompare(ship2) == .orderedAscending
             }

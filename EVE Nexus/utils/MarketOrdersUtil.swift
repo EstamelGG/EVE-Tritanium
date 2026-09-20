@@ -313,7 +313,9 @@ enum MarketOrdersUtil {
         // 过滤订单类型和星系
         var filteredOrders = orders.filter { order in
             let matchesType = (orderType == .buy) ? order.isBuyOrder : !order.isBuyOrder
-            if !matchesType { return false }
+            if !matchesType {
+                return false
+            }
             let matchesSystem = (systemId == nil) || (order.systemId == systemId!)
             let matchesStation = (stationID == nil) || (order.locationId == stationID!)
             return matchesSystem && matchesStation
@@ -337,7 +339,9 @@ enum MarketOrdersUtil {
         var availableQuantity: Int64 = 0
 
         for order in filteredOrders {
-            if remainingQuantity <= 0 { break }
+            if remainingQuantity <= 0 {
+                break
+            }
 
             let orderQuantity = min(remainingQuantity, Int64(order.volumeRemain))
             totalPrice += Double(orderQuantity) * order.price
