@@ -28,12 +28,8 @@ struct DroneSettingsView: View {
     @State private var selectedMutaplasmidID: Int? = nil // 选中的突变质体ID
     @State private var selectedMutaplasmidInfo: (typeID: Int, name: String, iconFileName: String)? = nil // 突变质体信息
     @State private var mutaplasmidAttributes: [MutationAttribute] = [] // 突变质体的属性列表（包含范围和当前值）
-    @State private var editingAttributeID: Int? = nil // 正在编辑的属性ID
-    @State private var editingAttributeValue: String = "" // 正在编辑的属性值文本
-    @State private var showingValueInputAlert = false // 显示输入弹窗
-    @State private var validationError: String? = nil // 验证错误信息
-    @State private var isValidInput: Bool = false // 输入是否合法
-    @State private var debounceTask: Task<Void, Never>? = nil // 防抖任务
+    @State private var droneAttributeValues: [Int: Double] = [:] // 无人机原始属性表（用于突变数值换算显示）
+    @State private var showingMutationEditor = false // 是否显示突变编辑面板
 
     /// 初始化方法
     init(
@@ -187,7 +183,7 @@ struct DroneSettingsView: View {
 
                 // 已选中的突变质体
                 if let mutaplasmidInfo = selectedMutaplasmidInfo {
-                    Section(header: Text(NSLocalizedString("Fitting_Selected_Mutation", comment: ""))) {
+                    Section {
                         // 第一行：突变质体图标、名称和跳转链接
                         NavigationLink(
                             destination: ShowItemInfo(
@@ -209,26 +205,8 @@ struct DroneSettingsView: View {
                         }
 
                         // 所有可突变属性的列表行（按属性ID排序）
-                        ForEach(mutaplasmidAttributes.sorted { $0.attributeID < $1.attributeID }) { attribute in
-                            MutationAttributeRowView(
-                                attribute: attribute,
-                                onTap: {
-                                    editingAttributeID = attribute.attributeID
-                                    if let currentValue = attribute.currentValue {
-                                        let percentage = (currentValue - 1) * 100
-                                        editingAttributeValue = formatMutationValueForInput(percentage)
-                                    } else {
-                                        editingAttributeValue = ""
-                                    }
-                                    validationError = nil
-                                    isValidInput = false
-                                    showingValueInputAlert = true
-                                    // 如果已有值，立即验证
-                                    if !editingAttributeValue.isEmpty {
-                                        validateInputDebounced(editingAttributeValue)
-                                    }
-                                }
-                            )
+                        ForEach(sortedMutationAttributes) { attribute in
+                            mutationAttributeRow(for: attribute)
                         }
 
                         // 最后一行：移除按钮
@@ -242,6 +220,8 @@ struct DroneSettingsView: View {
                             Text(NSLocalizedString("Fitting_Remove_Mutation", comment: ""))
                                 .foregroundColor(.red)
                         }
+                    } header: {
+                        droneMutationSectionHeader
                     }
                 }
 
@@ -318,38 +298,9 @@ struct DroneSettingsView: View {
                     viewModel.calculateAttributes()
                 }
             }
-            .alert(
-                NSLocalizedString("Fitting_Mutation_Value_Input", comment: ""),
-                isPresented: $showingValueInputAlert
-            ) {
-                TextField(
-                    NSLocalizedString("Fitting_Mutation_Value_Placeholder", comment: ""),
-                    text: Binding(
-                        get: { editingAttributeValue },
-                        set: { newValue in
-                            editingAttributeValue = newValue
-                            validateInputDebounced(newValue)
-                        }
-                    )
-                )
-
-                Button(NSLocalizedString("Misc_Done", comment: "")) {
-                    confirmMutationValue()
-                }
-                .disabled(!isValidInput)
-
-                Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
-                    cancelEditing()
-                }
-            } message: {
-                if let attributeID = editingAttributeID,
-                   let attribute = mutaplasmidAttributes.first(where: { $0.attributeID == attributeID })
-                {
-                    let minPercent = formatPercentage((attribute.minValue - 1) * 100)
-                    let maxPercent = formatPercentage((attribute.maxValue - 1) * 100)
-                    Text(String(format: NSLocalizedString("Fitting_Mutation_Value_Range", comment: ""), minPercent, maxPercent))
-                }
-            }
+        }
+        .sheet(isPresented: $showingMutationEditor) {
+            mutationEditorSheet
         }
         .presentationDetents([.fraction(0.81)]) // 设置为屏幕高度的81%
         .presentationDragIndicator(.visible) // 显示拖动指示器
@@ -388,17 +339,9 @@ struct DroneSettingsView: View {
         // 加载突变质体的属性信息（范围与 highIsGood 从 SDEMemoryStore 内存缓存取）
         let mutatorAttributes = SDEMemoryStore.dynamicItemAttributes(forTypeID: mutaplasmidID)
 
-        let attributeIDs = mutatorAttributes.map(\.attributeID)
-        // 查询物品的原始属性值（用于 originalValueIsNegative 判断，内存索引）
-        var originalValues: [Int: Double] = [:]
-        if !attributeIDs.isEmpty {
-            let droneAttributes = SDEMemoryStore.typeAttributes(for: currentDroneID)
-            for attrID in attributeIDs {
-                if let value = droneAttributes[attrID] {
-                    originalValues[attrID] = value
-                }
-            }
-        }
+        // 无人机的原始属性表（用于数值换算显示与突变方向判断）
+        let droneAttributes = SDEMemoryStore.typeAttributes(for: currentDroneID)
+        droneAttributeValues = droneAttributes
 
         mutaplasmidAttributes = mutatorAttributes.map { attribute in
             MutationAttribute(
@@ -406,176 +349,90 @@ struct DroneSettingsView: View {
                 attributeID: attribute.attributeID,
                 name: attribute.name,
                 iconFileName: attribute.iconFileName,
+                unitID: attribute.unitID,
                 minValue: attribute.minValue,
                 maxValue: attribute.maxValue,
                 highIsGood: attribute.highIsGood,
                 currentValue: nil, // 初始值为nil
-                originalValue: originalValues[attribute.attributeID]
+                originalValue: droneAttributes[attribute.attributeID]
             )
         }
     }
 
-    /// 取消编辑
-    private func cancelEditing() {
-        debounceTask?.cancel()
-        editingAttributeID = nil
-        editingAttributeValue = ""
-        validationError = nil
-        isValidInput = false
+    // MARK: - 突变区块
+
+    /// 排序后的可突变属性
+    private var sortedMutationAttributes: [MutationAttribute] {
+        mutaplasmidAttributes.sorted { $0.attributeID < $1.attributeID }
     }
 
-    /// 防抖验证输入
-    private func validateInputDebounced(_ value: String) {
-        // 取消之前的防抖任务
-        debounceTask?.cancel()
-
-        // 创建新的防抖任务
-        debounceTask = Task {
-            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
-
-            if Task.isCancelled {
-                return
+    /// 突变区块标题（右侧带编辑按钮）
+    private var droneMutationSectionHeader: some View {
+        HStack {
+            Text(NSLocalizedString("Fitting_Selected_Mutation", comment: ""))
+            Spacer()
+            Button {
+                showingMutationEditor = true
+            } label: {
+                Text(NSLocalizedString("Fitting_Mutation_Edit", comment: ""))
+                    .font(.caption)
+                    .foregroundColor(.blue)
             }
-
-            await MainActor.run {
-                validateInput(value)
-            }
+            .buttonStyle(.plain)
+            .textCase(nil)
+            .disabled(mutaplasmidAttributes.isEmpty)
         }
     }
 
-    /// 验证输入
-    private func validateInput(_ value: String) {
-        guard let attributeID = editingAttributeID,
-              let attribute = mutaplasmidAttributes.first(where: { $0.attributeID == attributeID })
-        else {
-            Logger.warning("突变数值验证失败: 未找到属性ID \(editingAttributeID ?? -1)")
-            validationError = nil
-            isValidInput = false
-            return
-        }
-
-        // 如果输入为空，不显示错误，但也不允许确认
-        if value.trimmingCharacters(in: .whitespaces).isEmpty {
-            Logger.info("突变数值验证: 输入为空")
-            validationError = nil
-            isValidInput = false
-            return
-        }
-
-        Logger.info("突变数值验证: 开始验证输入 '\(value)'")
-
-        // 使用正则表达式验证：只允许负号、正号、数字、小数点
-        // 允许的格式：可选的正负号，后跟数字，可选的小数点和更多数字
-        let pattern = #"^[+-]?(\d+\.?\d*|\.\d+)$"#
-        let regex = try? NSRegularExpression(pattern: pattern, options: [])
-        let range = NSRange(location: 0, length: value.utf16.count)
-
-        guard let regex = regex,
-              regex.firstMatch(in: value, options: [], range: range) != nil
-        else {
-            Logger.warning("突变数值验证失败: 格式不合法 '\(value)'，只允许数字、小数点、正负号")
-            validationError = NSLocalizedString("Fitting_Mutation_Value_Invalid_Format", comment: "")
-            isValidInput = false
-            return
-        }
-
-        Logger.info("突变数值验证: 格式校验通过")
-
-        // 转换为Double
-        guard let doubleValue = Double(value) else {
-            Logger.warning("突变数值验证失败: 无法转换为数字 '\(value)'")
-            validationError = NSLocalizedString("Fitting_Mutation_Value_Invalid_Number", comment: "")
-            isValidInput = false
-            return
-        }
-
-        Logger.info("突变数值验证: 数值转换成功 \(doubleValue)")
-
-        // 将用户输入的百分比转换为倍数（避免浮点数精度问题）
-        // 用户输入的是百分比（如 15 表示 15%），需要转换为倍数（1.15）
-        let inputMultiplier = (doubleValue / 100) + 1
-
-        // 直接使用数据库的原始倍数进行比较，避免百分比转换的精度误差
-        Logger.info("突变数值验证: 范围检查 - 输入倍数: \(inputMultiplier), 允许范围: \(attribute.minValue) 至 \(attribute.maxValue)")
-
-        // 直接比较倍数，避免浮点数精度问题
-        if inputMultiplier < attribute.minValue || inputMultiplier > attribute.maxValue {
-            // 转换为百分比用于显示（仅在错误时转换）
-            let minPercent = (attribute.minValue - 1) * 100
-            let maxPercent = (attribute.maxValue - 1) * 100
-            let minPercentStr = formatPercentage(minPercent)
-            let maxPercentStr = formatPercentage(maxPercent)
-            Logger.warning("突变数值验证失败: 超出范围 '\(value)' (输入倍数: \(inputMultiplier), 范围倍数: \(attribute.minValue) 至 \(attribute.maxValue), 范围百分比: \(minPercentStr) 至 \(maxPercentStr))")
-            validationError = String(format: NSLocalizedString("Fitting_Mutation_Value_Out_Of_Range", comment: ""), minPercentStr, maxPercentStr)
-            isValidInput = false
-            return
-        }
-
-        // 验证通过
-        Logger.info("突变数值验证: 验证通过 - 输入: '\(value)' (百分比: \(doubleValue)%, 倍数: \(inputMultiplier))")
-        validationError = nil
-        isValidInput = true
+    /// 突变编辑面板（拖动实时计算，保存后才重算装配模拟）
+    private var mutationEditorSheet: some View {
+        MutationEditSheetView(
+            mutaplasmidName: selectedMutaplasmidInfo?.name ?? "",
+            mutaplasmidIconFileName: selectedMutaplasmidInfo?.iconFileName,
+            attributes: sortedMutationAttributes,
+            referenceAttributes: droneAttributeValues,
+            onSave: { mutatedAttributes in
+                applyMutation(mutatedAttributes)
+            }
+        )
     }
 
-    /// 确认突变数值
-    private func confirmMutationValue() {
-        guard isValidInput,
-              let attributeID = editingAttributeID,
-              let attributeIndex = mutaplasmidAttributes.firstIndex(where: { $0.attributeID == attributeID })
-        else { return }
+    /// 单行突变属性（只读展示，编辑在面板中进行）
+    private func mutationAttributeRow(for attribute: MutationAttribute) -> some View {
+        MutationAttributeControlRow(
+            name: attribute.name,
+            iconFileName: attribute.iconFileName,
+            attributeID: attribute.attributeID,
+            unitID: attribute.unitID,
+            originalValue: attribute.originalValue ?? 1,
+            minValue: attribute.minValue,
+            maxValue: attribute.maxValue,
+            highIsGood: attribute.highIsGood,
+            multiplier: .constant(attribute.currentValue ?? 1.0),
+            referenceAttributes: droneAttributeValues,
+            isInteractive: false
+        )
+    }
 
-        // 再次验证（确保数据一致性）
-        guard let doubleValue = Double(editingAttributeValue) else {
+    /// 应用突变（只有点击保存后才重算装配模拟）
+    private func applyMutation(_ mutatedAttributes: [Int: Double]) {
+        // 同步本地状态，使列表立即反映最新数值
+        for index in mutaplasmidAttributes.indices {
+            mutaplasmidAttributes[index].currentValue =
+                mutatedAttributes[mutaplasmidAttributes[index].attributeID]
+        }
+
+        guard !mutatedAttributes.isEmpty else {
+            Logger.info("突变属性值为空，不应用突变（仅临时显示）")
             return
         }
 
-        // 更新属性值（将百分比转换回倍数）
-        let mutationValue = (doubleValue / 100) + 1
-        mutaplasmidAttributes[attributeIndex].currentValue = mutationValue
-
-        // 更新SimDrone的突变数据
-        let mutatedAttributes = mutaplasmidAttributes.reduce(into: [Int: Double]()) { result, attribute in
-            if let currentValue = attribute.currentValue {
-                result[attribute.attributeID] = currentValue
-            }
-        }
         viewModel.updateDroneMutation(
             typeId: currentDroneID,
             mutaplasmidID: selectedMutaplasmidID,
             mutatedAttributes: mutatedAttributes
         )
-
-        cancelEditing()
-    }
-
-    /// 格式化突变数值（用于输入框）
-    private func formatMutationValueForInput(_ percentage: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        formatter.numberStyle = .decimal
-
-        if let formatted = formatter.string(from: NSNumber(value: percentage)) {
-            return formatted
-        }
-        return String(format: "%.2f", percentage)
-    }
-
-    /// 格式化百分比（用于提示信息）
-    private func formatPercentage(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        formatter.numberStyle = .decimal
-
-        if let formatted = formatter.string(from: NSNumber(value: value)) {
-            if value >= 0 {
-                return "+\(formatted)%"
-            } else {
-                return "\(formatted)%"
-            }
-        }
-        return String(format: "%.2f%%", value)
+        Logger.info("应用无人机突变: 无人机ID \(currentDroneID)，突变属性数量: \(mutatedAttributes.count)")
     }
 }
 
