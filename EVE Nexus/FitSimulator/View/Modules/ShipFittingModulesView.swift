@@ -571,22 +571,10 @@ struct ShipFittingModulesView: View {
 
     /// 根据flag获取槽位类型
     func getSlotType(for flag: FittingFlag) -> FittingSlotType? {
-        switch flag {
-        case .hiSlot0, .hiSlot1, .hiSlot2, .hiSlot3, .hiSlot4, .hiSlot5, .hiSlot6, .hiSlot7:
-            return .hiSlots
-        case .medSlot0, .medSlot1, .medSlot2, .medSlot3, .medSlot4, .medSlot5, .medSlot6, .medSlot7:
-            return .medSlots
-        case .loSlot0, .loSlot1, .loSlot2, .loSlot3, .loSlot4, .loSlot5, .loSlot6, .loSlot7:
-            return .loSlots
-        case .rigSlot0, .rigSlot1, .rigSlot2:
-            return .rigSlots
-        case .subSystemSlot0, .subSystemSlot1, .subSystemSlot2, .subSystemSlot3:
-            return .subSystemSlots
-        case .t3dModeSlot0:
+        if flag == .t3dModeSlot0 {
             return .t3dModeSlot
-        default:
-            return nil
         }
+        return FittingSlotType.allCases.first { $0.slot != nil && $0.slot == flag.slot }
     }
 
     /// 检查指定槽位类型是否处于折叠状态

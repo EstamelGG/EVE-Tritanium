@@ -1,22 +1,6 @@
 import Foundation
 import SwiftUI
 
-/// 槽位类型定义
-enum SlotType {
-    case high
-    case medium
-    case low
-    case rig
-    case subsystem
-}
-
-/// 槽位信息结构
-struct SlotInfo {
-    let id: Int
-    let name: String
-    let type: SlotType
-}
-
 /// 槽位配置结构
 struct ShipSlotConfig {
     var highSlots: Int = 0
@@ -33,51 +17,15 @@ struct BRKillMailFittingView: View {
     @State private var actualSlotConfig = ShipSlotConfig()
 
     /// 槽位定义
-    private let highSlots: [SlotInfo] = [
-        SlotInfo(id: 27, name: "HiSlot0", type: .high),
-        SlotInfo(id: 28, name: "HiSlot1", type: .high),
-        SlotInfo(id: 29, name: "HiSlot2", type: .high),
-        SlotInfo(id: 30, name: "HiSlot3", type: .high),
-        SlotInfo(id: 31, name: "HiSlot4", type: .high),
-        SlotInfo(id: 32, name: "HiSlot5", type: .high),
-        SlotInfo(id: 33, name: "HiSlot6", type: .high),
-        SlotInfo(id: 34, name: "HiSlot7", type: .high),
-    ]
+    private let highSlots = SlotFlag.high.fittingIDs
 
-    private let mediumSlots: [SlotInfo] = [
-        SlotInfo(id: 19, name: "MedSlot0", type: .medium),
-        SlotInfo(id: 20, name: "MedSlot1", type: .medium),
-        SlotInfo(id: 21, name: "MedSlot2", type: .medium),
-        SlotInfo(id: 22, name: "MedSlot3", type: .medium),
-        SlotInfo(id: 23, name: "MedSlot4", type: .medium),
-        SlotInfo(id: 24, name: "MedSlot5", type: .medium),
-        SlotInfo(id: 25, name: "MedSlot6", type: .medium),
-        SlotInfo(id: 26, name: "MedSlot7", type: .medium),
-    ]
+    private let mediumSlots = SlotFlag.medium.fittingIDs
 
-    private let lowSlots: [SlotInfo] = [
-        SlotInfo(id: 11, name: "LoSlot0", type: .low),
-        SlotInfo(id: 12, name: "LoSlot1", type: .low),
-        SlotInfo(id: 13, name: "LoSlot2", type: .low),
-        SlotInfo(id: 14, name: "LoSlot3", type: .low),
-        SlotInfo(id: 15, name: "LoSlot4", type: .low),
-        SlotInfo(id: 16, name: "LoSlot5", type: .low),
-        SlotInfo(id: 17, name: "LoSlot6", type: .low),
-        SlotInfo(id: 18, name: "LoSlot7", type: .low),
-    ]
+    private let lowSlots = SlotFlag.low.fittingIDs
 
-    private let rigSlots: [SlotInfo] = [
-        SlotInfo(id: 92, name: "RigSlot0", type: .rig),
-        SlotInfo(id: 93, name: "RigSlot1", type: .rig),
-        SlotInfo(id: 94, name: "RigSlot2", type: .rig),
-    ]
+    private let rigSlots = SlotFlag.rig.fittingIDs
 
-    private let subsystemSlots: [SlotInfo] = [
-        SlotInfo(id: 125, name: "SubSystem0", type: .subsystem),
-        SlotInfo(id: 126, name: "SubSystem1", type: .subsystem),
-        SlotInfo(id: 127, name: "SubSystem2", type: .subsystem),
-        SlotInfo(id: 128, name: "SubSystem3", type: .subsystem),
-    ]
+    private let subsystemSlots = SlotFlag.subsystem.fittingIDs
 
     // 添加飞船图片状态
     @State private var shipImage: Image?
@@ -242,7 +190,7 @@ struct BRKillMailFittingView: View {
 
     /// 计算实际装配的非弹药装备数量
     private func calculateActualFittedSlots(
-        items: [[Int]], typeInfos: [Int: (String, Int)], slotRange: Range<Int>
+        items: [[Int]], typeInfos: [Int: (String, Int)], slotIDs: [Int]
     ) -> Int {
         var fittedSlots = Set<Int>()
 
@@ -251,7 +199,7 @@ struct BRKillMailFittingView: View {
             let typeId = item[1]
 
             // 检查是否在指定槽位范围内且不是弹药
-            if slotRange.contains(slotId),
+            if slotIDs.contains(slotId),
                let typeInfo = typeInfos[typeId],
                typeInfo.1 != 8
             {
@@ -287,19 +235,19 @@ struct BRKillMailFittingView: View {
 
         // 计算实际装配的槽位数量
         let actualHighSlots = calculateActualFittedSlots(
-            items: items, typeInfos: typeInfos, slotRange: 27 ..< 35
+            items: items, typeInfos: typeInfos, slotIDs: SlotFlag.high.fittingIDs
         )
         let actualMediumSlots = calculateActualFittedSlots(
-            items: items, typeInfos: typeInfos, slotRange: 19 ..< 27
+            items: items, typeInfos: typeInfos, slotIDs: SlotFlag.medium.fittingIDs
         )
         let actualLowSlots = calculateActualFittedSlots(
-            items: items, typeInfos: typeInfos, slotRange: 11 ..< 19
+            items: items, typeInfos: typeInfos, slotIDs: SlotFlag.low.fittingIDs
         )
         let actualRigSlots = calculateActualFittedSlots(
-            items: items, typeInfos: typeInfos, slotRange: 92 ..< 95
+            items: items, typeInfos: typeInfos, slotIDs: SlotFlag.rig.fittingIDs
         )
         let actualSubsystemSlots = calculateActualFittedSlots(
-            items: items, typeInfos: typeInfos, slotRange: 125 ..< 129
+            items: items, typeInfos: typeInfos, slotIDs: SlotFlag.subsystem.fittingIDs
         )
 
         // 确定最终槽位数量
@@ -447,7 +395,7 @@ struct BRKillMailFittingView: View {
                 // 高槽区域 (-52° to 52°)：掉落槽位浅绿底 → 描边
                 if actualSlotConfig.highSlots > 0 {
                     ForEach(0 ..< actualSlotConfig.highSlots, id: \.self) { index in
-                        if droppedSlotIds.contains(highSlots[index].id) {
+                        if droppedSlotIds.contains(highSlots[index]) {
                             SingleSlotWedge(
                                 center: center,
                                 innerRadius: slotInnerRadius,
@@ -477,7 +425,7 @@ struct BRKillMailFittingView: View {
                 // 低槽区域 (68° to 172°)
                 if actualSlotConfig.lowSlots > 0 {
                     ForEach(0 ..< actualSlotConfig.lowSlots, id: \.self) { index in
-                        if droppedSlotIds.contains(lowSlots[index].id) {
+                        if droppedSlotIds.contains(lowSlots[index]) {
                             SingleSlotWedge(
                                 center: center,
                                 innerRadius: slotInnerRadius,
@@ -507,7 +455,7 @@ struct BRKillMailFittingView: View {
                 // 中槽区域 (188° to 292°)
                 if actualSlotConfig.mediumSlots > 0 {
                     ForEach(0 ..< actualSlotConfig.mediumSlots, id: \.self) { index in
-                        if droppedSlotIds.contains(mediumSlots[index].id) {
+                        if droppedSlotIds.contains(mediumSlots[index]) {
                             SingleSlotWedge(
                                 center: center,
                                 innerRadius: slotInnerRadius,
@@ -537,7 +485,7 @@ struct BRKillMailFittingView: View {
                 // 改装槽区域 (142° to 218°)
                 if actualSlotConfig.rigSlots > 0 {
                     ForEach(0 ..< actualSlotConfig.rigSlots, id: \.self) { index in
-                        if droppedSlotIds.contains(rigSlots[index].id) {
+                        if droppedSlotIds.contains(rigSlots[index]) {
                             SingleSlotWedge(
                                 center: center,
                                 innerRadius: innerSlotInnerRadius,
@@ -567,7 +515,7 @@ struct BRKillMailFittingView: View {
                 // 子系统区域 (-48° to 48°)
                 if actualSlotConfig.subsystemSlots > 0 {
                     ForEach(0 ..< actualSlotConfig.subsystemSlots, id: \.self) { index in
-                        if droppedSlotIds.contains(subsystemSlots[index].id) {
+                        if droppedSlotIds.contains(subsystemSlots[index]) {
                             SingleSlotWedge(
                                 center: center,
                                 innerRadius: innerSlotInnerRadius,
@@ -596,7 +544,7 @@ struct BRKillMailFittingView: View {
 
                 // 高槽：弹药（内侧）+ 装备，单次 ForEach
                 ForEach(0 ..< actualSlotConfig.highSlots, id: \.self) { index in
-                    let slotId = highSlots[index].id
+                    let slotId = highSlots[index]
                     if let cIcon = chargeIcons[slotId] {
                         cIcon
                             .resizable()
@@ -650,7 +598,7 @@ struct BRKillMailFittingView: View {
                 }
 
                 ForEach(0 ..< actualSlotConfig.lowSlots, id: \.self) { index in
-                    let slotId = lowSlots[index].id
+                    let slotId = lowSlots[index]
                     if let cIcon = chargeIcons[slotId] {
                         cIcon
                             .resizable()
@@ -704,7 +652,7 @@ struct BRKillMailFittingView: View {
                 }
 
                 ForEach(0 ..< actualSlotConfig.mediumSlots, id: \.self) { index in
-                    let slotId = mediumSlots[index].id
+                    let slotId = mediumSlots[index]
                     if let cIcon = chargeIcons[slotId] {
                         cIcon
                             .resizable()
@@ -758,7 +706,7 @@ struct BRKillMailFittingView: View {
                 }
 
                 ForEach(0 ..< actualSlotConfig.rigSlots, id: \.self) { index in
-                    if let icon = equipmentIcons[rigSlots[index].id] {
+                    if let icon = equipmentIcons[rigSlots[index]] {
                         icon
                             .resizable()
                             .scaledToFit()
@@ -795,7 +743,7 @@ struct BRKillMailFittingView: View {
                 }
 
                 ForEach(0 ..< actualSlotConfig.subsystemSlots, id: \.self) { index in
-                    if let icon = equipmentIcons[subsystemSlots[index].id] {
+                    if let icon = equipmentIcons[subsystemSlots[index]] {
                         icon
                             .resizable()
                             .scaledToFit()

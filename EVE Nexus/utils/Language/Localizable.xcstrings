@@ -21695,6 +21695,23 @@
         }
       }
     },
+    "Location_Flag_Locked" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Locked"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已上锁"
+          }
+        }
+      }
+    },
     "Location_Flag_LoSlots" : {
       "localizations" : {
         "en" : {
@@ -21744,6 +21761,23 @@
         }
       }
     },
+    "Location_Flag_QuantumCoreRoom" : {
+      "comment" : "量子芯室",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quantum Core Room"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "量子芯室"
+          }
+        }
+      }
+    },
     "Location_Flag_RigCost" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -21773,6 +21807,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "改装槽"
+          }
+        }
+      }
+    },
+    "Location_Flag_ServiceSlots" : {
+      "comment" : "建筑服务槽位",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Service Slots"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服务槽位"
           }
         }
       }
@@ -22045,6 +22096,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "建筑契据仓"
+          }
+        }
+      }
+    },
+    "Location_Flag_StructureFuel" : {
+      "comment" : "建筑燃料舱",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Structure Fuel Bay"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "建筑燃料舱"
           }
         }
       }
@@ -46390,17 +46458,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未知"
-          }
-        }
-      }
-    },
-    "Unknown Flag" : {
-      "comment" : "未知舱室",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未知舱室"
           }
         }
       }

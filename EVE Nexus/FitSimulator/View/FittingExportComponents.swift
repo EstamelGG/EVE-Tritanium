@@ -63,23 +63,7 @@ struct ModulesExportSection: View {
 
     /// 获取槽位类型对应的flag列表
     private func getSlotFlags(for slotType: FittingSlotType) -> [FittingFlag] {
-        switch slotType {
-        case .hiSlots:
-            return [.hiSlot0, .hiSlot1, .hiSlot2, .hiSlot3, .hiSlot4, .hiSlot5, .hiSlot6, .hiSlot7]
-        case .medSlots:
-            return [
-                .medSlot0, .medSlot1, .medSlot2, .medSlot3, .medSlot4, .medSlot5, .medSlot6,
-                .medSlot7,
-            ]
-        case .loSlots:
-            return [.loSlot0, .loSlot1, .loSlot2, .loSlot3, .loSlot4, .loSlot5, .loSlot6, .loSlot7]
-        case .rigSlots:
-            return [.rigSlot0, .rigSlot1, .rigSlot2]
-        case .subSystemSlots:
-            return [.subSystemSlot0, .subSystemSlot1, .subSystemSlot2, .subSystemSlot3]
-        case .t3dModeSlot:
-            return [.t3dModeSlot0]
-        }
+        slotType.flags
     }
 
     /// 获取状态图标
@@ -231,8 +215,7 @@ struct ModulesExportSection: View {
 
     /// 根据槽位类型和索引获取对应的flag
     private func getSlotFlag(for slotType: FittingSlotType, index: Int) -> FittingFlag {
-        let allSlotFlags = getSlotFlags(for: slotType)
-        return index < allSlotFlags.count ? allSlotFlags[index] : allSlotFlags.first ?? .invalid
+        slotType.getSlotFlag(index: index)
     }
 }
 

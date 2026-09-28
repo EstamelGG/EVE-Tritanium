@@ -8,11 +8,12 @@ struct MutationAttribute: Identifiable {
     let attributeID: Int
     let name: String
     let iconFileName: String?
+    let unitID: Int? // 属性单位（用于数值换算显示）
     let minValue: Double
     let maxValue: Double
     let highIsGood: Bool
     var currentValue: Double? // 当前突变值（可变）
-    var originalValue: Double? = nil // 物品的原始属性值（用于判断 originalValueIsNegative）
+    var originalValue: Double? = nil // 物品的原始属性值（用于判断突变方向）
 }
 
 /// 模块状态枚举
@@ -152,12 +153,8 @@ struct ModuleSettingsView: View {
     @State private var selectedMutaplasmidID: Int? = nil // 选中的突变质体ID
     @State private var selectedMutaplasmidInfo: (typeID: Int, name: String, iconFileName: String)? = nil // 突变质体信息
     @State private var mutaplasmidAttributes: [MutationAttribute] = [] // 突变质体的属性列表（包含范围和当前值）
-    @State private var editingAttributeID: Int? = nil // 正在编辑的属性ID
-    @State private var editingAttributeValue: String = "" // 正在编辑的属性值文本
-    @State private var showingValueInputAlert = false // 显示输入弹窗
-    @State private var validationError: String? = nil // 验证错误信息
-    @State private var isValidInput: Bool = false // 输入是否合法
-    @State private var debounceTask: Task<Void, Never>? = nil // 防抖任务
+    @State private var moduleAttributeValues: [Int: Double] = [:] // 装备原始属性表（用于突变数值换算显示）
+    @State private var showingMutationEditor = false // 是否显示突变编辑面板
 
     /// 计算属性：是否为批量操作模式
     private var isBatchMode: Bool {
@@ -179,6 +176,16 @@ struct ModuleSettingsView: View {
     /// 计算属性：是否有临时选择的突变质体（但未设置属性值）
     private var hasTemporaryMutationSelection: Bool {
         return selectedMutaplasmidID != nil && mutaplasmidAttributes.allSatisfy { $0.currentValue == nil }
+    }
+
+    /// 计算属性：本地是否已设置了突变属性值
+    private var hasLocalMutationValues: Bool {
+        return mutaplasmidAttributes.contains { $0.currentValue != nil }
+    }
+
+    /// 计算属性：排序后的可突变属性
+    private var sortedMutationAttributes: [MutationAttribute] {
+        return mutaplasmidAttributes.sorted { $0.attributeID < $1.attributeID }
     }
 
     /// 计算属性：获取当前模块的弹药信息（从viewModel中直接获取，避免SQL查询）
@@ -562,8 +569,10 @@ struct ModuleSettingsView: View {
 
                 // 已选中的突变质体（显示临时选择或已应用的突变）
                 // 显示条件：有临时选择的突变质体，或者已应用了突变
-                if let mutaplasmidInfo = selectedMutaplasmidInfo, hasTemporaryMutationSelection || hasAppliedMutation {
-                    Section(header: Text(NSLocalizedString("Fitting_Selected_Mutation", comment: ""))) {
+                if let mutaplasmidInfo = selectedMutaplasmidInfo,
+                   hasTemporaryMutationSelection || hasAppliedMutation || hasLocalMutationValues
+                {
+                    Section {
                         // 第一行：突变质体图标、名称和跳转链接
                         NavigationLink(
                             destination: ShowItemInfo(
@@ -585,26 +594,8 @@ struct ModuleSettingsView: View {
                         }
 
                         // 所有可突变属性的列表行（按属性ID排序）
-                        ForEach(mutaplasmidAttributes.sorted { $0.attributeID < $1.attributeID }, id: \.attributeID) { attribute in
-                            MutationAttributeRowView(
-                                attribute: attribute,
-                                onTap: {
-                                    editingAttributeID = attribute.attributeID
-                                    if let currentValue = attribute.currentValue {
-                                        let percentage = (currentValue - 1) * 100
-                                        editingAttributeValue = formatMutationValueForInput(percentage)
-                                    } else {
-                                        editingAttributeValue = ""
-                                    }
-                                    validationError = nil
-                                    isValidInput = false
-                                    showingValueInputAlert = true
-                                    // 如果已有值，立即验证
-                                    if !editingAttributeValue.isEmpty {
-                                        validateInputDebounced(editingAttributeValue)
-                                    }
-                                }
-                            )
+                        ForEach(sortedMutationAttributes) { attribute in
+                            mutationAttributeRow(for: attribute)
                         }
 
                         // 最后一行：移除按钮
@@ -623,6 +614,8 @@ struct ModuleSettingsView: View {
                             Text(NSLocalizedString("Fitting_Remove_Mutation", comment: ""))
                                 .foregroundColor(.red)
                         }
+                    } header: {
+                        mutationSectionHeader
                     }
                 }
 
@@ -721,41 +714,85 @@ struct ModuleSettingsView: View {
                     viewModel.updateModuleStatus(flag: slotFlag, newStatus: newState)
                 }
             }
-            .alert(
-                NSLocalizedString("Fitting_Mutation_Value_Input", comment: ""),
-                isPresented: $showingValueInputAlert
-            ) {
-                TextField(
-                    NSLocalizedString("Fitting_Mutation_Value_Placeholder", comment: ""),
-                    text: Binding(
-                        get: { editingAttributeValue },
-                        set: { newValue in
-                            editingAttributeValue = newValue
-                            validateInputDebounced(newValue)
-                        }
-                    )
-                )
-
-                Button(NSLocalizedString("Misc_Done", comment: "")) {
-                    confirmMutationValue()
-                }
-                .disabled(!isValidInput)
-
-                Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
-                    cancelEditing()
-                }
-            } message: {
-                if let attributeID = editingAttributeID,
-                   let attribute = mutaplasmidAttributes.first(where: { $0.attributeID == attributeID })
-                {
-                    let minPercent = formatPercentage((attribute.minValue - 1) * 100)
-                    let maxPercent = formatPercentage((attribute.maxValue - 1) * 100)
-                    Text(String(format: NSLocalizedString("Fitting_Mutation_Value_Range", comment: ""), minPercent, maxPercent))
-                }
-            }
+        }
+        .sheet(isPresented: $showingMutationEditor) {
+            mutationEditorSheet
         }
         .presentationDetents([.fraction(0.81)]) // 设置为屏幕高度的81%
         .presentationDragIndicator(.visible) // 显示拖动指示器
+    }
+
+    // MARK: - 突变区块
+
+    /// 突变区块标题（右侧带编辑按钮）
+    private var mutationSectionHeader: some View {
+        HStack {
+            Text(NSLocalizedString("Fitting_Selected_Mutation", comment: ""))
+            Spacer()
+            Button {
+                showingMutationEditor = true
+            } label: {
+                Text(NSLocalizedString("Fitting_Mutation_Edit", comment: ""))
+                    .font(.caption)
+                    .foregroundColor(.blue)
+            }
+            .buttonStyle(.plain)
+            .textCase(nil)
+            .disabled(mutaplasmidAttributes.isEmpty)
+        }
+    }
+
+    /// 突变编辑面板（拖动实时计算，保存后才重算装配模拟）
+    private var mutationEditorSheet: some View {
+        MutationEditSheetView(
+            mutaplasmidName: selectedMutaplasmidInfo?.name ?? "",
+            mutaplasmidIconFileName: selectedMutaplasmidInfo?.iconFileName,
+            attributes: sortedMutationAttributes,
+            referenceAttributes: moduleAttributeValues,
+            onSave: { mutatedAttributes in
+                applyMutation(mutatedAttributes)
+            }
+        )
+    }
+
+    /// 单行突变属性（只读展示，编辑在面板中进行）
+    private func mutationAttributeRow(for attribute: MutationAttribute) -> some View {
+        MutationAttributeControlRow(
+            name: attribute.name,
+            iconFileName: attribute.iconFileName,
+            attributeID: attribute.attributeID,
+            unitID: attribute.unitID,
+            originalValue: attribute.originalValue ?? 1,
+            minValue: attribute.minValue,
+            maxValue: attribute.maxValue,
+            highIsGood: attribute.highIsGood,
+            multiplier: .constant(attribute.currentValue ?? 1.0),
+            referenceAttributes: moduleAttributeValues,
+            isInteractive: false
+        )
+    }
+
+    /// 应用突变（只有点击保存后才重算装配模拟）
+    private func applyMutation(_ mutatedAttributes: [Int: Double]) {
+        // 同步本地状态，使列表立即反映最新数值
+        for index in mutaplasmidAttributes.indices {
+            mutaplasmidAttributes[index].currentValue =
+                mutatedAttributes[mutaplasmidAttributes[index].attributeID]
+        }
+
+        // 只有当至少设置了一个突变属性值时，才真正应用突变（保存、重算属性）
+        guard !mutatedAttributes.isEmpty else {
+            Logger.info("突变属性值为空，不应用突变（仅临时显示）")
+            return
+        }
+
+        // 堆叠模式下，只对当前选中的装备进行突变修改，不对所有堆叠的装备进行修改
+        viewModel.updateModuleMutation(
+            flag: slotFlag,
+            mutaplasmidID: selectedMutaplasmidID,
+            mutatedAttributes: mutatedAttributes
+        )
+        Logger.info("应用突变: 槽位 \(slotFlag.rawValue)，突变属性数量: \(mutatedAttributes.count)")
     }
 
     /// 判断模块是否可以装载弹药
@@ -859,17 +896,9 @@ struct ModuleSettingsView: View {
         // 加载突变质体的属性信息（范围与 highIsGood 从 SDEMemoryStore 内存缓存取）
         let mutatorAttributes = SDEMemoryStore.dynamicItemAttributes(forTypeID: mutaplasmidID)
 
-        let attributeIDs = mutatorAttributes.map(\.attributeID)
-        // 查询物品的原始属性值（用于 originalValueIsNegative 判断，内存索引）
-        var originalValues: [Int: Double] = [:]
-        if !attributeIDs.isEmpty {
-            let moduleAttributes = SDEMemoryStore.typeAttributes(for: currentModuleID)
-            for attrID in attributeIDs {
-                if let value = moduleAttributes[attrID] {
-                    originalValues[attrID] = value
-                }
-            }
-        }
+        // 装备的原始属性表（用于数值换算显示与突变方向判断）
+        let moduleAttributes = SDEMemoryStore.typeAttributes(for: currentModuleID)
+        moduleAttributeValues = moduleAttributes
 
         mutaplasmidAttributes = mutatorAttributes.map { attribute in
             MutationAttribute(
@@ -877,415 +906,14 @@ struct ModuleSettingsView: View {
                 attributeID: attribute.attributeID,
                 name: attribute.name,
                 iconFileName: attribute.iconFileName,
+                unitID: attribute.unitID,
                 minValue: attribute.minValue,
                 maxValue: attribute.maxValue,
                 highIsGood: attribute.highIsGood,
                 currentValue: nil, // 初始值为nil
-                originalValue: originalValues[attribute.attributeID]
+                originalValue: moduleAttributes[attribute.attributeID]
             )
         }
-    }
-
-    /// 取消编辑
-    private func cancelEditing() {
-        debounceTask?.cancel()
-        editingAttributeID = nil
-        editingAttributeValue = ""
-        validationError = nil
-        isValidInput = false
-    }
-
-    /// 防抖验证输入
-    private func validateInputDebounced(_ value: String) {
-        // 取消之前的防抖任务
-        debounceTask?.cancel()
-
-        // 创建新的防抖任务
-        debounceTask = Task {
-            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
-
-            if Task.isCancelled {
-                return
-            }
-
-            await MainActor.run {
-                validateInput(value)
-            }
-        }
-    }
-
-    /// 验证输入
-    private func validateInput(_ value: String) {
-        guard let attributeID = editingAttributeID,
-              let attribute = mutaplasmidAttributes.first(where: { $0.attributeID == attributeID })
-        else {
-            Logger.warning("突变数值验证失败: 未找到属性ID \(editingAttributeID ?? -1)")
-            validationError = nil
-            isValidInput = false
-            return
-        }
-
-        // 如果输入为空，不显示错误，但也不允许确认
-        if value.trimmingCharacters(in: .whitespaces).isEmpty {
-            Logger.info("突变数值验证: 输入为空")
-            validationError = nil
-            isValidInput = false
-            return
-        }
-
-        Logger.info("突变数值验证: 开始验证输入 '\(value)'")
-
-        // 使用正则表达式验证：只允许负号、正号、数字、小数点
-        // 允许的格式：可选的正负号，后跟数字，可选的小数点和更多数字
-        let pattern = #"^[+-]?(\d+\.?\d*|\.\d+)$"#
-        let regex = try? NSRegularExpression(pattern: pattern, options: [])
-        let range = NSRange(location: 0, length: value.utf16.count)
-
-        guard let regex = regex,
-              regex.firstMatch(in: value, options: [], range: range) != nil
-        else {
-            Logger.warning("突变数值验证失败: 格式不合法 '\(value)'，只允许数字、小数点、正负号")
-            validationError = NSLocalizedString("Fitting_Mutation_Value_Invalid_Format", comment: "")
-            isValidInput = false
-            return
-        }
-
-        Logger.info("突变数值验证: 格式校验通过")
-
-        // 转换为Double
-        guard let doubleValue = Double(value) else {
-            Logger.warning("突变数值验证失败: 无法转换为数字 '\(value)'")
-            validationError = NSLocalizedString("Fitting_Mutation_Value_Invalid_Number", comment: "")
-            isValidInput = false
-            return
-        }
-
-        Logger.info("突变数值验证: 数值转换成功 \(doubleValue)")
-
-        // 将用户输入的百分比转换为倍数（避免浮点数精度问题）
-        // 用户输入的是百分比（如 15 表示 15%），需要转换为倍数（1.15）
-        let inputMultiplier = (doubleValue / 100) + 1
-
-        // 直接使用数据库的原始倍数进行比较，避免百分比转换的精度误差
-        Logger.info("突变数值验证: 范围检查 - 输入倍数: \(inputMultiplier), 允许范围: \(attribute.minValue) 至 \(attribute.maxValue)")
-
-        // 直接比较倍数，避免浮点数精度问题
-        if inputMultiplier < attribute.minValue || inputMultiplier > attribute.maxValue {
-            // 转换为百分比用于显示（仅在错误时转换）
-            let minPercent = (attribute.minValue - 1) * 100
-            let maxPercent = (attribute.maxValue - 1) * 100
-            let minPercentStr = formatPercentage(minPercent)
-            let maxPercentStr = formatPercentage(maxPercent)
-            Logger.warning("突变数值验证失败: 超出范围 '\(value)' (输入倍数: \(inputMultiplier), 范围倍数: \(attribute.minValue) 至 \(attribute.maxValue), 范围百分比: \(minPercentStr) 至 \(maxPercentStr))")
-            validationError = String(format: NSLocalizedString("Fitting_Mutation_Value_Out_Of_Range", comment: ""), minPercentStr, maxPercentStr)
-            isValidInput = false
-            return
-        }
-
-        // 验证通过
-        Logger.info("突变数值验证: 验证通过 - 输入: '\(value)' (百分比: \(doubleValue)%, 倍数: \(inputMultiplier))")
-        validationError = nil
-        isValidInput = true
-    }
-
-    /// 确认突变数值
-    private func confirmMutationValue() {
-        guard isValidInput,
-              let attributeID = editingAttributeID,
-              let attributeIndex = mutaplasmidAttributes.firstIndex(where: { $0.attributeID == attributeID })
-        else { return }
-
-        // 再次验证（确保数据一致性）
-        guard let doubleValue = Double(editingAttributeValue) else {
-            return
-        }
-
-        // 更新属性值（将百分比转换回倍数）
-        let mutationValue = (doubleValue / 100) + 1
-        mutaplasmidAttributes[attributeIndex].currentValue = mutationValue
-
-        // 收集所有已设置的突变属性值
-        let mutatedAttributes = mutaplasmidAttributes.reduce(into: [Int: Double]()) { result, attribute in
-            if let currentValue = attribute.currentValue {
-                result[attribute.attributeID] = currentValue
-            }
-        }
-
-        // 只有当至少设置了一个突变属性值时，才真正应用突变（保存、重算属性）
-        if !mutatedAttributes.isEmpty {
-            // 堆叠模式下，只对当前选中的装备进行突变修改，不对所有堆叠的装备进行修改
-            // 这样可以让用户单独为某个装备设置突变，而不会影响其他相同类型的装备
-            viewModel.updateModuleMutation(
-                flag: slotFlag,
-                mutaplasmidID: selectedMutaplasmidID,
-                mutatedAttributes: mutatedAttributes
-            )
-            Logger.info("应用突变: 槽位 \(slotFlag.rawValue)，突变属性数量: \(mutatedAttributes.count)")
-        } else {
-            Logger.info("突变属性值为空，不应用突变（仅临时显示）")
-        }
-
-        cancelEditing()
-    }
-
-    /// 格式化突变数值（用于输入框）
-    private func formatMutationValueForInput(_ percentage: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        formatter.numberStyle = .decimal
-
-        if let formatted = formatter.string(from: NSNumber(value: percentage)) {
-            return formatted
-        }
-        return String(format: "%.2f", percentage)
-    }
-
-    /// 格式化百分比（用于提示信息）
-    private func formatPercentage(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        formatter.numberStyle = .decimal
-
-        if let formatted = formatter.string(from: NSNumber(value: value)) {
-            if value >= 0 {
-                return "+\(formatted)%"
-            } else {
-                return "\(formatted)%"
-            }
-        }
-        return String(format: "%.2f%%", value)
-    }
-}
-
-/// 突变属性行视图
-struct MutationAttributeRowView: View {
-    let attribute: MutationAttribute
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 8) {
-                // 第一行：属性图标、文本和编辑按钮
-                HStack(spacing: 8) {
-                    if let iconFileName = attribute.iconFileName, !iconFileName.isEmpty {
-                        IconManager.shared.loadImage(for: iconFileName)
-                            .resizable()
-                            .frame(width: 24, height: 24)
-                    }
-
-                    Text(attribute.name)
-                        .font(.body)
-                        .foregroundColor(.primary)
-
-                    Spacer()
-
-                    // 右侧显示实际突变数值或编辑按钮
-                    if let currentValue = attribute.currentValue {
-                        Text(formatMutationValue(currentValue))
-                            .font(.body)
-                            .foregroundColor(getValueColor(currentValue))
-                    } else {
-                        Text(NSLocalizedString("Fitting_Mutation_Edit", comment: ""))
-                            .font(.body)
-                            .foregroundColor(.blue)
-                    }
-                }
-
-                // 第二行：进度条（只有编辑过的属性才显示）
-                if let currentValue = attribute.currentValue {
-                    MutationProgressBarView(
-                        currentValue: currentValue,
-                        minValue: attribute.minValue,
-                        maxValue: attribute.maxValue,
-                        highIsGood: attribute.highIsGood,
-                        originalValueIsNegative: (attribute.originalValue ?? 0) < 0
-                    )
-                }
-            }
-            .padding(.vertical, 4)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-
-    /// 格式化突变数值（用于显示）
-    private func formatMutationValue(_ value: Double) -> String {
-        let percentage = (value - 1) * 100
-        let formatter = NumberFormatter()
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        formatter.numberStyle = .decimal
-
-        if let formatted = formatter.string(from: NSNumber(value: percentage)) {
-            return "\(formatted)%"
-        }
-        return String(format: "%.2f%%", percentage)
-    }
-
-    /// 获取数值颜色（与 MutationProgressBarView 逻辑一致，需考虑 originalValueIsNegative）
-    private func getValueColor(_ value: Double) -> Color {
-        if abs(value - 1) < 0.0001 {
-            return .secondary
-        }
-        let originalValueIsNegative = (attribute.originalValue ?? 0) < 0
-        let multiplierIndicatesIncrease = originalValueIsNegative ? (value < 1) : (value > 1)
-        let improved = attribute.highIsGood ? multiplierIndicatesIncrease : !multiplierIndicatesIncrease
-        return improved ? .green : .red
-    }
-}
-
-/// 突变进度条视图
-struct MutationProgressBarView: View {
-    let currentValue: Double?
-    let minValue: Double
-    let maxValue: Double
-    let highIsGood: Bool
-    /// 当原始值为负时（如 -27），乘数 > 1 表示数值变得更负（diff < 0），需反转判断逻辑
-    var originalValueIsNegative: Bool = false
-
-    var body: some View {
-        GeometryReader { geometry in
-            let width = geometry.size.width
-            let height = geometry.size.height
-            let centerX = width / 2
-
-            // 基点（0%）在中间，对应 value = 1.0
-            let baseValue = 1.0
-
-            // 计算进度
-            let (progress, progressColor, fillDirection) = calculateProgress(
-                currentValue: currentValue,
-                minValue: minValue,
-                maxValue: maxValue,
-                baseValue: baseValue,
-                highIsGood: highIsGood,
-                originalValueIsNegative: originalValueIsNegative
-            )
-
-            ZStack(alignment: .leading) {
-                // 背景（浅灰色）
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(height: 4)
-
-                // 进度条填充（从中心点开始）
-                if progress > 0 {
-                    HStack(spacing: 0) {
-                        // 左侧空白（占据中心点左侧的空间）
-                        Spacer()
-                            .frame(width: centerX)
-
-                        // 进度条填充区域
-                        if fillDirection == .right {
-                            // 向右填充：从中心点向右
-                            RoundedRectangle(cornerRadius: height / 2)
-                                .fill(progressColor)
-                                .frame(width: centerX * progress, height: height)
-                        } else {
-                            // 向左填充：从中心点向左
-                            // 使用负的 frame 宽度和 offset 来实现向左填充
-                            RoundedRectangle(cornerRadius: height / 2)
-                                .fill(progressColor)
-                                .frame(width: centerX * progress, height: height)
-                                .offset(x: -centerX * progress)
-                        }
-                    }
-                }
-
-                // 中间白点（基点）
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: height * 1.2, height: height * 1.2)
-                    .overlay(
-                        Circle()
-                            .stroke(Color(.systemGray3), lineWidth: 1)
-                    )
-                    .position(x: centerX, y: height / 2)
-            }
-        }
-        .frame(height: 6)
-    }
-
-    /// 计算进度、颜色和方向
-    private func calculateProgress(
-        currentValue: Double?,
-        minValue: Double,
-        maxValue: Double,
-        baseValue: Double,
-        highIsGood: Bool,
-        originalValueIsNegative: Bool = false
-    ) -> (progress: Double, color: Color, direction: FillDirection) {
-        guard let value = currentValue else {
-            return (0, .clear, .right)
-        }
-
-        let progress: Double
-        let progressColor: Color
-        let fillDirection: FillDirection
-
-        // 判断是变好还是变差
-        // 当 originalValue > 0：乘数 > 1 表示数值增加，< 1 表示减少
-        // 当 originalValue < 0：乘数 > 1 表示数值更负（减少），< 1 表示更接近 0（增加），需反转
-        let multiplierIndicatesIncrease = originalValueIsNegative ? (value < baseValue) : (value > baseValue)
-        let isGood = highIsGood ? multiplierIndicatesIncrease : !multiplierIndicatesIncrease
-
-        if isGood {
-            // 变好：绿色，向右填充
-            progressColor = .green
-            fillDirection = .right
-
-            if value >= baseValue {
-                // 向右填充（value >= 1.0）
-                let range = maxValue - baseValue
-                if range > 0 {
-                    progress = (value - baseValue) / range
-                } else {
-                    progress = 0
-                }
-            } else {
-                // 向右填充（value < 1.0，但这是变好的情况，比如 highIsGood=false）
-                // 需要计算从 minValue 到 baseValue 的进度
-                let range = baseValue - minValue
-                if range > 0 {
-                    // 计算从 value 到 baseValue 的进度，然后反向（因为向右填充）
-                    progress = (baseValue - value) / range
-                } else {
-                    progress = 0
-                }
-            }
-        } else {
-            // 变差：红色，向左填充
-            progressColor = .red
-            fillDirection = .left
-
-            if value < baseValue {
-                // 向左填充（value < 1.0）
-                let range = baseValue - minValue
-                if range > 0 {
-                    progress = (baseValue - value) / range
-                } else {
-                    progress = 0
-                }
-            } else {
-                // 向左填充（value >= 1.0，但这是变差的情况，比如 highIsGood=false）
-                // 需要计算从 baseValue 到 maxValue 的进度
-                let range = maxValue - baseValue
-                if range > 0 {
-                    // 计算从 baseValue 到 value 的进度，然后反向（因为向左填充）
-                    progress = (value - baseValue) / range
-                } else {
-                    progress = 0
-                }
-            }
-        }
-
-        return (progress, progressColor, fillDirection)
-    }
-
-    enum FillDirection {
-        case left
-        case right
     }
 }
 

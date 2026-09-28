@@ -25,63 +25,26 @@ enum FittingSlotType: String, CaseIterable {
         }
     }
 
+    var slot: SlotFlag? {
+        switch self {
+        case .hiSlots: return .high
+        case .medSlots: return .medium
+        case .loSlots: return .low
+        case .rigSlots: return .rig
+        case .subSystemSlots: return .subsystem
+        case .t3dModeSlot: return nil
+        }
+    }
+
+    var flags: [FittingFlag] {
+        guard let slot else { return [.t3dModeSlot0] }
+        return (0 ..< slot.fittingCount).map { .slot(slot, index: $0) }
+    }
+
     /// 获取指定索引的槽位flag标识
     func getSlotFlag(index: Int) -> FittingFlag {
-        switch self {
-        case .hiSlots:
-            switch index {
-            case 0: return .hiSlot0
-            case 1: return .hiSlot1
-            case 2: return .hiSlot2
-            case 3: return .hiSlot3
-            case 4: return .hiSlot4
-            case 5: return .hiSlot5
-            case 6: return .hiSlot6
-            case 7: return .hiSlot7
-            default: return .invalid
-            }
-        case .medSlots:
-            switch index {
-            case 0: return .medSlot0
-            case 1: return .medSlot1
-            case 2: return .medSlot2
-            case 3: return .medSlot3
-            case 4: return .medSlot4
-            case 5: return .medSlot5
-            case 6: return .medSlot6
-            case 7: return .medSlot7
-            default: return .invalid
-            }
-        case .loSlots:
-            switch index {
-            case 0: return .loSlot0
-            case 1: return .loSlot1
-            case 2: return .loSlot2
-            case 3: return .loSlot3
-            case 4: return .loSlot4
-            case 5: return .loSlot5
-            case 6: return .loSlot6
-            case 7: return .loSlot7
-            default: return .invalid
-            }
-        case .rigSlots:
-            switch index {
-            case 0: return .rigSlot0
-            case 1: return .rigSlot1
-            case 2: return .rigSlot2
-            default: return .invalid
-            }
-        case .subSystemSlots:
-            switch index {
-            case 0: return .subSystemSlot0
-            case 1: return .subSystemSlot1
-            case 2: return .subSystemSlot2
-            case 3: return .subSystemSlot3
-            default: return .invalid
-            }
-        case .t3dModeSlot:
-            return .t3dModeSlot0 // T3D模式的flag
-        }
+        guard index >= 0, index < flags.count else { return .invalid }
+        return flags[index]
     }
 }
 

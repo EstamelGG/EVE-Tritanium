@@ -138,6 +138,10 @@ class DNAParser {
         for subsystemId in dnaResult.subsystems {
             let flag = getSubSystemSlotFlag(index: slotCounters.subSystemSlot)
             slotCounters.subSystemSlot += 1
+            guard flag != .invalid else {
+                Logger.warning("子系统槽位超出支持范围，跳过: \(subsystemId)")
+                continue
+            }
 
             items.append(
                 LocalFittingItem(
@@ -180,6 +184,11 @@ class DNAParser {
                     slotCounters.subSystemSlot += 1
                 default:
                     Logger.warning("模块 \(module.typeId) 的类型(\(classification.category))不是可安装的装备，跳过")
+                    continue
+                }
+
+                guard currentFlag != .invalid else {
+                    Logger.warning("装备槽位超出支持范围，跳过: \(module.typeId)")
                     continue
                 }
 
@@ -264,67 +273,26 @@ class DNAParser {
 
     /// 获取高槽flag
     private static func getHiSlotFlag(index: Int) -> FittingFlag {
-        switch index {
-        case 0: return .hiSlot0
-        case 1: return .hiSlot1
-        case 2: return .hiSlot2
-        case 3: return .hiSlot3
-        case 4: return .hiSlot4
-        case 5: return .hiSlot5
-        case 6: return .hiSlot6
-        case 7: return .hiSlot7
-        default: return .hiSlot0
-        }
+        .slot(.high, index: index)
     }
 
     /// 获取中槽flag
     private static func getMedSlotFlag(index: Int) -> FittingFlag {
-        switch index {
-        case 0: return .medSlot0
-        case 1: return .medSlot1
-        case 2: return .medSlot2
-        case 3: return .medSlot3
-        case 4: return .medSlot4
-        case 5: return .medSlot5
-        case 6: return .medSlot6
-        case 7: return .medSlot7
-        default: return .medSlot0
-        }
+        .slot(.medium, index: index)
     }
 
     /// 获取低槽flag
     private static func getLoSlotFlag(index: Int) -> FittingFlag {
-        switch index {
-        case 0: return .loSlot0
-        case 1: return .loSlot1
-        case 2: return .loSlot2
-        case 3: return .loSlot3
-        case 4: return .loSlot4
-        case 5: return .loSlot5
-        case 6: return .loSlot6
-        case 7: return .loSlot7
-        default: return .loSlot0
-        }
+        .slot(.low, index: index)
     }
 
     /// 获取改装件槽flag
     private static func getRigSlotFlag(index: Int) -> FittingFlag {
-        switch index {
-        case 0: return .rigSlot0
-        case 1: return .rigSlot1
-        case 2: return .rigSlot2
-        default: return .rigSlot0
-        }
+        .slot(.rig, index: index)
     }
 
     /// 获取子系统槽flag
     private static func getSubSystemSlotFlag(index: Int) -> FittingFlag {
-        switch index {
-        case 0: return .subSystemSlot0
-        case 1: return .subSystemSlot1
-        case 2: return .subSystemSlot2
-        case 3: return .subSystemSlot3
-        default: return .subSystemSlot0
-        }
+        .slot(.subsystem, index: index)
     }
 }

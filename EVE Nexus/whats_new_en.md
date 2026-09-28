@@ -506,3 +506,8 @@ Fixes & Improvements:
 1. Jump navigation: fixed unnecessary detours between systems within direct jump range
 2. Market quickbar: Jita comparison prices are now calculated from ESI market orders
 3. Update SDE
+
+# v1.14.6 September 28, 2026
+
+1. Optimized the UI of the "Incursions" feature  
+2. Improved other UI elements and interaction logic

@@ -874,7 +874,7 @@ struct BRKillMailDetailView: View {
         fittingSlotSection(
             title: NSLocalizedString("Main_KM_High_Slots", comment: ""),
             slotItems: KillMailItemTreeBuilder.sortFittingSiblingRows(
-                items.filter { (27 ... 34).contains($0[0]) && $0.count >= 4 },
+                items.filter { SlotFlag.high.fittingIDs.contains($0[0]) && $0.count >= 4 },
                 itemInfoCache: itemInfoCache
             ),
             rowInsets: rowInsets
@@ -882,7 +882,7 @@ struct BRKillMailDetailView: View {
         fittingSlotSection(
             title: NSLocalizedString("Main_KM_Medium_Slots", comment: ""),
             slotItems: KillMailItemTreeBuilder.sortFittingSiblingRows(
-                items.filter { (19 ... 26).contains($0[0]) && $0.count >= 4 },
+                items.filter { SlotFlag.medium.fittingIDs.contains($0[0]) && $0.count >= 4 },
                 itemInfoCache: itemInfoCache
             ),
             rowInsets: rowInsets
@@ -890,24 +890,32 @@ struct BRKillMailDetailView: View {
         fittingSlotSection(
             title: NSLocalizedString("Main_KM_Low_Slots", comment: ""),
             slotItems: KillMailItemTreeBuilder.sortFittingSiblingRows(
-                items.filter { (11 ... 18).contains($0[0]) && $0.count >= 4 },
+                items.filter { SlotFlag.low.fittingIDs.contains($0[0]) && $0.count >= 4 },
                 itemInfoCache: itemInfoCache
             ),
             rowInsets: rowInsets
         )
         fittingSlotSection(
             title: NSLocalizedString("Main_KM_Rig_Slots", comment: ""),
-            slotItems: items.filter { (92 ... 94).contains($0[0]) && $0.count >= 4 }.sorted { $0[0] < $1[0] },
+            slotItems: items.filter { SlotFlag.rig.fittingIDs.contains($0[0]) && $0.count >= 4 }.sorted { $0[0] < $1[0] },
             rowInsets: rowInsets
         )
         fittingSlotSection(
             title: NSLocalizedString("Main_KM_Subsystem_Slots", comment: ""),
-            slotItems: items.filter { (125 ... 128).contains($0[0]) && $0.count >= 4 }.sorted { $0[0] < $1[0] },
+            slotItems: items.filter { SlotFlag.subsystem.fittingIDs.contains($0[0]) && $0.count >= 4 }.sorted { $0[0] < $1[0] },
+            rowInsets: rowInsets
+        )
+        fittingSlotSection(
+            title: NSLocalizedString("Location_Flag_ServiceSlots", comment: "建筑服务槽位"),
+            slotItems: KillMailItemTreeBuilder.sortFittingSiblingRows(
+                items.filter { $0.count >= 4 && SlotFlag.service.fittingIDs.contains($0[0]) },
+                itemInfoCache: itemInfoCache
+            ),
             rowInsets: rowInsets
         )
         fittingSlotSection(
             title: NSLocalizedString("Main_KM_Fighter_Tubes", comment: ""),
-            slotItems: items.filter { (159 ... 163).contains($0[0]) && $0.count >= 4 }.sorted { $0[0] < $1[0] },
+            slotItems: items.filter { SlotFlag.fighterTube.ids.contains($0[0]) && $0.count >= 4 }.sorted { $0[0] < $1[0] },
             rowInsets: rowInsets
         )
     }
@@ -933,9 +941,17 @@ struct BRKillMailDetailView: View {
     @ViewBuilder
     private func nonFittingNestedItemSections(detail: KillMailDetailData) -> some View {
         let victimRoots = detail.esi.victim.items ?? []
+        let otherSectionTitle = NSLocalizedString("Flag_Other", comment: "其他")
         let nonFittingFlags = Set(
             victimRoots.map(\.flag).filter { !isShipFittingFlag($0) }
-        ).sorted()
+        ).sorted { lhs, rhs in
+            let lhsIsOther = getFlagName(lhs) == otherSectionTitle
+            let rhsIsOther = getFlagName(rhs) == otherSectionTitle
+            if lhsIsOther != rhsIsOther {
+                return !lhsIsOther
+            }
+            return lhs < rhs
+        }
 
         ForEach(nonFittingFlags, id: \.self) { flag in
             nonFittingFlagSection(detail: detail, flag: flag)
@@ -943,12 +959,8 @@ struct BRKillMailDetailView: View {
     }
 
     private func isShipFittingFlag(_ flag: Int) -> Bool {
-        (11 ... 18).contains(flag)
-            || (19 ... 26).contains(flag)
-            || (27 ... 34).contains(flag)
-            || (92 ... 94).contains(flag)
-            || (125 ... 128).contains(flag)
-            || (159 ... 163).contains(flag)
+        FittingFlag.fromInventorySlot(flag) != nil
+            || SlotFlag.fighterTube.ids.contains(flag)
             || flag == 89
     }
 
@@ -1008,7 +1020,7 @@ struct BRKillMailDetailView: View {
         do {
             let killId = listEntity.killmailId
             let hash = listEntity.zkb.hash
-            Logger.debug("开始加载战报ID \(killId) 的详细信息")
+            Logger.debug("开始加载 KM ID \(killId) 的详细信息")
 
             let detail = try await KillMailDataConverter.shared.fetchKillMailDetail(
                 killmailId: killId,
@@ -1073,7 +1085,7 @@ struct BRKillMailDetailView: View {
         for typeId in typeIds {
             unitByType[typeId] = marketPrices[typeId]?.averagePrice ?? 0
         }
-        Logger.debug("战报详情: 市场价格批量获取完成，一次性写入 \(unitByType.count)/\(typeIds.count) 条")
+        Logger.debug("KM 详情: 市场价格批量获取完成，一次性写入 \(unitByType.count)/\(typeIds.count) 条")
         await MainActor.run {
             guard session == kmMarketPriceSession else { return }
             kmMarketUnitPriceByType = unitByType
@@ -1169,6 +1181,10 @@ struct BRKillMailDetailView: View {
     }
 
     private func getFlagName(_ flag: Int) -> String {
+        // zKillboard 将 KM 中的 flag 0 显示为 Corporate Hangar；底层 flag 定义仍为 None。
+        if flag == 0 {
+            return NSLocalizedString("Location_Flag_CorpSAG", comment: "军团机库")
+        }
         return FlagMapping.getFlagName(for: flag)
     }
 
@@ -1609,7 +1625,7 @@ struct KillMailAttackersView: View {
                 supplementalAttackerNames = merged
             }
         } catch {
-            Logger.error("战报参与者: 批量解析名称失败 - \(error)")
+            Logger.error("KM 参与者: 批量解析名称失败 - \(error)")
         }
     }
 }

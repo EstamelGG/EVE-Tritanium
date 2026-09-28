@@ -16,6 +16,8 @@ struct InfestedSystemRow: Identifiable {
 final class InfestedSystemsViewModel: ObservableObject {
     @Published var systems: [InfestedSystemRow] = []
     @Published var isLoading = false
+    /// 主权数据仍在加载（名称走网络）：列表已可见，主权列显示占位而非「无主权」
+    @Published var isLoadingSovereignty = false
 
     private let databaseManager: DatabaseManager
     private let systemIds: [Int]
@@ -27,27 +29,45 @@ final class InfestedSystemsViewModel: ObservableObject {
 
     func loadData(forceRefresh: Bool = false) async {
         isLoading = true
-        defer { isLoading = false }
+        isLoadingSovereignty = true
 
-        // 星系位置与主权索引并行（主权名称已随引擎 loadAll 解析，无二次加载阶段）
+        // 主权数据（网络）与星系位置（本地库）并行：不等主权，先把星系列表显示出来
         async let engineTask = SovereigntySearchEngine.shared.loadAll(forceRefresh: forceRefresh)
         let infoMap = await getBatchSolarSystemInfo(
             solarSystemIds: systemIds,
             databaseManager: databaseManager
         )
-        _ = try? await engineTask
 
-        let engine = SovereigntySearchEngine.shared
+        // 第一阶段：仅星系名 + 安等
         systems = systemIds.compactMap { systemId in
             guard let info = infoMap[systemId] else { return nil }
             return InfestedSystemRow(
                 systemId: systemId,
                 systemName: info.systemName,
                 security: info.security,
-                sovereignty: engine.sovereigntyInfo(forSystemId: systemId)
+                sovereignty: nil
             )
         }
         .sorted { $0.systemName < $1.systemName }
+        isLoading = false
+
+        // 第二阶段：主权数据到位后回填（名称与派系图标已随 loadAll 解析完毕）
+        do {
+            _ = try await engineTask
+        } catch {
+            Logger.error("获取主权数据失败: \(error)")
+        }
+
+        let engine = SovereigntySearchEngine.shared
+        systems = systems.map { row in
+            InfestedSystemRow(
+                systemId: row.systemId,
+                systemName: row.systemName,
+                security: row.security,
+                sovereignty: engine.sovereigntyInfo(forSystemId: row.systemId)
+            )
+        }
+        isLoadingSovereignty = false
     }
 }
 
@@ -99,7 +119,10 @@ struct InfestedSystemsView: View {
         let sovereignty = row.sovereignty
         let allianceId = sovereignty?.isAlliance == true ? sovereignty?.id : nil
         let icon = allianceId.flatMap { iconLoader.icons[$0] } ?? sovereignty?.icon
-        let isIconLoading = allianceId.map { iconLoader.loadingIconIds.contains($0) } ?? false
+        // 主权数据未到位时同样视为加载中，避免把「尚未加载」误显示为「无主权」
+        let isIconLoading =
+            viewModel.isLoadingSovereignty
+                || (allianceId.map { iconLoader.loadingIconIds.contains($0) } ?? false)
 
         return SystemRowView(
             name: row.systemName,

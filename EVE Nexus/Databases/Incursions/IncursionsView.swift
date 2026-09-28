@@ -437,23 +437,18 @@ final class IncursionsViewModel: ObservableObject {
 
 // MARK: - Views
 
-struct IncursionCell: View {
-    let incursion: PreparedIncursion
-    let databaseManager: DatabaseManager
-    let viewModel: IncursionsViewModel
+/// 入侵状态行：状态三色小方块 + 状态文字 + 影响力进度条
+/// 从 `IncursionCell` 抽出，便于脱开 DatabaseManager / ViewModel 单独预览
+struct IncursionProgressRow: View {
+    let state: String
+    let influence: Double
 
-    private static let stateOrder = ["established", "mobilizing", "withdrawing"]
-    private static let progressFillColor = Color(red: 64 / 255, green: 168 / 255, blue: 176 / 255)
+    static let stateOrder = ["established", "mobilizing", "withdrawing"]
+    static let progressFillColor = Color(red: 64 / 255, green: 168 / 255, blue: 176 / 255)
+    /// 进度条剩余段的透明度：同色淡化，与实色进度段拉开对比
+    static let progressTrackOpacity: Double = 0.35
 
-    private var stateColor: Color {
-        Self.color(for: incursion.incursion.state)
-    }
-
-    private var stateText: String {
-        Self.text(for: incursion.incursion.state)
-    }
-
-    private static func color(for state: String) -> Color {
+    static func color(for state: String) -> Color {
         switch state {
         case "withdrawing":
             return Color(red: 175 / 255, green: 55 / 255, blue: 54 / 255)
@@ -466,7 +461,7 @@ struct IncursionCell: View {
         }
     }
 
-    private static func text(for state: String) -> String {
+    static func text(for state: String) -> String {
         switch state {
         case "withdrawing":
             return NSLocalizedString("Incursions_State_Withdrawing", comment: "")
@@ -478,6 +473,55 @@ struct IncursionCell: View {
             return state
         }
     }
+
+    private var stateColor: Color {
+        Self.color(for: state)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                HStack(spacing: 3) {
+                    ForEach(Self.stateOrder, id: \.self) { item in
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(
+                                item == state
+                                    ? Self.color(for: item)
+                                    : Color.secondary.opacity(0.35)
+                            )
+                            .frame(width: 14, height: 5)
+                    }
+                }
+                Text(Self.text(for: state))
+                    .foregroundColor(stateColor)
+                    .font(.caption)
+            }
+
+            GeometryReader { geo in
+                let fullWidth = geo.size.width
+                let progressWidth = min(
+                    max(fullWidth * CGFloat(influence), 0),
+                    fullWidth
+                )
+                ZStack(alignment: .leading) {
+                    // 剩余段用同色淡化，与实色进度段形成强对比（不再需要额外的分界线）
+                    Rectangle()
+                        .fill(stateColor.opacity(Self.progressTrackOpacity))
+                    Rectangle()
+                        .fill(Self.progressFillColor)
+                        .frame(width: progressWidth)
+                }
+            }
+            .frame(height: 3)
+            .clipShape(Capsule())
+        }
+    }
+}
+
+struct IncursionCell: View {
+    let incursion: PreparedIncursion
+    let databaseManager: DatabaseManager
+    let viewModel: IncursionsViewModel
 
     var body: some View {
         NavigationLink(
@@ -557,39 +601,10 @@ struct IncursionCell: View {
                     .foregroundColor(.secondary)
                     .font(.caption)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            HStack(spacing: 3) {
-                                ForEach(Self.stateOrder, id: \.self) { state in
-                                    RoundedRectangle(cornerRadius: 1)
-                                        .fill(
-                                            state == incursion.incursion.state
-                                                ? Self.color(for: state)
-                                                : Color.secondary.opacity(0.35)
-                                        )
-                                        .frame(width: 14, height: 5)
-                                }
-                            }
-                            Text(stateText)
-                                .foregroundColor(stateColor)
-                                .font(.caption)
-                        }
-
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Rectangle()
-                                    .fill(stateColor)
-                                Rectangle()
-                                    .fill(Self.progressFillColor)
-                                    .frame(
-                                        width: geo.size.width
-                                            * CGFloat(incursion.incursion.influence)
-                                    )
-                            }
-                        }
-                        .frame(height: 3)
-                        .clipShape(Capsule())
-                    }
+                    IncursionProgressRow(
+                        state: incursion.incursion.state,
+                        influence: incursion.incursion.influence
+                    )
                 }
             }
             .padding(.vertical, 6)
@@ -681,5 +696,42 @@ struct IncursionsView: View {
         } message: {
             Text(viewModel.exportMessage)
         }
+    }
+}
+
+// MARK: - Preview
+
+#Preview("入侵进度行 - 三种阶段（浅色）") {
+    IncursionProgressRowPreviewList()
+}
+
+#Preview("入侵进度行 - 三种阶段（深色）") {
+    IncursionProgressRowPreviewList()
+        .preferredColorScheme(.dark)
+}
+
+/// 预览容器：三种阶段 × 多档影响力，在真实 List 行背景下对比两段进度
+private struct IncursionProgressRowPreviewList: View {
+    private let influences: [Double] = [0, 0.15, 0.35, 0.6, 0.85, 1]
+
+    var body: some View {
+        List {
+            ForEach(IncursionProgressRow.stateOrder, id: \.self) { state in
+                Section {
+                    ForEach(influences, id: \.self) { influence in
+                        HStack(spacing: 12) {
+                            Text("\(Int((influence * 100).rounded()))%")
+                                .font(.caption.monospacedDigit())
+                                .foregroundColor(.secondary)
+                                .frame(width: 40, alignment: .trailing)
+                            IncursionProgressRow(state: state, influence: influence)
+                        }
+                    }
+                } header: {
+                    Text(IncursionProgressRow.text(for: state))
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
     }
 }

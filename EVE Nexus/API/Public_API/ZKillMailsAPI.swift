@@ -104,6 +104,7 @@ class ZKillMailsAPI {
             try? FileManager.default.removeItem(at: cacheFileURL)
             return nil
         }
+        Logger.debug("已从本地缓存 \(cacheFileURL) 加载 KM 详情.")
         return esiDetail
     }
 
@@ -113,6 +114,7 @@ class ZKillMailsAPI {
             return
         }
         try? data.write(to: cacheFileURL)
+        Logger.debug("已将 KM 详情写入本地缓存 \(cacheFileURL)")
     }
 
     // MARK: - 公共方法

@@ -19,21 +19,6 @@ private struct DynamicAttributeEntry: Identifiable {
         guard originalValue != 0 else { return 1.0 }
         return currentValue / originalValue
     }
-
-    /// 转换为共享突变属性行使用的模型
-    var displayAttribute: MutationDisplayAttribute {
-        MutationDisplayAttribute(
-            id: id,
-            name: name,
-            iconFileName: iconFileName,
-            unitID: unitID,
-            originalValue: originalValue,
-            minMutator: minMutator,
-            maxMutator: maxMutator,
-            highIsGood: highIsGood,
-            multiplier: mutationMultiplier
-        )
-    }
 }
 
 // MARK: - 深渊突变物品详情页
@@ -116,12 +101,7 @@ struct DynamicItemDetailView: View {
                     header: sectionHeader(NSLocalizedString("Main_Database_Mutation_Attribute", comment: ""))
                 ) {
                     ForEach(mutationAttributes.sorted { $0.id < $1.id }) { attr in
-                        MutationAttributeDisplayRowView(
-                            attribute: .constant(attr.displayAttribute),
-                            originalAttributes: originalAttributeValues,
-                            currentAttributes: currentAttributeValues,
-                            onEdit: nil
-                        )
+                        dynamicMutationRow(for: attr)
                     }
                 }
                 .listRowInsets(itemSectionRowInsets)
@@ -226,6 +206,26 @@ struct DynamicItemDetailView: View {
 
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
+    }
+
+    // MARK: - 突变属性行（共享组件）
+
+    /// 单行突变属性（只读展示，使用共享的突变计算器行 UI）
+    private func dynamicMutationRow(for attr: DynamicAttributeEntry) -> some View {
+        MutationAttributeControlRow(
+            name: attr.name,
+            iconFileName: attr.iconFileName,
+            attributeID: attr.id,
+            unitID: attr.unitID,
+            originalValue: attr.originalValue,
+            minValue: attr.minMutator,
+            maxValue: attr.maxMutator,
+            highIsGood: attr.highIsGood,
+            multiplier: .constant(attr.mutationMultiplier),
+            referenceAttributes: originalAttributeValues,
+            currentReferenceAttributes: currentAttributeValues,
+            isInteractive: false
+        )
     }
 
     // MARK: - 数据加载

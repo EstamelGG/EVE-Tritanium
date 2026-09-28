@@ -146,13 +146,6 @@ struct KillMailDetailData {
     func toLocalFitting() -> LocalFitting? {
         guard let items = esi.victim.items, !items.isEmpty else { return nil }
 
-        // flag → FittingFlag 映射表
-        let loSlotFlags: [FittingFlag] = [.loSlot0, .loSlot1, .loSlot2, .loSlot3, .loSlot4, .loSlot5, .loSlot6, .loSlot7]
-        let medSlotFlags: [FittingFlag] = [.medSlot0, .medSlot1, .medSlot2, .medSlot3, .medSlot4, .medSlot5, .medSlot6, .medSlot7]
-        let hiSlotFlags: [FittingFlag] = [.hiSlot0, .hiSlot1, .hiSlot2, .hiSlot3, .hiSlot4, .hiSlot5, .hiSlot6, .hiSlot7]
-        let rigSlotFlags: [FittingFlag] = [.rigSlot0, .rigSlot1, .rigSlot2]
-        let subSystemFlags: [FittingFlag] = [.subSystemSlot0, .subSystemSlot1, .subSystemSlot2, .subSystemSlot3]
-
         // 按 flag 分组：每个 flag 上的物品列表（含 categoryID，来自 SDEMemoryStore 内存缓存）
         var flagGroups: [Int: [(typeId: Int, qty: Int, isCharge: Bool)]] = [:]
         for item in items {
@@ -170,32 +163,20 @@ struct KillMailDetailData {
         for flag in flagGroups.keys.sorted() {
             let groupItems = flagGroups[flag]!
 
+            if let fittingFlag = FittingFlag.fromInventorySlot(flag) {
+                let (module, charge) = extractModuleAndCharge(from: groupItems)
+                let acceptsCharge = fittingFlag.slot?.acceptsCharge == true
+                if let module {
+                    fittingItems.append(LocalFittingItem(
+                        flag: fittingFlag, quantity: 1, type_id: module.typeId,
+                        charge_type_id: acceptsCharge ? charge?.typeId : nil,
+                        charge_quantity: acceptsCharge ? charge?.qty : nil
+                    ))
+                }
+                continue
+            }
+
             switch flag {
-            case 11 ... 18: // LoSlot0-7
-                let (module, charge) = extractModuleAndCharge(from: groupItems)
-                if let module = module, flag - 11 < loSlotFlags.count {
-                    fittingItems.append(LocalFittingItem(flag: loSlotFlags[flag - 11], quantity: 1, type_id: module.typeId, charge_type_id: charge?.typeId, charge_quantity: charge?.qty))
-                }
-            case 19 ... 26: // MedSlot0-7
-                let (module, charge) = extractModuleAndCharge(from: groupItems)
-                if let module = module, flag - 19 < medSlotFlags.count {
-                    fittingItems.append(LocalFittingItem(flag: medSlotFlags[flag - 19], quantity: 1, type_id: module.typeId, charge_type_id: charge?.typeId, charge_quantity: charge?.qty))
-                }
-            case 27 ... 34: // HiSlot0-7
-                let (module, charge) = extractModuleAndCharge(from: groupItems)
-                if let module = module, flag - 27 < hiSlotFlags.count {
-                    fittingItems.append(LocalFittingItem(flag: hiSlotFlags[flag - 27], quantity: 1, type_id: module.typeId, charge_type_id: charge?.typeId, charge_quantity: charge?.qty))
-                }
-            case 92 ... 94: // RigSlot0-2
-                let (module, _) = extractModuleAndCharge(from: groupItems)
-                if let module = module, flag - 92 < rigSlotFlags.count {
-                    fittingItems.append(LocalFittingItem(flag: rigSlotFlags[flag - 92], quantity: 1, type_id: module.typeId))
-                }
-            case 125 ... 128: // SubSystemSlot0-3
-                let (module, _) = extractModuleAndCharge(from: groupItems)
-                if let module = module, flag - 125 < subSystemFlags.count {
-                    fittingItems.append(LocalFittingItem(flag: subSystemFlags[flag - 125], quantity: 1, type_id: module.typeId))
-                }
             case 87: // DroneBay
                 for item in groupItems where !item.isCharge {
                     drones.append(Drone(type_id: item.typeId, quantity: item.qty, active_count: 0, muta: nil))
@@ -208,7 +189,7 @@ struct KillMailDetailData {
                 for item in groupItems {
                     cargo.append(CargoItem(type_id: item.typeId, quantity: item.qty))
                 }
-            case 158 ... 163: // FighterBay(158) / FighterTube0-4(159-163)
+            case 158, SlotFlag.fighterTube.ids: // FighterBay / FighterTube0-4
                 for item in groupItems where !item.isCharge {
                     cargo.append(CargoItem(type_id: item.typeId, quantity: item.qty))
                 }
@@ -283,7 +264,6 @@ enum KillMailItemTreeBuilder {
     /// - 装配槽位弹药不作为独立行输出（合并为装备的 charge 字段）
     /// - 与装配环（BRKillMailFittingView）一致：同 flag 下取首个弹药（categoryID == 8）
     static func flattenFittingWithCharges(_ roots: [ESIItem]) -> [[Int]] {
-        let fittingSlotFlags: Set<Int> = Set(11 ... 34)
         var rows: [[Int]] = []
         func flattenNested(_ items: [ESIItem], groupingFlag: Int, depth: Int) {
             for item in sortESISiblings(items, unitPriceByType: [:]) {
@@ -304,7 +284,7 @@ enum KillMailItemTreeBuilder {
         for flag in Set(roots.map(\.flag)).sorted() {
             let siblings = roots.filter { $0.flag == flag }
 
-            guard fittingSlotFlags.contains(flag) else {
+            guard SlotFlag.location(for: flag)?.slot.acceptsCharge == true else {
                 flattenNested(siblings, groupingFlag: flag, depth: 0)
                 continue
             }

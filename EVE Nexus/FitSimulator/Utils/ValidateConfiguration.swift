@@ -153,25 +153,25 @@ private func categorizeModulesByPriority(modules: [SimModule]) -> (
             continue
         }
 
-        switch flag {
+        switch flag.slot {
         // 子系统槽位 (最高优先级)
-        case .subSystemSlot0, .subSystemSlot1, .subSystemSlot2, .subSystemSlot3:
+        case .subsystem:
             subsystems.append(module)
 
         // 改装槽位 (第二优先级)
-        case .rigSlot0, .rigSlot1, .rigSlot2:
+        case .rig:
             rigs.append(module)
 
         // 高槽位 (第三优先级)
-        case .hiSlot0, .hiSlot1, .hiSlot2, .hiSlot3, .hiSlot4, .hiSlot5, .hiSlot6, .hiSlot7:
+        case .high:
             hiSlots.append(module)
 
         // 中槽位 (第四优先级)
-        case .medSlot0, .medSlot1, .medSlot2, .medSlot3, .medSlot4, .medSlot5, .medSlot6, .medSlot7:
+        case .medium:
             medSlots.append(module)
 
         // 低槽位 (第五优先级)
-        case .loSlot0, .loSlot1, .loSlot2, .loSlot3, .loSlot4, .loSlot5, .loSlot6, .loSlot7:
+        case .low:
             lowSlots.append(module)
 
         default:
@@ -200,17 +200,5 @@ private func categorizeModulesByPriority(modules: [SimModule]) -> (
 /// - Parameter flag: 槽位标识
 /// - Returns: 槽位索引
 private func getSlotIndex(from flag: FittingFlag?) -> Int {
-    guard let flag = flag else { return 999 }
-
-    switch flag {
-    case .subSystemSlot0, .rigSlot0, .hiSlot0, .medSlot0, .loSlot0: return 0
-    case .subSystemSlot1, .rigSlot1, .hiSlot1, .medSlot1, .loSlot1: return 1
-    case .subSystemSlot2, .rigSlot2, .hiSlot2, .medSlot2, .loSlot2: return 2
-    case .subSystemSlot3, .hiSlot3, .medSlot3, .loSlot3: return 3
-    case .hiSlot4, .medSlot4, .loSlot4: return 4
-    case .hiSlot5, .medSlot5, .loSlot5: return 5
-    case .hiSlot6, .medSlot6, .loSlot6: return 6
-    case .hiSlot7, .medSlot7, .loSlot7: return 7
-    default: return 999
-    }
+    flag?.slotIndex ?? 999
 }

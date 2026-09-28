@@ -15,6 +15,9 @@ private let locationFlagLocalizationKeys: [String: String] = [
     "SubSystemSlots": "Location_Flag_SubSystemSlots", "HiSlots": "Location_Flag_HiSlots",
     "MedSlots": "Location_Flag_MedSlots", "LoSlots": "Location_Flag_LoSlots",
     "RigSlots": "Location_Flag_RigSlots",
+    "ServiceSlots": "Location_Flag_ServiceSlots",
+    "StructureFuel": "Location_Flag_StructureFuel",
+    "QuantumCoreRoom": "Location_Flag_QuantumCoreRoom",
     "SpecializedAmmoHold": "Location_Flag_SpecializedAmmoHold",
     "SpecializedCommandCenterHold": "Location_Flag_SpecializedCommandCenterHold",
     "SpecializedFuelBay": "Location_Flag_SpecializedFuelBay",
@@ -30,7 +33,7 @@ private let locationFlagLocalizationKeys: [String: String] = [
     "SpecializedShipHold": "Location_Flag_SpecializedShipHold",
     "SpecializedSmallShipHold": "Location_Flag_SpecializedSmallShipHold",
     "StructureDeedBay": "Location_Flag_StructureDeedBay",
-    "Unlocked": "Location_Flag_Unlocked", "Wardrobe": "Location_Flag_Wardrobe",
+    "Unlocked": "Location_Flag_Unlocked", "Locked": "Location_Flag_Locked", "Wardrobe": "Location_Flag_Wardrobe",
 ]
 
 private func formatLocationFlag(_ flag: String) -> String {
@@ -40,15 +43,7 @@ private func formatLocationFlag(_ flag: String) -> String {
 
 /// 与 `LocationAssetsViewModel.processFlag` 一致：将 ESI 的逐槽位 flag 归并为分组名
 private func normalizedAssetLocationFlag(_ flag: String) -> String {
-    switch flag {
-    case let f where f.hasPrefix("HiSlot"): return "HiSlots"
-    case let f where f.hasPrefix("MedSlot"): return "MedSlots"
-    case let f where f.hasPrefix("LoSlot"): return "LoSlots"
-    case let f where f.hasPrefix("RigSlot"): return "RigSlots"
-    case let f where f.hasPrefix("SubSystemSlot"): return "SubSystemSlots"
-    case let f where f.hasPrefix("FighterTube"): return "FighterTubes"
-    default: return flag
-    }
+    SlotFlag.assetGroup(for: flag)
 }
 
 // MARK: - 从资产导出装配（DNA → 本地装配）
@@ -944,7 +939,7 @@ class LocationAssetsViewModel: ObservableObject {
     }
 
     private let flagOrder = [
-        "HiSlots", "MedSlots", "LoSlots", "RigSlots", "SubSystemSlots",
+        "HiSlots", "MedSlots", "LoSlots", "RigSlots", "SubSystemSlots", "ServiceSlots",
         "FighterBay", "FighterTubes", "DroneBay", "Cargo", "Hangar", "ShipHangar", "FleetHangar",
         "CorpSAG1", "CorpSAG2", "CorpSAG3", "CorpSAG4", "CorpSAG5", "CorpSAG6", "CorpSAG7",
         "CorpDeliveries", "Deliveries", "SpecializedAmmoHold", "SpecializedCommandCenterHold",

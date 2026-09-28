@@ -234,20 +234,18 @@ extension FitConvert {
         var services: [LocalFittingItem] = []
 
         for item in items {
-            switch item.flag {
-            case .loSlot0, .loSlot1, .loSlot2, .loSlot3, .loSlot4, .loSlot5, .loSlot6, .loSlot7:
+            switch item.flag.slot {
+            case .low:
                 lowSlots.append(item)
-            case .medSlot0, .medSlot1, .medSlot2, .medSlot3, .medSlot4, .medSlot5, .medSlot6,
-                 .medSlot7:
+            case .medium:
                 medSlots.append(item)
-            case .hiSlot0, .hiSlot1, .hiSlot2, .hiSlot3, .hiSlot4, .hiSlot5, .hiSlot6, .hiSlot7:
+            case .high:
                 hiSlots.append(item)
-            case .rigSlot0, .rigSlot1, .rigSlot2:
+            case .rig:
                 rigs.append(item)
-            case .subSystemSlot0, .subSystemSlot1, .subSystemSlot2, .subSystemSlot3:
+            case .subsystem:
                 subsystems.append(item)
-            case .serviceSlot0, .serviceSlot1, .serviceSlot2, .serviceSlot3, .serviceSlot4,
-                 .serviceSlot5, .serviceSlot6, .serviceSlot7:
+            case .service:
                 services.append(item)
             default:
                 break
@@ -279,25 +277,6 @@ extension FitConvert {
 
     /// 从槽位标识获取槽位索引（私有辅助方法）
     private static func getSlotIndex(from flag: FittingFlag) -> Int {
-        switch flag {
-        case .loSlot0, .medSlot0, .hiSlot0, .rigSlot0, .subSystemSlot0, .serviceSlot0:
-            return 0
-        case .loSlot1, .medSlot1, .hiSlot1, .rigSlot1, .subSystemSlot1, .serviceSlot1:
-            return 1
-        case .loSlot2, .medSlot2, .hiSlot2, .rigSlot2, .subSystemSlot2, .serviceSlot2:
-            return 2
-        case .loSlot3, .medSlot3, .hiSlot3, .subSystemSlot3, .serviceSlot3:
-            return 3
-        case .loSlot4, .medSlot4, .hiSlot4, .serviceSlot4:
-            return 4
-        case .loSlot5, .medSlot5, .hiSlot5, .serviceSlot5:
-            return 5
-        case .loSlot6, .medSlot6, .hiSlot6, .serviceSlot6:
-            return 6
-        case .loSlot7, .medSlot7, .hiSlot7, .serviceSlot7:
-            return 7
-        default:
-            return 999
-        }
+        flag.slotIndex ?? 999
     }
 }
