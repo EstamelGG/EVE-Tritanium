@@ -5,15 +5,17 @@ struct SkillLevelIndicator: View {
     let trainingLevel: Int
     let isTraining: Bool
     let queuedLevels: Set<Int> // 队列中的等级集合
+    let requiredLevel: Int? // 物品技能要求；未满足部分沿用目标等级的灰色方块
 
     /// 动画状态
     @State private var isBlinking = false
 
-    init(currentLevel: Int, trainingLevel: Int, isTraining: Bool, queuedLevels: Set<Int> = []) {
-        self.currentLevel = currentLevel
-        self.trainingLevel = trainingLevel
+    init(currentLevel: Int, trainingLevel: Int, isTraining: Bool, queuedLevels: Set<Int> = [], requiredLevel: Int? = nil) {
+        self.currentLevel = min(max(currentLevel, 0), 5)
+        self.trainingLevel = min(max(trainingLevel, 0), 5)
         self.isTraining = isTraining
         self.queuedLevels = queuedLevels
+        self.requiredLevel = requiredLevel.map { min(max($0, 0), 5) }
     }
 
     // 常量定义
@@ -48,14 +50,18 @@ struct SkillLevelIndicator: View {
             }
             .offset(x: blockSpacing + 0.5) // 0.5是边框宽度，加上1.5像素间距
         }
-        .onAppear {
+        .onChange(of: isTraining, initial: true) { _, _ in
             if isTraining {
                 withAnimation(
                     .easeInOut(duration: 1.0)
                         .repeatForever(autoreverses: true)
                 ) {
-                    isBlinking.toggle()
+                    isBlinking = true
                 }
+            } else {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) { isBlinking = false }
             }
         }
     }
@@ -74,8 +80,8 @@ struct SkillLevelIndicator: View {
             return cyanColor
         }
 
-        // 3. 正在训练的目标等级
-        if index < trainingLevel {
+        // 3. 尚未达到的训练目标 / 物品所需等级
+        if index < max(trainingLevel, requiredLevel ?? 0) {
             return lightGray
         }
         return .clear
@@ -83,7 +89,7 @@ struct SkillLevelIndicator: View {
 
     /// 确定方块透明度
     private func blockOpacity(for index: Int) -> Double {
-        if isTraining && index == trainingLevel - 1 {
+        if isTraining && trainingLevel > currentLevel && index == trainingLevel - 1 {
             return isBlinking ? 0.3 : 1.0
         }
         return 1.0
@@ -100,6 +106,11 @@ struct SkillLevelIndicator: View {
         SkillLevelIndicator(currentLevel: 4, trainingLevel: 5, isTraining: true)
         // 预览队列中的等级
         SkillLevelIndicator(currentLevel: 2, trainingLevel: 2, isTraining: false, queuedLevels: [3, 4])
+        // 物品所需技能复用同一外框与五格布局
+        SkillLevelIndicator(currentLevel: -1, trainingLevel: 0, isTraining: false, requiredLevel: 3)
+        SkillLevelIndicator(currentLevel: 2, trainingLevel: 0, isTraining: false, requiredLevel: 4)
+        SkillLevelIndicator(currentLevel: 2, trainingLevel: 3, isTraining: true, requiredLevel: 4)
+        SkillLevelIndicator(currentLevel: 5, trainingLevel: 0, isTraining: false, requiredLevel: 3)
     }
     .padding()
 }

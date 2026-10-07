@@ -43,6 +43,7 @@ final class SDEUpdateChecker: ObservableObject {
 
     @Published var updateStatus: SDEUpdateStatus = .notChecked
     @Published var isChecking = false
+    @Published private(set) var checkFailed = false
     @Published var lastCheckTime: Date?
     @Published var updateVersion: String?
     @Published var isButtonDisabled = false
@@ -55,8 +56,17 @@ final class SDEUpdateChecker: ObservableObject {
     var currentUpdateInfo: SDEUpdateInfo?
     var currentMetadata: CloudKitMetadata?
 
-    private let lastCheckTimeKey = "SDE_LastCheckTime"
-    private let checkInterval: TimeInterval = 60
+    private final class CachedCheck {
+        let info: SDEUpdateInfo
+        let checkedAt = Date()
+        init(info: SDEUpdateInfo) {
+            self.info = info
+        }
+    }
+
+    private let checkCache = NSCache<NSString, CachedCheck>()
+    private var cacheGeneration = 0
+    private let checkInterval: TimeInterval = 300
     static let useGitHubKey = "useGithubSDEUpdate"
 
     /// 当前是否使用 GitHub 数据源：仅 Debug 构建且开关开启时生效，正式版永远走 CloudKit
@@ -79,15 +89,18 @@ final class SDEUpdateChecker: ObservableObject {
     }
 
     private init() {
-        if let t = UserDefaults.standard.object(forKey: lastCheckTimeKey) as? TimeInterval {
-            lastCheckTime = Date(timeIntervalSince1970: t)
-        }
+        checkCache.countLimit = 2
     }
 
     func clearCheckCache() {
+        checkFailed = false
+        cacheGeneration += 1
+        checkCache.removeAllObjects()
         lastCheckTime = nil
-        UserDefaults.standard.removeObject(forKey: lastCheckTimeKey)
         updateStatus = .notChecked
+        currentUpdateInfo = nil
+        currentMetadata = nil
+        updateVersion = nil
     }
 
     func checkForUpdates() async {
@@ -95,38 +108,50 @@ final class SDEUpdateChecker: ObservableObject {
     }
 
     func forceCheckForUpdates() async {
-        guard !isButtonDisabled else { return }
+        guard !isButtonDisabled, !isChecking else { return }
         isButtonDisabled = true
-        let start = Date()
+        defer { isButtonDisabled = false }
         await checkForUpdates(force: true)
-        let remain = max(0, 2.0 - Date().timeIntervalSince(start))
-        if remain > 0 {
-            try? await Task.sleep(nanoseconds: UInt64(remain * 1e9))
-        }
-        isButtonDisabled = false
     }
 
     private func checkForUpdates(force: Bool) async {
         guard !isChecking else { return }
-        if !force,
-           let last = lastCheckTime,
-           Date().timeIntervalSince(last) <= checkInterval,
-           updateStatus == .noUpdate
-        {
-            return
-        }
-
         isChecking = true
-        updateStatus = .checking
+        checkFailed = false
         defer { isChecking = false }
-
-        SDEDownloader().clearCloudKitAssets()
-
-        let info = await fetchLatestUpdateInfo()
-        guard let info else {
-            Logger.warning("SDE 数据源无更新信息，继续使用本地数据")
-            await markLocalAsLatest()
-            return
+        let generation = cacheGeneration
+        let sourceKey: NSString = useGitHubSource ? "github" : "cloudkit"
+        let info: SDEUpdateInfo
+        if !force, let cached = checkCache.object(forKey: sourceKey),
+           Date().timeIntervalSince(cached.checkedAt) <= checkInterval
+        {
+            info = cached.info
+            lastCheckTime = cached.checkedAt
+        } else {
+            updateStatus = .checking
+            SDEDownloader().clearCloudKitAssets()
+            guard let fetched = await fetchLatestUpdateInfo() else {
+                checkFailed = true
+                checkCache.removeObject(forKey: sourceKey)
+                // A failed request must not become a cached "latest" result.
+                updateStatus = .notChecked
+                updateVersion = nil
+                currentUpdateInfo = nil
+                currentMetadata = nil
+                Logger.warning("SDE 数据源暂时不可用")
+                return
+            }
+            // A source switch or cache reset during the request invalidates its result.
+            guard generation == cacheGeneration,
+                  sourceKey == ((useGitHubSource ? "github" : "cloudkit") as NSString)
+            else {
+                updateStatus = .notChecked
+                return
+            }
+            info = fetched
+            let cached = CachedCheck(info: fetched)
+            checkCache.setObject(cached, forKey: sourceKey)
+            lastCheckTime = cached.checkedAt
         }
 
         let meta = info.metadata
@@ -152,28 +177,8 @@ final class SDEUpdateChecker: ObservableObject {
         } else {
             updateStatus = .noUpdate
             updateVersion = nil
-            persistCheckTime()
             Logger.info("SDE 已是最新")
         }
-    }
-
-    private func markLocalAsLatest() async {
-        let local = await localVersionLabel()
-        let icon = MetadataManager.shared.getLocalIconVersion()
-        currentSDEVersion = local
-        latestSDEVersion = local
-        currentIconVersion = icon
-        latestIconVersion = icon
-        updateStatus = .noUpdate
-        updateVersion = nil
-        currentUpdateInfo = nil
-        currentMetadata = nil
-        persistCheckTime()
-    }
-
-    private func persistCheckTime() {
-        lastCheckTime = Date()
-        UserDefaults.standard.set(lastCheckTime?.timeIntervalSince1970, forKey: lastCheckTimeKey)
     }
 
     private func localVersionLabel() async -> String {
@@ -457,6 +462,6 @@ final class SDEUpdateManager: ObservableObject {
         DatabaseManager.shared.loadDatabase()
         ItemTextStore.shared.syncWithActiveSDE()
         AttributeCompareMarketPolicy.reload()
-        Task { await updateChecker.forceCheckForUpdates() }
+        Task { await updateChecker.checkForUpdates() }
     }
 }

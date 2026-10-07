@@ -67,17 +67,12 @@ extension ContentView {
                 HStack {
                     ServerStatusView(mainViewModel: viewModel)
                     Spacer()
-                    if sdeUpdateChecker.updateStatus == .hasUpdate {
-                        sdeUpdateAvailableButton
-                            .transition(
-                                .asymmetric(
-                                    insertion: .opacity.combined(with: .scale(scale: 0.8, anchor: .trailing)),
-                                    removal: .opacity.combined(with: .scale(scale: 0.8, anchor: .trailing))
-                                )
-                            )
-                    }
+                    // Preserve the footer's size when update availability changes.
+                    sdeUpdateAvailableButton
+                        .opacity(sdeUpdateChecker.updateStatus == .hasUpdate ? 1 : 0)
+                        .allowsHitTesting(sdeUpdateChecker.updateStatus == .hasUpdate)
+                        .accessibilityHidden(sdeUpdateChecker.updateStatus != .hasUpdate)
                 }
-                .animation(.spring(response: 0.35, dampingFraction: 0.75), value: sdeUpdateChecker.updateStatus)
                 RateLimitCooldownView()
             }
         }
@@ -104,14 +99,13 @@ extension ContentView {
         } label: {
             HStack(spacing: 4) {
                 Text(NSLocalizedString("Main_SDE_Update_Available", comment: ""))
-                    .font(.caption)
-                    .foregroundColor(.green)
                 Image(systemName: "arrow.down.circle.fill")
-                    .font(.system(size: 16))
-                    .foregroundColor(.green)
             }
+            .font(.caption)
+            .foregroundStyle(.green)
+            .fixedSize()
         }
-        .buttonStyle(ScaleButtonStyle())
+        .buttonStyle(.plain)
     }
 
     var characterSection: some View {

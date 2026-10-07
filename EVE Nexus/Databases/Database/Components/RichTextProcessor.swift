@@ -237,6 +237,28 @@ enum RichTextProcessor {
 
     // MARK: - Token
 
+    /// EVE 的 <url=…> 不是 HTML 属性语法，先规范化以确保闭标签和链接范围正确。
+    /// 保留 url 标签，使外部链接继续走确认弹窗。
+    static func normalizeEVELinks(_ html: String) -> String {
+        let pattern = #"<url\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))\s*>"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return html
+        }
+        let source = html as NSString
+        var result = html
+        for match in regex.matches(in: html, range: NSRange(location: 0, length: source.length)).reversed() {
+            guard let capture = (1 ... 3).first(where: { match.range(at: $0).location != NSNotFound }),
+                  let range = Range(match.range, in: result) else { continue }
+            // 已存在的 HTML 实体交给 SwiftSoup 解码；仅转义属性分隔符。
+            let href = source.substring(with: match.range(at: capture))
+                .replacingOccurrences(of: "\"", with: "&quot;")
+                .replacingOccurrences(of: "<", with: "&lt;")
+                .replacingOccurrences(of: ">", with: "&gt;")
+            result.replaceSubrange(range, with: "<url href=\"\(href)\">")
+        }
+        return result
+    }
+
     private enum Token {
         case text(String)
         case br
@@ -251,7 +273,7 @@ enum RichTextProcessor {
     /// - 注释、CDATA 等被自动跳过
     /// - 未闭合标签、标签交叉由 SwiftSoup 自动修复
     private static func tokenize(_ html: String) -> [Token] {
-        guard let document = try? SwiftSoup.parse(html),
+        guard let document = try? SwiftSoup.parse(normalizeEVELinks(html)),
               let body = document.body()
         else {
             return [.text(html)]
@@ -329,9 +351,9 @@ enum RichTextProcessor {
     }
 
     /// 从 <url> 元素提取 href 值
-    /// SwiftSoup 对非标准 `<url=xxx>` 的解析结果不固定，按以下优先级回退：
+    /// `<url=xxx>` 已在解析前规范化为 href；同时兼容历史属性写法。
     /// 1. `href` 属性（标准 HTML 写法 `<url href="xxx">`）
-    /// 2. 第一个非空属性值（`<url=xxx>` 被解析为 `<url xxx>`，xxx 是属性名）
+    /// 2. 第一个非空属性值
     /// 3. 第一个属性名（兜底）
     private static func extractURLTagHref(from element: Element) -> String {
         // 1. 标准 href 属性

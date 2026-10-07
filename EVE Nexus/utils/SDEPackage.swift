@@ -165,6 +165,10 @@ enum LocalSDELayout {
         root.appendingPathComponent("metadata.json")
     }
 
+    static var whatsNewURL: URL {
+        root.appendingPathComponent("whats_new.json")
+    }
+
     /// 清除旧版独立 icons 目录（Documents/icons、Documents/Icons）。
     /// 仅在 `sde/icons` 已有有效内容时执行，避免新包未就绪时误删唯一数据源。
     static func purgeLegacyInstallArtifacts() {

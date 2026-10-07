@@ -1,80 +1,5 @@
 import SwiftUI
 
-/// 技能等级方块指示器：方块数 = 目标等级，按游戏视觉显示 4 种状态
-/// - 完全没学：灰色小点
-/// - 已学但该等级未满足：深灰小方块
-/// - 已满足等级：实心方块
-/// - 正在训练中：浅蓝色方块
-struct SkillRequirementLevelBlocks: View {
-    let currentLevel: Int // 已训练等级（-1=未拥有, -2=无角色, nil=加载中）
-    let requiredLevel: Int
-    let trainingLevel: Int? // 正在训练到的等级，nil=未在训练
-
-    /// 每个格子的尺寸
-    private let cellSize: CGFloat = 10
-    private let blockSize: CGFloat = 8 // 大方块（满足/训练中）
-    private let smallBlockSize: CGFloat = 5 // 小方块（部分学未满足）
-    private let dotSize: CGFloat = 3 // 小点（完全没学）
-    private let spacing: CGFloat = 2
-
-    var body: some View {
-        HStack(spacing: spacing) {
-            ForEach(0 ..< requiredLevel, id: \.self) { index in
-                block(for: index)
-                    .frame(width: cellSize, height: cellSize)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func block(for index: Int) -> some View {
-        let level = index + 1
-        let normalized = normalizedCurrentLevel
-
-        if let trainingLevel, level == trainingLevel, normalized < level {
-            // 正在训练该等级：浅蓝色大方块
-            Rectangle()
-                .fill(Color.blue.opacity(0.7))
-                .frame(width: blockSize, height: blockSize)
-        } else if normalized <= 0 {
-            // 完全没学：灰色小点
-            Rectangle()
-                .fill(Color.secondary.opacity(0.3))
-                .frame(width: dotSize, height: dotSize)
-        } else if level <= normalized {
-            // 已满足：实心方块（显式黑白，避免 sheet 等环境下动态色解析异常）
-            Rectangle()
-                .fill(solidFillColor)
-                .frame(width: blockSize, height: blockSize)
-        } else {
-            // 已学技能但该等级未满足：深灰小方块
-            Rectangle()
-                .fill(partialFillColor)
-                .frame(width: smallBlockSize, height: smallBlockSize)
-        }
-    }
-
-    /// 已满足方块：浅色模式纯黑 / 深色模式纯白（由 UIKit trait 驱动，不随 SwiftUI 环境变化）
-    private var solidFillColor: Color {
-        Color(UIColor { $0.userInterfaceStyle == .dark ? .white : .black })
-    }
-
-    /// 部分满足小方块：浅色模式深灰 / 深色模式浅灰
-    private var partialFillColor: Color {
-        Color(UIColor { trait in
-            trait.userInterfaceStyle == .dark
-                ? UIColor(white: 0.67, alpha: 0.7)
-                : UIColor(white: 0.33, alpha: 0.7)
-        })
-    }
-
-    /// 将 currentLevel 规约到 0-5：-2(无角色)/-1(未学)/0 统一视为 0
-    private var normalizedCurrentLevel: Int {
-        guard currentLevel >= 0 else { return 0 }
-        return min(currentLevel, 5)
-    }
-}
-
 /// 单个技能要求行
 struct SkillRequirementRow: View {
     let skillID: Int
@@ -183,10 +108,11 @@ struct SkillRequirementRow: View {
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                             Spacer(minLength: 8)
-                            SkillRequirementLevelBlocks(
+                            SkillLevelIndicator(
                                 currentLevel: currentLevel ?? 0,
-                                requiredLevel: level,
-                                trainingLevel: trainingLevel
+                                trainingLevel: trainingLevel ?? 0,
+                                isTraining: trainingLevel.map { $0 > max(currentLevel ?? 0, 0) } ?? false,
+                                requiredLevel: level
                             )
                         }
 

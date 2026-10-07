@@ -106,7 +106,7 @@ struct SelectLanguageView: View {
         .animation(.easeInOut(duration: 0.25), value: updateChecker.updateStatus)
         .animation(.spring(response: 0.35, dampingFraction: 0.78), value: checkFeedback)
         .sheet(isPresented: $showingSDEUpdateSheet) {
-            SDEUpdateDetailView()
+            SDEInformationView()
         }
         .sensoryFeedback(.success, trigger: checkFeedback) { _, new in
             new == .upToDate

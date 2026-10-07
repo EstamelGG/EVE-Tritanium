@@ -90,6 +90,7 @@ enum FeatureNoteKind {
     case cloneCooldown
     case skillQueue
     case killMailDataSource
+    case sdeUpdateHint
 }
 
 enum FeaturePlatform {
@@ -227,7 +228,7 @@ enum FeatureRegistry {
         .init(id: .settings, section: .other, requiresLogin: false, icon: "Settings"),
         .init(id: .updateHistory, section: .other, requiresLogin: false, icon: "log"),
         .init(id: .inAppPurchase, section: .other, requiresLogin: false, icon: "tipoftheday", platform: .iOSDeviceOnly),
-        .init(id: .about, section: .other, requiresLogin: false, icon: "info"),
+        .init(id: .about, section: .other, requiresLogin: false, icon: "info", noteKind: .sdeUpdateHint),
     ]
 
     private static let byID: [FeatureID: FeatureDescriptor] = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })

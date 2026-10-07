@@ -106,6 +106,13 @@ extension ContentView {
         switch feature.noteKind {
         case .none:
             return nil
+        case .sdeUpdateHint:
+            return AnyView(
+                Text(NSLocalizedString("Main_About_SDE_Update_Hint", comment: ""))
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            )
         case .skillPoints:
             let text = viewModel.characterStats.skillPoints
             guard !text.isEmpty, text != "--" else { return nil }

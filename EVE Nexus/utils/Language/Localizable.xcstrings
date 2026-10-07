@@ -31,6 +31,9 @@
     " %@" : {
       "shouldTranslate" : false
     },
+    " → " : {
+      "shouldTranslate" : false
+    },
     "-" : {
       "shouldTranslate" : false
     },
@@ -379,6 +382,17 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@: %2$@ ISK"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "%@: %@, %@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@, %3$@: %4$@"
           }
         }
       },
@@ -22527,6 +22541,22 @@
         }
       }
     },
+    "Main_About_SDE_Update_Hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update the SDE database here"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在这里可以更新SDE数据库"
+          }
+        }
+      }
+    },
     "Main_Agents" : {
       "localizations" : {
         "en" : {
@@ -41690,6 +41720,702 @@
         }
       }
     },
+    "SDE_Changes_Absent" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not present"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不存在"
+          }
+        }
+      }
+    },
+    "SDE_Changes_activities" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activities"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "活动"
+          }
+        }
+      }
+    },
+    "SDE_Changes_added" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增"
+          }
+        }
+      }
+    },
+    "SDE_Changes_Attributes" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attribute Changes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "属性变更"
+          }
+        }
+      }
+    },
+    "SDE_Changes_changed" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modified"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "修改"
+          }
+        }
+      }
+    },
+    "SDE_Changes_Collapse" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show less"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收起"
+          }
+        }
+      }
+    },
+    "SDE_Changes_copying" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copying"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
+          }
+        }
+      }
+    },
+    "SDE_Changes_DemoNotice" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demo report with simulated text, attribute and blueprint changes. These are not actual SDE changes."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demo 报告包含模拟文本、属性和蓝图变更，不代表真实 SDE 更新。"
+          }
+        }
+      }
+    },
+    "SDE_Changes_description" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Description"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "描述"
+          }
+        }
+      }
+    },
+    "SDE_Changes_DescriptionChanges" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Description changes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "描述变化"
+          }
+        }
+      }
+    },
+    "SDE_Changes_Done" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "SDE_Changes_Empty" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Changes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无变更"
+          }
+        }
+      }
+    },
+    "SDE_Changes_EmptyString" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empty string (\"\")"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空字符串（\"\"）"
+          }
+        }
+      }
+    },
+    "SDE_Changes_Expand" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show more"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展开全文"
+          }
+        }
+      }
+    },
+    "SDE_Changes_General" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "General"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "基本信息"
+          }
+        }
+      }
+    },
+    "SDE_Changes_invention" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invention"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发明"
+          }
+        }
+      }
+    },
+    "SDE_Changes_level" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Level"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等级"
+          }
+        }
+      }
+    },
+    "SDE_Changes_manufacturing" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manufacturing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "制造"
+          }
+        }
+      }
+    },
+    "SDE_Changes_materials" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Materials"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "材料"
+          }
+        }
+      }
+    },
+    "SDE_Changes_maxProductionLimit" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maximum Production Limit"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大生产流程数"
+          }
+        }
+      }
+    },
+    "SDE_Changes_NameChanges" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name changes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "名称变化"
+          }
+        }
+      }
+    },
+    "SDE_Changes_New" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New value"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新值"
+          }
+        }
+      }
+    },
+    "SDE_Changes_NoResults" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Results"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无搜索结果"
+          }
+        }
+      }
+    },
+    "SDE_Changes_Old" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Old value"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旧值"
+          }
+        }
+      }
+    },
+    "SDE_Changes_probability" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Probability"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "概率"
+          }
+        }
+      }
+    },
+    "SDE_Changes_products" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Products"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "产物"
+          }
+        }
+      }
+    },
+    "SDE_Changes_quantity" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quantity"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "数量"
+          }
+        }
+      }
+    },
+    "SDE_Changes_reaction" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reaction"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "反应"
+          }
+        }
+      }
+    },
+    "SDE_Changes_ReadError" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The report is missing, damaged, or uses an unsupported format."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "报告不存在、内容损坏，或使用了尚不支持的格式。"
+          }
+        }
+      }
+    },
+    "SDE_Changes_Records" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "records"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "条记录"
+          }
+        }
+      }
+    },
+    "SDE_Changes_removed" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除"
+          }
+        }
+      }
+    },
+    "SDE_Changes_research_material" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Material Efficiency Research"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "材料效率研究"
+          }
+        }
+      }
+    },
+    "SDE_Changes_research_time" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time Efficiency Research"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "时间效率研究"
+          }
+        }
+      }
+    },
+    "SDE_Changes_Search" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search this folder by name or ID"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按名称或 ID 搜索当前目录"
+          }
+        }
+      }
+    },
+    "SDE_Changes_skills" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skills"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "技能"
+          }
+        }
+      }
+    },
+    "SDE_Changes_time" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time (seconds)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "时间（秒）"
+          }
+        }
+      }
+    },
+    "SDE_Changes_Title" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SDE Updates"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SDE 更新"
+          }
+        }
+      }
+    },
+    "SDE_Changes_Unavailable" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report Unavailable"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法读取更新报告"
+          }
+        }
+      }
+    },
+    "SDE_Changes_Unknown" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知"
+          }
+        }
+      }
+    },
+    "SDE_Changes_ViewItem" : {
+      "comment" : "SDE change report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View item details"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看物品详情"
+          }
+        }
+      }
+    },
+    "SDE_Check_Failed_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to Check for Updates"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法检查更新"
+          }
+        }
+      }
+    },
     "SDE_Check_Hint" : {
       "localizations" : {
         "en" : {
@@ -41702,6 +42428,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "点按检查数据包与图标更新"
+          }
+        }
+      }
+    },
+    "SDE_Check_Ready" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for SDE Updates"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查 SDE 更新"
+          }
+        }
+      }
+    },
+    "SDE_Check_Unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to confirm updates. Please try again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂时无法确认更新，请重试。"
           }
         }
       }
@@ -41852,18 +42610,82 @@
         }
       }
     },
-    "SDE_Last_Checked" : {
+    "SDE_Info_Title" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Last checked: %@"
+            "value" : "SDE Information"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "上次检查：%@"
+            "value" : "SDE 信息"
+          }
+        }
+      }
+    },
+    "SDE_Info_View" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View SDE Info"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看 SDE 信息"
+          }
+        }
+      }
+    },
+    "SDE_Install_Update" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install Update"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安装更新"
+          }
+        }
+      }
+    },
+    "SDE_Installed_Section" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installed SDE"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已安装的 SDE"
+          }
+        }
+      }
+    },
+    "SDE_Last_Checked" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last checked:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上次检查："
           }
         }
       }
@@ -42216,6 +43038,22 @@
         }
       }
     },
+    "SDE_Package_Release_Date" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Package Released"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新包发布时间"
+          }
+        }
+      }
+    },
     "SDE_Reset_Cancel" : {
       "localizations" : {
         "en" : {
@@ -42361,6 +43199,22 @@
         }
       }
     },
+    "SDE_Retry_Check" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Again"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新检查"
+          }
+        }
+      }
+    },
     "SDE_Source_CloudKit" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -42491,23 +43345,6 @@
         }
       }
     },
-    "SDE_Update" : {
-      "comment" : "更新",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Update"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "更新"
-          }
-        }
-      }
-    },
     "SDE_Update_Details" : {
       "comment" : "SDE更新详情",
       "localizations" : {
@@ -42537,6 +43374,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "更新失败"
+          }
+        }
+      }
+    },
+    "SDE_Update_Section" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Database Update"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "数据库更新"
+          }
+        }
+      }
+    },
+    "SDE_View_Changes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View SDE Changes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看 SDE 更新细节"
           }
         }
       }
@@ -46594,9 +47463,6 @@
       }
     },
     "v%@" : {
-      "shouldTranslate" : false
-    },
-    "v%lld" : {
       "shouldTranslate" : false
     },
     "Value" : {

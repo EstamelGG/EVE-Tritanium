@@ -217,8 +217,7 @@ struct ContentView: View {
                 await SDEUpdateChecker.shared.checkForUpdates()
             }
         }) {
-            SDEUpdateDetailView()
-                .interactiveDismissDisabled()
+            SDEInformationView()
         }
     }
 

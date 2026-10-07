@@ -1,6 +1,10 @@
 # 仅维护者使用：构建并上传到 App Store Connect 的内部 TestFlight。
 # 依赖仓库的 APP_STORE_CONNECT_* secrets（App Store Connect API Key），
 # fork 与外部贡献者没有这些 secrets。
+#
+# 归档前会用同一个 API Key 记录团队证书 id 快照（ci/asc_certificates.py，不打印证书明细），
+# 构建结束后撤销本次新建的证书，避免临时 runner 现场申请的证书把团队证书配额吃满。若日志出现
+# "Choose a certificate to revoke"，说明配额已满，需到 Apple 开发者门户撤销过期/不用的证书。
 
 # 从 Actions 页面手动触发（workflow_dispatch）。
 name: Internal TestFlight
@@ -68,6 +72,7 @@ jobs:
             echo "ARCHIVE_PATH=${RUNNER_TEMP}/EVE_Nexus.xcarchive"
             echo "DERIVED_DATA_PATH=${RUNNER_TEMP}/DerivedData"
             echo "EXPORT_PATH=${RUNNER_TEMP}/TestFlightExport"
+            echo "CERT_SNAPSHOT_PATH=${RUNNER_TEMP}/asc-certificates-before.json"
           } >> "${GITHUB_ENV}"
       - name: Detect marketing version
         run: |
@@ -97,6 +102,11 @@ jobs:
           fi
           chmod 600 "${key_path}"
           echo "APP_STORE_CONNECT_KEY_PATH=${key_path}" >> "${GITHUB_ENV}"
+      - name: Snapshot signing certificates
+        # 归档前记录现有证书 id 快照（只记 id，不打印明细），供最后清理本次新建的证书使用
+        run: |
+          set -euo pipefail
+          python3 ci/asc_certificates.py preflight "${CERT_SNAPSHOT_PATH}"
       - name: Select build number
         env:
           REQUESTED_BUILD_NUMBER: ${{ inputs.build_number }}
@@ -170,3 +180,10 @@ jobs:
           # destination=upload 模式下 ipa 上传后不会保留在 EXPORT_PATH，目录可能不存在
           ls -la "${EXPORT_PATH}" 2>/dev/null || true
           echo "Done. Check TestFlight (internal testers) for version ${MARKETING_VERSION} (${BUILD_NUMBER})."
+      - name: Revoke certificates created by this run
+        # 临时 runner 上没有证书私钥，Xcode 会现场申请证书（"Created via API"），
+        # 用完即撤销，避免团队证书配额被一次次构建吃满。只撤销本次新建的证书。
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 ci/asc_certificates.py cleanup "${CERT_SNAPSHOT_PATH}"

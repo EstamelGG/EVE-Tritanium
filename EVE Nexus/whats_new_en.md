@@ -511,3 +511,9 @@ Fixes & Improvements:
 
 1. Optimized the UI of the "Incursions" feature  
 2. Improved other UI elements and interaction logic
+
+# v1.14.7 October 9, 2026
+
+1. New "SDE Information" page: view the current version and package date, and check or install updates
+2. New "View SDE Changes": review added and modified items/blueprints with field-by-field differences
+3. Updated built-in SDE database and icons

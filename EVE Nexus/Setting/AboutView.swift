@@ -10,7 +10,8 @@ struct AboutView: View {
     }
 
     @State private var databaseVersionInfo: AppConfiguration.Database.VersionInfo?
-    @State private var showingSDEUpdateSheet = false
+    @State private var showingSDEInfo = false
+    @ObservedObject private var updateChecker = SDEUpdateChecker.shared
     @State private var sdeSource: String?
 
     private func reloadSDESource() {
@@ -85,11 +86,26 @@ struct AboutView: View {
 
             // Database Version Section
             Section {
-                DatabaseVersionRow(
-                    versionInfo: databaseVersionInfo,
-                    showingUpdateSheet: $showingSDEUpdateSheet,
-                    sdeSource: sdeSource
-                )
+                if updateChecker.updateStatus == .hasUpdate {
+                    Button {
+                        showingSDEInfo = true
+                    } label: {
+                        DatabaseVersionRow(versionInfo: databaseVersionInfo, sdeSource: sdeSource)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    DatabaseVersionRow(versionInfo: databaseVersionInfo, sdeSource: sdeSource)
+                }
+            } footer: {
+                Button {
+                    showingSDEInfo = true
+                } label: {
+                    Label(NSLocalizedString("SDE_Info_View", comment: ""), systemImage: "info.circle")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
 
             // Information Section
@@ -106,19 +122,17 @@ struct AboutView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .sheet(isPresented: $showingSDEUpdateSheet, onDismiss: {
-            // 更新完成后重新加载数据库版本信息
+        .sheet(isPresented: $showingSDEInfo, onDismiss: {
             databaseVersionInfo = AppConfiguration.Database.detailedVersionInfo
             reloadSDESource()
-
-            // 重新检查更新状态
-            Task.detached(priority: .background) {
-                await SDEUpdateChecker.shared.checkForUpdates()
-            }
         }) {
-            SDEUpdateDetailView()
-                .interactiveDismissDisabled()
+            SDEInformationView()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SDEDataUpdated")).receive(on: RunLoop.main)) { _ in
+            databaseVersionInfo = AppConfiguration.Database.detailedVersionInfo
+            reloadSDESource()
+        }
+        .task { await SDEUpdateChecker.shared.checkForUpdates() }
         .onAppear {
             databaseVersionInfo = AppConfiguration.Database.detailedVersionInfo
             reloadSDESource()
@@ -129,20 +143,11 @@ struct AboutView: View {
 /// 数据库版本显示组件
 struct DatabaseVersionRow: View {
     let versionInfo: AppConfiguration.Database.VersionInfo?
-    @Binding var showingUpdateSheet: Bool
     var sdeSource: String?
 
     @StateObject private var updateChecker = SDEUpdateChecker.shared
-    @State private var statusBounce = 0
-    @State private var justConfirmedLatest = false
-    @State private var successHaptic = 0
-
     private var hasUpdate: Bool {
         updateChecker.updateStatus == .hasUpdate
-    }
-
-    private var isChecking: Bool {
-        updateChecker.isChecking
     }
 
     private var isUsingBuiltInDatabase: Bool {
@@ -213,15 +218,9 @@ struct DatabaseVersionRow: View {
                             .font(.system(size: 13))
                             .foregroundColor(.orange)
                             .transition(.scale.combined(with: .opacity))
-                    } else if justConfirmedLatest {
-                        Text(NSLocalizedString("SDE_Already_Latest", comment: ""))
-                            .font(.system(size: 13))
-                            .foregroundColor(.green)
-                            .transition(.scale.combined(with: .opacity))
                     }
                 }
                 .animation(.spring(response: 0.35, dampingFraction: 0.75), value: hasUpdate)
-                .animation(.spring(response: 0.35, dampingFraction: 0.75), value: justConfirmedLatest)
 
                 if let info = versionInfo {
                     Text("\(NSLocalizedString("Main_About_Build_Number", comment: "")): \(info.fullVersion)")
@@ -241,59 +240,8 @@ struct DatabaseVersionRow: View {
             }
 
             Spacer()
-
-            Group {
-                if isChecking {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                } else if hasUpdate {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.orange)
-                        .symbolEffect(.bounce, value: statusBounce)
-                } else if updateChecker.updateStatus == .noUpdate {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.green)
-                        .symbolEffect(.bounce, value: statusBounce)
-                        .scaleEffect(justConfirmedLatest ? 1.12 : 1)
-                }
-            }
-            .animation(.spring(response: 0.34, dampingFraction: 0.65), value: justConfirmedLatest)
-            .animation(.easeInOut(duration: 0.2), value: isChecking)
         }
         .padding(.vertical, 6)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if hasUpdate {
-                showingUpdateSheet = true
-            } else if !isChecking {
-                Task { await recheckUpdates() }
-            }
-        }
-        .sensoryFeedback(.success, trigger: successHaptic)
-        .onAppear {
-            Task.detached(priority: .background) {
-                await SDEUpdateChecker.shared.checkForUpdates()
-            }
-        }
-    }
-
-    private func recheckUpdates() async {
-        await updateChecker.forceCheckForUpdates()
-        statusBounce += 1
-        guard updateChecker.updateStatus == .hasUpdate else {
-            successHaptic += 1
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.68)) {
-                justConfirmedLatest = true
-            }
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            withAnimation(.easeInOut(duration: 0.25)) {
-                justConfirmedLatest = false
-            }
-            return
-        }
-        showingUpdateSheet = true
     }
 }
 
