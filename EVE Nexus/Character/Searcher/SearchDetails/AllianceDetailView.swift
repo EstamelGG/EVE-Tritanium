@@ -2,6 +2,7 @@ import SwiftUI
 
 /// 声望视图
 private struct AllianceStandingsView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let allianceId: Int
     let allianceName: String
     let character: EVECharacterInfo
@@ -54,6 +55,7 @@ private struct AllianceStandingsView: View {
 }
 
 struct AllianceDetailView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let allianceId: Int
     let character: EVECharacterInfo
 

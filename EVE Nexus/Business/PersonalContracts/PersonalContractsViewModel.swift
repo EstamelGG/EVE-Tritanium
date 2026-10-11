@@ -136,11 +136,9 @@ final class PersonalContractsViewModel: ObservableObject {
     /// 添加一个标志来跟踪是否正在进行强制刷新
     private var isForceRefreshing = false
 
-    private let calendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.current // 使用本地时区
-        return calendar
-    }()
+    private var calendar: Calendar {
+        FormatUtil.appCalendar
+    }
 
     /// 添加地点名称缓存
     private var locationCache: [Int64: String] = [:]

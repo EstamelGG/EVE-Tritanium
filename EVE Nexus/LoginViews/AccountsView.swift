@@ -154,6 +154,7 @@ struct AccountsView: View {
     @State private var isRefreshing = false
     @State private var refreshingCharacters: Set<Int> = []
     @State private var refreshingTotal = 0
+    @State private var displayedSkillQueues: [Int: [SkillQueueItem]] = [:]
     @State private var expiredTokenCharacters: Set<Int> = []
     @State private var isLoggingIn = false
     @State private var isRefreshingScopes = false
@@ -447,17 +448,24 @@ struct AccountsView: View {
             SteamLoginHelpView()
         }
         .onAppear {
-            viewModel.loadCharacters()
             let characterAuths = EVELogin.shared.loadCharacters()
-            // 同步套上已知过期遮罩，避免首帧先显示正常头像
             expiredTokenCharacters = Set(
                 characterAuths.filter(\.character.refreshTokenExpired).map(\.character.CharacterID)
             )
-
-            // 从缓存更新所有角色的数据
-            Task { @MainActor in
+            // 保留原有的人物与头像加载流程；人物列表就绪后再计算技能缓存。
+            viewModel.loadCharacters {
                 for auth in characterAuths {
-                    await loadCachedData(for: auth.character.CharacterID)
+                    let id = auth.character.CharacterID
+                    if let cached = CharacterSkillsAPI.shared.loadSkillsAndQueueFromCacheIfAvailable(
+                        characterId: id, allowExpired: true
+                    ) {
+                        applySkillSnapshot(cached.skills, queue: cached.queue, characterId: id, recalculate: true)
+                    }
+                }
+                Task { @MainActor in
+                    for auth in characterAuths {
+                        await loadCachedData(for: auth.character.CharacterID)
+                    }
                 }
             }
         }
@@ -544,7 +552,7 @@ struct AccountsView: View {
         }
     }
 
-    /// 从缓存加载单个角色的全部数据（钱包 / 技能点 / 技能队列 / 位置 / 头像 / 公共信息），并写入 ViewModel
+    /// 更新人物的钱包、技能、位置与公共信息；头像由独立任务优先读取缓存。
     private func loadCachedData(for characterId: Int) async {
         // 钱包余额
         let cachedBalance = await CharacterWalletAPI.shared.getCachedWalletBalance(
@@ -556,25 +564,13 @@ struct AccountsView: View {
             }
         }
 
-        // 技能点
-        if let skillsInfo = try? await CharacterSkillsAPI.shared.fetchCharacterSkills(
-            characterId: characterId,
-            forceRefresh: false
-        ) {
-            viewModel.updateCharacter(characterId: characterId) { character in
-                character.totalSkillPoints = skillsInfo.total_sp
-                character.unallocatedSkillPoints = skillsInfo.unallocated_sp
-            }
-        }
-
-        // 技能队列
-        if let queue = try? await CharacterSkillsAPI.shared.fetchSkillQueue(
-            characterId: characterId,
-            forceRefresh: false
-        ) {
-            viewModel.updateCharacter(characterId: characterId) { character in
-                applySkillQueue(queue, to: &character)
-            }
+        // 成对检查技能与队列，避免分开请求导致合并缓存的一半被清空。
+        if !expiredTokenCharacters.contains(characterId),
+           let latest = try? await CharacterSkillsAPI.shared.fetchCharacterSkillsAndQueue(
+               characterId: characterId, forceRefresh: true
+           ), !Task.isCancelled
+        {
+            applySkillSnapshot(latest.skills, queue: latest.queue, characterId: characterId)
         }
 
         // 位置信息
@@ -594,14 +590,6 @@ struct AccountsView: View {
                     character.location = locationInfo
                 }
             }
-        }
-
-        // 头像
-        if let portrait = try? await CharacterAPI.shared.fetchCharacterPortrait(
-            characterId: characterId,
-            forceRefresh: false
-        ) {
-            viewModel.characterPortraits[characterId] = portrait
         }
 
         // 角色公共信息（组织信息）
@@ -629,7 +617,8 @@ struct AccountsView: View {
             refreshTokenhasExpired: expiredTokenCharacters.contains(character.CharacterID),
             formatISK: FormatUtil.formatISK,
             formatSkillPoints: { FormatUtil.formatForUI(Double($0)) },
-            formatRemainingTime: formatRemainingTime
+            formatRemainingTime: formatRemainingTime,
+            skillQueue: displayedSkillQueues[character.CharacterID]
         )
     }
 
@@ -640,42 +629,39 @@ struct AccountsView: View {
         await MainActor.run { operation() }
     }
 
+    @MainActor
+    private func applySkillSnapshot(
+        _ skills: CharacterSkillsResponse, queue: [SkillQueueItem],
+        characterId: Int, recalculate: Bool = false
+    ) {
+        guard let character = viewModel.characters.first(where: { $0.CharacterID == characterId }) else { return }
+        let queueChanged = displayedSkillQueues[characterId] != queue
+        // 即使 ESI 数据未变，请求期间也可能刚好完成一个技能。
+        let now = Date()
+        let pendingQueue = queue.filter { $0.finish_date.map { $0 > now } ?? true }
+        let activeSkill = pendingQueue.first(where: { $0.isCurrentlyTraining })
+        let displayedSkill = activeSkill ?? pendingQueue.first
+        let trainingStateChanged = character.currentSkill?.skillId != displayedSkill?.skill_id
+            || character.currentSkill?.level != displayedSkill?.skillLevel
+            || (character.currentSkill?.remainingTime != nil) != (activeSkill != nil)
+        let pointsChanged = character.totalSkillPoints != skills.total_sp
+            || character.unallocatedSkillPoints != skills.unallocated_sp
+        guard recalculate || queueChanged || pointsChanged || trainingStateChanged else { return }
+        viewModel.updateCharacter(characterId: characterId) { character in
+            character.totalSkillPoints = skills.total_sp
+            character.unallocatedSkillPoints = skills.unallocated_sp
+            if recalculate || queueChanged || trainingStateChanged {
+                applySkillQueue(queue, to: &character)
+            }
+        }
+        displayedSkillQueues[characterId] = queue
+    }
+
     /// 从技能队列提取当前技能信息并写入角色（统一处理 训练中 / 暂停 / 空队列 三种状态）
     private func applySkillQueue(_ queue: [SkillQueueItem], to character: inout EVECharacterInfo) {
-        character.skillQueueLength = queue.count
-
-        if let currentSkill = queue.first(where: { $0.isCurrentlyTraining }),
-           let skillName = SkillTreeManager.shared.getSkillName(for: currentSkill.skill_id)
-        {
-            // 训练中
-            character.currentSkill = EVECharacterInfo.CurrentSkillInfo(
-                skillId: currentSkill.skill_id,
-                name: skillName,
-                level: currentSkill.skillLevel,
-                progress: currentSkill.progress,
-                remainingTime: currentSkill.remainingTime
-            )
-        } else if let firstSkill = queue.first,
-                  let skillName = SkillTreeManager.shared.getSkillName(for: firstSkill.skill_id),
-                  let trainingStartSp = firstSkill.training_start_sp,
-                  let levelEndSp = firstSkill.level_end_sp
-        {
-            // 暂停状态：根据已花费 SP 计算实际进度
-            character.currentSkill = EVECharacterInfo.CurrentSkillInfo(
-                skillId: firstSkill.skill_id,
-                name: skillName,
-                level: firstSkill.skillLevel,
-                progress: SkillProgressCalculator.calculateProgress(
-                    trainingStartSp: trainingStartSp,
-                    levelEndSp: levelEndSp,
-                    finishedLevel: firstSkill.finished_level
-                ),
-                remainingTime: nil
-            )
-        } else {
-            // 队列为空
-            character.currentSkill = nil
-        }
+        let now = Date()
+        character.skillQueueLength = queue.filter { $0.finish_date.map { $0 > now } ?? true }.count
+        character.currentSkill = accountCurrentSkill(in: queue, at: now)
     }
 
     /// 将 ViewModel 中的角色信息写回 UserDefaults，使下次进入账号页时技能进度等与上次展示一致
@@ -699,6 +685,16 @@ struct AccountsView: View {
         isRefreshing = true
 
         let characterAuths = EVELogin.shared.loadCharacters()
+
+        // 下拉刷新同样先按当前时间更新本地进度，再等待 ESI。
+        for auth in characterAuths {
+            let id = auth.character.CharacterID
+            if let cached = CharacterSkillsAPI.shared.loadSkillsAndQueueFromCacheIfAvailable(
+                characterId: id, allowExpired: true
+            ) {
+                applySkillSnapshot(cached.skills, queue: cached.queue, characterId: id, recalculate: true)
+            }
+        }
 
         // 先套上已知过期遮罩，且不进入刷新转圈（避免遮罩被 ProgressView 盖住）
         let knownExpiredIds = Set(
@@ -775,17 +771,7 @@ struct AccountsView: View {
 
     /// 格式化剩余时间显示
     private func formatRemainingTime(_ seconds: TimeInterval) -> String {
-        let days = Int(seconds) / 86400
-        let hours = (Int(seconds) % 86400) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
-
-        if days > 0 {
-            return "\(days)d \(hours)h \(minutes)m"
-        } else if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        } else {
-            return "\(minutes)m"
-        }
+        FormatUtil.formatCompactDuration(seconds, rounding: .ceil)
     }
 
     /// processLogin 成功后的 UI / 数据收尾（权威落盘已在 processLogin 完成）
@@ -830,13 +816,11 @@ struct AccountsView: View {
         )
 
         await updateUI {
+            applySkillSnapshot(skillsResponse, queue: queue, characterId: characterId)
             self.viewModel.updateCharacter(characterId: characterId) { character in
                 character.corporationId = publicInfo.corporation_id
                 character.allianceId = publicInfo.alliance_id
                 character.factionId = publicInfo.faction_id
-                character.totalSkillPoints = skillsResponse.total_sp
-                character.unallocatedSkillPoints = skillsResponse.unallocated_sp
-                applySkillQueue(queue, to: &character)
                 character.walletBalance = balance
                 character.locationStatus = location.locationStatus
             }
@@ -888,6 +872,44 @@ struct AccountsView: View {
     }
 }
 
+private func accountCurrentSkill(in queue: [SkillQueueItem], at now: Date) -> EVECharacterInfo.CurrentSkillInfo? {
+    // 旧缓存中可能仍包含已经完成的项目，不能将它们显示为暂停训练。
+    let queue = queue.filter { $0.finish_date.map { $0 > now } ?? true }
+
+    if let currentSkill = queue.first(where: { $0.finish_date != nil && ($0.start_date.map { $0 <= now } ?? false) }),
+       let skillName = SkillTreeManager.shared.getSkillName(for: currentSkill.skill_id)
+    {
+        // 训练中
+        return EVECharacterInfo.CurrentSkillInfo(
+            skillId: currentSkill.skill_id,
+            name: skillName,
+            level: currentSkill.skillLevel,
+            progress: currentSkill.progress(at: now),
+            remainingTime: currentSkill.finish_date.map { max(0, $0.timeIntervalSince(now)) }
+        )
+    } else if let firstSkill = queue.first,
+              let skillName = SkillTreeManager.shared.getSkillName(for: firstSkill.skill_id),
+              let trainingStartSp = firstSkill.training_start_sp,
+              let levelEndSp = firstSkill.level_end_sp
+    {
+        // 暂停状态：根据已花费 SP 计算实际进度
+        return EVECharacterInfo.CurrentSkillInfo(
+            skillId: firstSkill.skill_id,
+            name: skillName,
+            level: firstSkill.skillLevel,
+            progress: SkillProgressCalculator.calculateProgress(
+                trainingStartSp: trainingStartSp,
+                levelEndSp: levelEndSp,
+                finishedLevel: firstSkill.finished_level
+            ),
+            remainingTime: nil
+        )
+    } else {
+        // 队列为空
+        return nil
+    }
+}
+
 /// 添加 CharacterRowView 结构体
 struct CharacterRowView: View {
     let character: EVECharacterInfo
@@ -898,6 +920,7 @@ struct CharacterRowView: View {
     let formatISK: (Double) -> String
     let formatSkillPoints: (Int) -> String
     let formatRemainingTime: (TimeInterval) -> String
+    var skillQueue: [SkillQueueItem]? = nil
 
     /// 显示带标签的可选信息行：有值时显示 "\(label): \(formatted)"，无值时显示 "\(label): \(emptyPlaceholder)"
     @ViewBuilder
@@ -931,7 +954,7 @@ struct CharacterRowView: View {
                     .minimumScaleFactor(0.85)
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: 2) {
-                    if isRefreshing {
+                    if isRefreshing && character.totalSkillPoints == nil && skillQueue == nil {
                         // 位置信息占位
                         HStack(spacing: 4) {
                             Text("0.0")
@@ -997,73 +1020,76 @@ struct CharacterRowView: View {
                             },
                             emptyPlaceholder: "-- SP"
                         )
+                        .fontDesign(.monospaced)
 
-                        // 技能队列信息
-                        if let currentSkill = character.currentSkill {
-                            VStack(alignment: .leading, spacing: 4) {
-                                // 技能进度条
-                                PulsingProgressBar(
-                                    progress: currentSkill.progress,
-                                    color: currentSkill.remainingTime != nil ? .green : .gray,
-                                    height: 4,
-                                    cornerRadius: 2,
-                                    showPulse: currentSkill.remainingTime != nil
-                                )
+                        TimelineView(.periodic(from: Date(), by: 1)) { timeline in
+                            // 技能队列信息
+                            if let currentSkill = skillQueue.map({ accountCurrentSkill(in: $0, at: timeline.date) }) ?? character.currentSkill {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    // 技能进度条
+                                    PulsingProgressBar(
+                                        progress: currentSkill.progress,
+                                        color: currentSkill.remainingTime != nil ? .green : .gray,
+                                        height: 4,
+                                        cornerRadius: 2,
+                                        showPulse: currentSkill.remainingTime != nil
+                                    )
 
-                                // 技能信息
-                                HStack {
-                                    HStack(spacing: 4) {
-                                        Image(
-                                            systemName: currentSkill.remainingTime != nil
-                                                ? "play.fill" : "pause.fill"
-                                        )
+                                    // 技能信息
+                                    HStack {
+                                        HStack(spacing: 4) {
+                                            Image(
+                                                systemName: currentSkill.remainingTime != nil
+                                                    ? "play.fill" : "pause.fill"
+                                            )
+                                            .font(.caption)
+                                            .foregroundColor(
+                                                currentSkill.remainingTime != nil ? .green : .gray
+                                            )
+                                            Text(
+                                                "\(SkillTreeManager.shared.getSkillName(for: currentSkill.skillId) ?? currentSkill.name) \(currentSkill.level)"
+                                            )
+                                        }
                                         .font(.caption)
-                                        .foregroundColor(
-                                            currentSkill.remainingTime != nil ? .green : .gray
-                                        )
-                                        Text(
-                                            "\(SkillTreeManager.shared.getSkillName(for: currentSkill.skillId) ?? currentSkill.name) \(currentSkill.level)"
-                                        )
-                                    }
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
+                                        .foregroundColor(.gray)
 
-                                    Spacer()
+                                        Spacer()
 
-                                    if let remainingTime = currentSkill.remainingTime {
-                                        Text(formatRemainingTime(remainingTime))
+                                        if let remainingTime = currentSkill.remainingTime {
+                                            Text(formatRemainingTime(remainingTime))
+                                                .font(.caption)
+                                                .foregroundColor(.gray)
+                                                .lineLimit(1)
+                                        } else {
+                                            Text(
+                                                "\(NSLocalizedString("Main_Skills_Paused", comment: ""))"
+                                            )
                                             .font(.caption)
                                             .foregroundColor(.gray)
                                             .lineLimit(1)
-                                    } else {
-                                        Text(
-                                            "\(NSLocalizedString("Main_Skills_Paused", comment: ""))"
-                                        )
+                                        }
+                                    }
+                                }
+                            } else {
+                                // 没有技能在训练时显示的进度条
+                                GeometryReader { _ in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(Color.gray.opacity(0.3))
+                                            .frame(height: 4)
+                                    }
+                                }
+                                .frame(height: 4)
+                                HStack {
+                                    Text("-")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                    Spacer()
+                                    Text("\(NSLocalizedString("Main_Skills_Empty", comment: ""))")
                                         .font(.caption)
                                         .foregroundColor(.gray)
                                         .lineLimit(1)
-                                    }
                                 }
-                            }
-                        } else {
-                            // 没有技能在训练时显示的进度条
-                            GeometryReader { _ in
-                                ZStack(alignment: .leading) {
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(Color.gray.opacity(0.3))
-                                        .frame(height: 4)
-                                }
-                            }
-                            .frame(height: 4)
-                            HStack {
-                                Text("-")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                Spacer()
-                                Text("\(NSLocalizedString("Main_Skills_Empty", comment: ""))")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                    .lineLimit(1)
                             }
                         }
                     }

@@ -164,7 +164,7 @@ struct SimModule {
     let effects: [Int] // 装备效果ID列表
     let groupID: Int // 装备分组ID
     let status: Int // 激活状态（如0未激活，1激活等）
-    let charge: SimCharge? // 当前装填的弹药（如有）
+    var charge: SimCharge? // 当前装填的弹药（如有）
     // 原始配置字段
     let flag: FittingFlag? // 装备的槽位标识
     let quantity: Int // 装备数量
@@ -184,8 +184,14 @@ struct SimModule {
     var mutatedName: String? // 突变后的名称（用于UI显示）
     var mutatedIconFileName: String? // 突变后的图标文件名（用于UI显示）
 
-    /// 完全预热（Spool up）。为 `false` 时 DPS 按 `damageMultiplierBonusMax = 1` 参与 `(1 + bonus)` 修正。
+    /// Fully spooled weapon damage or mutadaptive remote armor repair amount.
+    /// False means the initial cycle, true means the maximum bonus (1 + bonus).
     var isSpoolUpFull: Bool = true
+
+    var supportsSpoolUp: Bool {
+        (attributes[2734] ?? attributesByName["damageMultiplierBonusMax"] ?? 0) > 0
+            || (attributes[2797] ?? attributesByName["repairMultiplierBonusMax"] ?? 0) > 0
+    }
 
     /// 自定义初始化器，允许指定instanceId
     init(

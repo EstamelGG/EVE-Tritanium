@@ -57,6 +57,7 @@ struct ContractGroup: Identifiable {
 }
 
 struct PersonalContractsView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var viewModel: PersonalContractsViewModel
     @State private var showSettings = false
 

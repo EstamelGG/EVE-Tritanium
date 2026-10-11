@@ -382,7 +382,7 @@ extension ShipFittingModulesView {
             let slotFlag = slotType.getSlotFlag(index: slotIndex)
 
             // 记录点击日志
-            Logger.info("点击了已安装装备: \(module.name), 槽位: \(slotFlag.rawValue)")
+            // Logger.info("点击了已安装装备: \(module.name), 槽位: \(slotFlag.rawValue)")
 
             // 使用统一的打开函数
             openModuleSettings(flag: slotFlag, moduleName: module.name)
@@ -392,7 +392,7 @@ extension ShipFittingModulesView {
 
     /// 空槽位行视图，增加了slotId、slotIndex和slotType参数
     func emptySlotRow(
-        icon: String, title: String, slotId: String, slotIndex: Int,
+        icon: String, title: String, slotId _: String, slotIndex: Int,
         slotType: FittingSlotType? = nil
     ) -> some View {
         HStack {
@@ -412,7 +412,7 @@ extension ShipFittingModulesView {
         .contentShape(Rectangle())
         .onTapGesture {
             // 处理点击事件，根据槽位类型打开不同的选择器
-            Logger.info("点击了槽位: \(slotId), 索引: \(slotIndex)")
+            // Logger.info("点击了槽位: \(slotId), 索引: \(slotIndex)")
 
             if let slotType = slotType {
                 let slotFlag = slotType.getSlotFlag(index: slotIndex)

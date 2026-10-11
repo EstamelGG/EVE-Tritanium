@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct CharacterCalendarView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var viewModel: CalendarViewModel
     let characterId: Int
     let databaseManager: DatabaseManager
@@ -67,6 +69,8 @@ struct CharacterCalendarView: View {
 }
 
 struct CalendarGridView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let events: [CalendarEvent]
     let viewModel: CalendarViewModel
     let databaseManager: DatabaseManager
@@ -76,13 +80,10 @@ struct CalendarGridView: View {
 
     /// 按日期分组事件
     private var eventsByDate: [String: [CalendarEvent]] {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-
         var grouped: [String: [CalendarEvent]] = [:]
         for event in events {
             if let date = event.date {
-                let dateString = dateFormatter.string(from: date)
+                let dateString = FormatUtil.displayDateKey(date)
                 if grouped[dateString] == nil {
                     grouped[dateString] = []
                 }
@@ -173,21 +174,18 @@ struct CalendarGridView: View {
     }
 
     private var eventsForSelectedDate: [CalendarEvent] {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let selectedDateString = dateFormatter.string(from: selectedDate)
+        let selectedDateString = FormatUtil.displayDateKey(selectedDate)
         return eventsByDate[selectedDateString] ?? []
     }
 
     private var selectedDateString: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .long
-        formatter.locale = Locale.current
-        return formatter.string(from: selectedDate)
+        return FormatUtil.formatDate(selectedDate, dateStyle: .long, timeStyle: .none)
     }
 }
 
 struct MonthNavigationView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     @Binding var currentMonth: Date
     let onMonthChanged: (Date) -> Void
 
@@ -217,30 +215,29 @@ struct MonthNavigationView: View {
     }
 
     private var monthYearString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        formatter.locale = Locale.current
-        return formatter.string(from: currentMonth)
+        FormatUtil.formatDate(currentMonth, pattern: "MMMM yyyy")
     }
 
     private func previousMonth() {
         let newMonth =
-            Calendar.current.date(byAdding: .month, value: -1, to: currentMonth) ?? currentMonth
+            FormatUtil.appCalendar.date(byAdding: .month, value: -1, to: currentMonth) ?? currentMonth
         currentMonth = newMonth
         onMonthChanged(newMonth)
     }
 
     private func nextMonth() {
         let newMonth =
-            Calendar.current.date(byAdding: .month, value: 1, to: currentMonth) ?? currentMonth
+            FormatUtil.appCalendar.date(byAdding: .month, value: 1, to: currentMonth) ?? currentMonth
         currentMonth = newMonth
         onMonthChanged(newMonth)
     }
 }
 
 struct WeekdayHeaderView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     private var weekdays: [String] {
-        var calendar = Calendar.current
+        var calendar = FormatUtil.appCalendar
         calendar.firstWeekday = 2 // 1 = Sunday, 2 = Monday
 
         // 重新排列星期标题以匹配 firstWeekday 设置
@@ -266,22 +263,18 @@ struct WeekdayHeaderView: View {
 }
 
 struct CalendarDaysGrid: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let currentMonth: Date
     let eventsByDate: [String: [CalendarEvent]]
     @Binding var selectedDate: Date
     let onDateSelected: (Date) -> Void
 
     private var calendar: Calendar {
-        var cal = Calendar.current
+        var cal = FormatUtil.appCalendar
         cal.firstWeekday = 2 // 1 = Sunday, 2 = Monday
         return cal
     }
-
-    private let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
-    }()
 
     var body: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
@@ -339,17 +332,19 @@ struct CalendarDaysGrid: View {
     }
 
     private func eventCount(for date: Date) -> Int {
-        let dateString = dateFormatter.string(from: date)
+        let dateString = FormatUtil.displayDateKey(date)
         return eventsByDate[dateString]?.count ?? 0
     }
 
     private func hasImportantEvents(for date: Date) -> Bool {
-        let dateString = dateFormatter.string(from: date)
+        let dateString = FormatUtil.displayDateKey(date)
         return eventsByDate[dateString]?.contains { $0.importance > 0 } ?? false
     }
 }
 
 struct CalendarDayView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let date: Date
     let isCurrentMonth: Bool
     let isSelected: Bool
@@ -358,9 +353,7 @@ struct CalendarDayView: View {
     let hasImportantEvents: Bool
 
     private var dayNumber: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d"
-        return formatter.string(from: date)
+        FormatUtil.formatDate(date, pattern: "d")
     }
 
     var body: some View {
@@ -431,6 +424,8 @@ struct CalendarDayView: View {
 }
 
 struct CalendarEventRow: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let event: CalendarEvent
     let characterId: Int
     let databaseManager: DatabaseManager
@@ -487,14 +482,13 @@ struct CalendarEventRow: View {
             return NSLocalizedString("Calendar_Unknown_Time", comment: "Unknown time")
         }
 
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        formatter.locale = Locale.current
-        return formatter.string(from: date)
+        return FormatUtil.formatDate(date, dateStyle: .none, timeStyle: .short)
     }
 }
 
 struct ResponseBadge: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let response: String
 
     private var badgeColor: Color {
@@ -572,7 +566,7 @@ class CalendarViewModel: ObservableObject {
 
     /// 当月份变化时，检查是否需要加载更多数据
     func checkDataForMonth(_ month: Date) async {
-        let calendar = Calendar.current
+        let calendar = FormatUtil.appCalendar
         _ = calendar.dateInterval(of: .month, for: month)?.start ?? month
         let monthEnd = calendar.dateInterval(of: .month, for: month)?.end ?? month
 

@@ -4,6 +4,7 @@ import SwiftUI
 /// - 专精 0：飞船本身的技能要求（直接复用 SkillRequirementsView）
 /// - 专精 1-5：该等级认证列表，认证可折叠展开技能明细（复用 SkillRequirementRow）
 struct ShipMasteryDetailView: View {
+    @Environment(\.locale) private var displayLocale
     let typeID: Int
     @ObservedObject var databaseManager: DatabaseManager
 

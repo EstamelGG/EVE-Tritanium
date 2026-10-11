@@ -2,6 +2,8 @@ import Foundation
 import SwiftUI
 
 struct CorpMoonMiningView: View {
+    @Environment(\.timeZone) private var displayTimeZone
+    @Environment(\.locale) private var displayLocale
     let characterId: Int
     @StateObject private var viewModel: CorpMoonMiningViewModel
 
@@ -103,6 +105,8 @@ struct CorpMoonMiningView: View {
 }
 
 struct MoonExtractionRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
+    @Environment(\.locale) private var displayLocale
     let extraction: MoonExtractionInfo
     let moonName: String
 
@@ -111,7 +115,7 @@ struct MoonExtractionRow: View {
             return ""
         }
 
-        let calendar = Calendar.current
+        let calendar = FormatUtil.appCalendar
         let now = Date()
         let components = calendar.dateComponents([.day], from: now, to: arrivalDate)
 
@@ -200,9 +204,7 @@ class CorpMoonMiningViewModel: ObservableObject {
             case .all:
                 return "all"
             case let .month(date):
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM"
-                return formatter.string(from: date)
+                return FormatUtil.formatDate(date, pattern: "yyyy-MM")
             }
         }
 
@@ -211,9 +213,7 @@ class CorpMoonMiningViewModel: ObservableObject {
             case .all:
                 return NSLocalizedString("Main_Corporation_Moon_Mining_Filter_All", comment: "全部")
             case let .month(date):
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy年MM月"
-                return formatter.string(from: date)
+                return FormatUtil.formatDate(date, pattern: "yyyy年MM月")
             }
         }
 
@@ -224,7 +224,7 @@ class CorpMoonMiningViewModel: ObservableObject {
 
     /// 获取可用的月份列表（不包含"全部"选项）
     var availableMonths: [MonthFilter] {
-        let calendar = Calendar.current
+        let calendar = FormatUtil.appCalendar
         var months: [MonthFilter] = []
 
         // 获取所有数据中的唯一月份
@@ -263,7 +263,7 @@ class CorpMoonMiningViewModel: ObservableObject {
             return []
         }
 
-        let calendar = Calendar.current
+        let calendar = FormatUtil.appCalendar
         let selectedComponents = calendar.dateComponents([.year, .month], from: selectedDate)
 
         return moonExtractions.filter { extraction in
@@ -281,9 +281,7 @@ class CorpMoonMiningViewModel: ObservableObject {
         guard case let .month(selectedDate) = selectedMonth else {
             return ""
         }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy年MM月"
-        return formatter.string(from: selectedDate)
+        return FormatUtil.formatDate(selectedDate, pattern: "yyyy年MM月")
     }
 
     init(characterId: Int) {
@@ -324,7 +322,7 @@ class CorpMoonMiningViewModel: ObservableObject {
                 )
 
                 // 自动选择第一个月份
-                let calendar = Calendar.current
+                let calendar = FormatUtil.appCalendar
                 var monthSet = Set<String>()
                 var firstMonth: MonthFilter?
 

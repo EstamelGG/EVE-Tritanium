@@ -76,7 +76,8 @@ struct FighterSettingsView: View {
                         NavigationLink(
                             destination: ShowItemInfo(
                                 databaseManager: databaseManager, itemID: currentFighterID,
-                                modifiedAttributes: currentOutputFighter?.attributes
+                                modifiedAttributes: currentOutputFighter?.attributes,
+                                fittingContext: viewModel.simulationOutput?.attributeContext(for: currentOutputFighter?.instanceId)
                             )
                         ) {
                             Text(NSLocalizedString("View_Details", comment: ""))

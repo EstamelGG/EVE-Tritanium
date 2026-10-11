@@ -10,9 +10,6 @@
     "  • %@" : {
       "shouldTranslate" : false
     },
-    " - " : {
-      "shouldTranslate" : false
-    },
     " · " : {
       "shouldTranslate" : false
     },
@@ -33,6 +30,9 @@
     },
     " → " : {
       "shouldTranslate" : false
+    },
+    " × %lld" : {
+
     },
     "-" : {
       "shouldTranslate" : false
@@ -10602,6 +10602,29 @@
         }
       }
     },
+    "Corp_Structure_Fuel_Expired" : {
+      "comment" : "Fuel expired",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expired"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Истекло"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已过期"
+          }
+        }
+      }
+    },
     "Corp_Structure_Fuel_Expires" : {
       "localizations" : {
         "en" : {
@@ -11005,7 +11028,31 @@
         }
       }
     },
+    "Corp_Structure_Time_Compact" : {
+      "comment" : "Time until fuel expires",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ later"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Через %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@后"
+          }
+        }
+      }
+    },
     "Corp_Structure_Time_Format_Days" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11022,6 +11069,7 @@
       }
     },
     "Corp_Structure_Time_Format_Days_Hours" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11038,6 +11086,7 @@
       }
     },
     "Corp_Structure_Time_Format_Hours" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11054,6 +11103,7 @@
       }
     },
     "Corp_Structure_Time_Format_Minutes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -11301,6 +11351,12 @@
           }
         }
       }
+    },
+    "DateEnd" : {
+
+    },
+    "DateStart" : {
+
     },
     "Delete" : {
       "comment" : "Fitting Delete",
@@ -11690,6 +11746,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当前选择"
+          }
+        }
+      }
+    },
+    "Environment_Effect_Fitted_Items" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fitted items"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "装配物品"
+          }
+        }
+      }
+    },
+    "Environment_Effect_Requires_Skill" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Items requiring %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要「%@」技能的物品"
+          }
+        }
+      }
+    },
+    "Environment_Effect_Resonance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: incoming damage %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@：所受伤害 %@"
+          }
+        }
+      }
+    },
+    "Environment_Effect_Unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effect details unavailable"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无效果详情"
           }
         }
       }
@@ -13737,6 +13861,29 @@
         }
       }
     },
+    "Fitting_Default_Collapse_Modules" : {
+      "comment" : "默认折叠相同装备",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapse identical modules by default"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По умолчанию объединять одинаковые модули"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认折叠相同装备"
+          }
+        }
+      }
+    },
     "Fitting_Default_Current_Char_Subtitle" : {
       "comment" : "跟随主界面当前选择",
       "localizations" : {
@@ -14813,6 +14960,239 @@
         }
       }
     },
+    "Fitting_Influences_Base" : {
+      "comment" : "基础值",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Base value"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Базовое значение"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "基础值"
+          }
+        }
+      }
+    },
+    "Fitting_Influences_Explanation" : {
+      "comment" : "依次计算，非独立贡献",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorted by benefit, highest first. Values reflect the actual calculation steps, not the display order."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала показаны наиболее полезные изменения. Значения соответствуют фактическим шагам расчёта, а не порядку отображения."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按加成收益从高到低排列；前后数值对应实际计算步骤，不代表列表顺序。"
+          }
+        }
+      }
+    },
+    "Fitting_Influences_Final" : {
+      "comment" : "最终值",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Final value"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Итоговое значение"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最终值"
+          }
+        }
+      }
+    },
+    "Fitting_Influences_Mutation" : {
+      "comment" : "突变",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mutation"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мутация"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "突变"
+          }
+        }
+      }
+    },
+    "Fitting_Influences_Penalty" : {
+      "comment" : "叠加系数",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stacking coefficient: %@%%"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коэффициент штрафа: %@%%"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "叠加惩罚系数：%@%%"
+          }
+        }
+      }
+    },
+    "Fitting_Influences_Spool" : {
+      "comment" : "完全预热",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full spool-up"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Полная раскрутка"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完全预热"
+          }
+        }
+      }
+    },
+    "Fitting_Influences_Steps" : {
+      "comment" : "生效顺序",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applied in order"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Порядок применения"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生效顺序"
+          }
+        }
+      }
+    },
+    "Fitting_Influences_Title" : {
+      "comment" : "影响因素",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Influences"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Влияния"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "影响因素"
+          }
+        }
+      }
+    },
+    "Fitting_Influences_Unchanged" : {
+      "comment" : "无生效的影响因素",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No applied influences"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет действующих влияний"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无生效的影响因素"
+          }
+        }
+      }
+    },
+    "Fitting_Influences_View" : {
+      "comment" : "影响因素",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View influences"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Посмотреть влияния"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看影响因素"
+          }
+        }
+      }
+    },
     "Fitting_ladar_strength" : {
       "localizations" : {
         "en" : {
@@ -14829,6 +15209,38 @@
         }
       }
     },
+    "Fitting_List_Collapsed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapsed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已收起"
+          }
+        }
+      }
+    },
+    "Fitting_List_Expanded" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expanded"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已展开"
+          }
+        }
+      }
+    },
     "Fitting_Local" : {
       "localizations" : {
         "en" : {
@@ -14841,6 +15253,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "本地"
+          }
+        }
+      }
+    },
+    "Fitting_Local_Save_Failed" : {
+      "comment" : "保存失败，请重试。",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not save the fitting. Please try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось сохранить конфигурацию. Повторите попытку."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存失败，请重试。"
+          }
+        }
+      }
+    },
+    "Fitting_Local_Save_Success" : {
+      "comment" : "装配已保存到本地。",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fitting saved locally."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Конфигурация сохранена локально."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "装配已保存到本地。"
           }
         }
       }
@@ -15473,6 +15933,52 @@
         }
       }
     },
+    "Fitting_Save_To_Local" : {
+      "comment" : "保存到本地",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Locally"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить локально"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存到本地"
+          }
+        }
+      }
+    },
+    "Fitting_Save_To_Local_Confirm" : {
+      "comment" : "是否将当前装配保存到本地？",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save the current fitting locally?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить текущую конфигурацию локально?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "是否将当前装配保存到本地？"
+          }
+        }
+      }
+    },
     "Fitting_scan_resolution" : {
       "comment" : "扫描分辨率",
       "localizations" : {
@@ -15492,6 +15998,7 @@
     },
     "Fitting_Section_Fittings" : {
       "comment" : "装配列表页的 section 标题",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -15925,6 +16432,7 @@
       }
     },
     "Fitting_Setting_Ship" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -15974,6 +16482,75 @@
         }
       }
     },
+    "Fitting_Settings_About" : {
+      "comment" : "关于",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Информация"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于"
+          }
+        }
+      }
+    },
+    "Fitting_Settings_Edit" : {
+      "comment" : "编辑",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑"
+          }
+        }
+      }
+    },
+    "Fitting_Settings_Header" : {
+      "comment" : "装配设置",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fitting Settings"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки конфигурации"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "装配设置"
+          }
+        }
+      }
+    },
     "Fitting_Shield" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -16013,13 +16590,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ etc., %2$d fittings"
+            "value" : "%d fittings"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ 等共 %2$d 个装配"
+            "value" : "%d 个装配"
           }
         }
       }
@@ -16777,6 +17354,52 @@
     },
     "HP" : {
       "shouldTranslate" : false
+    },
+    "IAP_Choose_Badge" : {
+      "comment" : "角标与赞助",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Badges & Support"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Метки и поддержка"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "角标与赞助"
+          }
+        }
+      }
+    },
+    "IAP_Choose_Icon" : {
+      "comment" : "图标样式",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Icon Style"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стиль значка"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图标样式"
+          }
+        }
+      }
     },
     "IAP_Free_Icons_Badge_Charge" : {
       "localizations" : {
@@ -17717,6 +18340,29 @@
         }
       }
     },
+    "Incursions_Copy_To_Clipboard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Info to Clipboard"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Скопировать информацию о вторжениях в буфер обмена"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制汇总到剪贴板"
+          }
+        }
+      }
+    },
     "Incursions_Export_Constellation_Label" : {
       "localizations" : {
         "en" : {
@@ -17810,6 +18456,716 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "萨沙入侵"
+          }
+        }
+      }
+    },
+    "Incursions_Influence_Format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Influence %@%%"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Влияние %@%%"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "影响力 %@%%"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Assault" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Assault"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "突击"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Bounties" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CONCORD bounties are reduced by 50%."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "统合部赏金降低 50%。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Damage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Damage from turrets, launchers, drones and smartbombs is reduced."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "炮台、发射器、无人机和立体炸弹伤害降低。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Damage_Penalty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Damage penalty"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "伤害惩罚"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Effects_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Constellation penalties"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "星座范围内影响"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Ending_Body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The mothership becomes vulnerable to attack when:\n\n• Constellation influence has reached 0% (100% on this page’s progress bar).\n• An HQ site has been completed.\n\n100% displayed progress alone does not indicate that the mothership has been detected. Also check the mothership icon in the list."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下列情况发生时，母舰可被攻击：\n\n• 星座范围影响降到 0%（对应本页面进度条 100%）。\n• 已完成一个总部地点。\n\n仅进度条达到 100% 并不代表母舰已被发现，请同时留意列表中的母舰图标。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Ending_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mothership"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "母舰"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Established_Detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The initial phase of the incursion. Sansha’s Nation is establishing control of the constellation."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "入侵的最初阶段。萨沙共和国正在控制这个星座。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Examples_Note" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These are display examples, not live incursion data."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以上仅为样式示例，不是当前入侵数据。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Fleet_Note" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rewards are only given to fleets within the minimum and maximum fleet sizes. A fleet within the optimal range is recommended."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只有规模在最小值与最大值之间的舰队才能获得奖励。建议你在组成舰队时将规模控制在合理区间内。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Fleet_Range" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Min–max size"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最小–最大规模"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Fleet_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fleet size requirements"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "舰队规模限制"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Headquarters" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Headquarters"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总部"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Influence_Body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The displayed progress and constellation influence run in opposite directions.\n\nThe progress bar uses the value returned by ESI. Constellation influence = (1 − ESI value) × 100%.\n\nAt 100% displayed progress, constellation influence is 0%, meeting the influence condition for the mothership to become vulnerable."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请注意：页面进度与星座范围影响度方向相反。\n\n页面进度使用 ESI 返回的数值；星座范围影响度 =（1 − ESI 数值）× 100%。\n\n因此，进度条达到 100% 时，星座范围影响度为 0%，对应母舰可被攻击所需的影响度条件。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Influence_High" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Displayed progress 100% · Constellation influence 0%"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "页面进度 100% · 星座范围影响度 0%"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Influence_Low" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Displayed progress 0% · Constellation influence 100%"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "页面进度 0% · 星座范围影响度 100%"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Influence_Medium" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Displayed progress 50% · Constellation influence 50%"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "页面进度 50% · 星座范围影响度 50%"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Influence_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Understanding influence"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如何理解影响力"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Jamming" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cynosural jammers are active throughout the system."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "诱导力场干扰：全星系激活。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_LP_Conversion_Body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CONCORD LP can be converted at the following rates:\n• 1:0.8 for empire NPC corporations, including faction warfare militia corporations.\n• 1:0.4 for NPC corporations belonging to ORE, Servant Sisters of EVE, and Thukker Tribe.\n\nIt cannot be converted into pirate corporation LP. Conversion must be performed manually in the LP store interface at a station with an LP store belonging to the destination corporation."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "统合部 LP 可按以下比例转换：\n• 1:0.8：帝国 NPC 军团，包括势力战争卫队团。\n• 1:0.4：联合矿业、姐妹共济会和图克尔部落势力所属的 NPC 军团。\n\n统合部 LP 不可转换为海盗军团 LP。转换需在目标军团设有 LP 商店的空间站内，通过 LP 商店界面手动操作。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_LP_Conversion_Note" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only LP in a character’s personal wallet can be converted; LP in a corporation wallet cannot. If conversion is planned, keep the LP in the personal wallet and do not transfer it to a player corporation."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅角色个人钱包中的 LP 可以转换，玩家军团钱包中的 LP 无法转换。如需转换为其他 NPC 军团的 LP，应将其保留在个人钱包中，避免转入玩家军团钱包。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_LP_Conversion_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LP conversion"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LP 转换规则"
+          }
+        }
+      }
+    },
+    "Incursions_Info_LP_Settlement_Body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LP rewards are automatically paid out after the mothership is destroyed. Rewards are issued as CONCORD LP."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LP 奖励会在母舰被摧毁后自动结算，奖励为统一合作关系部（统合部）LP。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_LP_Settlement_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LP reward settlement"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LP 奖励结算"
+          }
+        }
+      }
+    },
+    "Incursions_Info_LP_Uses_Body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CONCORD LP can be used in two ways:\n1. Redeem items in the CONCORD LP store, including blueprints and exchanges of Tech II capital modules for CONCORD modules.\n2. Convert it into LP for an eligible NPC corporation.\n\nPilots may use their LP themselves or sell it to other players."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "统合部 LP 有两类用途：\n1. 在统合部 LP 商店兑换物品，包括蓝图，或以 T2 旗舰装备兑换统合部装备。\n2. 转换为符合条件的 NPC 军团的 LP。\n\n玩家可自行使用 LP，也可出售给其他玩家。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_LP_Uses_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LP uses"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LP 用途"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Max_ISK" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maximum ISK"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大星币（ISK）"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Max_LP" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maximum LP"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大忠诚点（LP）"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Mobilizing_Detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The incursion has reached its apex. Sansha’s Nation has deployed its mothership to protect its headquarters."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "入侵达到了高潮。萨沙共和国已经部署了母舰来保护其总部。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Mothership_Detected" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The mothership has been detected at the Sansha Headquarters system. Destroy it to repel the incursion!"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在萨沙总部星系侦测到了母舰的存在。摧毁它，结束这场入侵。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Optimal_Pilots" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optimal pilots"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最佳飞行员数量"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Overview_Body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sansha’s Nation has waged war on the empires. Help repel their advances!\n\nIncursions are constellation-wide events where capsuleers must come together and repel the invading forces of Sansha’s Nation.\n\nYou can run special missions and sites within the affected systems. The Sansha’s Nation mothership at the end of the incursion must be defeated to trigger a payout for all participants."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "萨沙共和国已对帝国发起了战争，击退他们！\n\n入侵是以星座为范围发生的事件，克隆飞行员必须团结一心抵抗萨沙共和国的入侵。\n\n你可以在被入侵的星系中完成特殊任务和攻占地点。在入侵的尾声，如果萨沙的母舰被击毁，所有参与者都会获得奖励。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Overview_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What are Sansha incursions?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "什么是萨沙入侵"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Penalties_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Penalties by site type"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地点类型与惩罚"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Resistance_Penalty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resistance penalty"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "抗性惩罚"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Resistances" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Armor and shield resistances are penalized."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "装甲和护盾抗性降低。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Rewards_Note" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Site completion rewards vary depending on site type, system security and the number of participating pilots."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成地点的奖励将根据地点类型、星系安全等级和参与的飞行员数量而定。"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Rewards_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Site rewards"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地点奖励"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Stages_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incursion stages"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "入侵状况"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Staging" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Staging"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "集结"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About Sansha Incursions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "萨沙入侵说明"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Vanguard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vanguard"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "先锋"
+          }
+        }
+      }
+    },
+    "Incursions_Info_Withdrawing_Detail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The incursion is ending. Sansha’s Nation has either overrun the constellation or is preparing to retreat."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "入侵即将结束。萨沙共和国已经撤出了这个星座，或是正在准备撤退。"
           }
         }
       }
@@ -18310,6 +19666,7 @@
       }
     },
     "Industry_Remaining_Days" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -18327,6 +19684,7 @@
     },
     "Industry_Remaining_Days_Hours" : {
       "comment" : "Industry Remaining Time",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -18343,6 +19701,7 @@
       }
     },
     "Industry_Remaining_Hours" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -18359,6 +19718,7 @@
       }
     },
     "Industry_Remaining_Hours_Minutes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -18393,6 +19753,7 @@
     },
     "Industry_Remaining_Minutes_Seconds" : {
       "comment" : "%d分%d秒",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -18410,6 +19771,7 @@
     },
     "Industry_Remaining_Seconds" : {
       "comment" : "%d秒",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -20970,23 +22332,6 @@
         }
       }
     },
-    "Language_Identifier" : {
-      "comment" : "语言标识符",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "en_US"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "zh_CN"
-          }
-        }
-      }
-    },
     "Language_Map_Settings_Description" : {
       "comment" : "选择要在语言映射中显示的语言。英文是默认语言，您需要至少选择一种其他语言。",
       "localizations" : {
@@ -22482,7 +23827,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "SDE"
+            "value" : "SDE Database"
           }
         },
         "zh-Hans" : {
@@ -26076,28 +27421,6 @@
         }
       }
     },
-    "Main_Jump_Clones_Available" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Available Clones"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Доступные джамп клоны: "
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "可用克隆体"
-          }
-        }
-      }
-    },
     "Main_Jump_Clones_Cooldown" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -26111,6 +27434,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "下次跳跃：%d小时后"
+          }
+        }
+      }
+    },
+    "Main_Jump_Clones_Cooldown_Compact" : {
+      "comment" : "Countdown with compact duration",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next Jump: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующий прыжок: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下次跳跃：%@后"
           }
         }
       }
@@ -26134,6 +27480,7 @@
     },
     "Main_Jump_Clones_Cooldown_Hours_Minutes_Seconds" : {
       "comment" : "下次跳跃: %dh %dm %ds",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -26151,6 +27498,7 @@
     },
     "Main_Jump_Clones_Cooldown_Hours_Seconds" : {
       "comment" : "下次跳跃: %dh %ds",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -26185,6 +27533,7 @@
     },
     "Main_Jump_Clones_Cooldown_Minutes_Seconds" : {
       "comment" : "下次跳跃: %dm %ds",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -26202,6 +27551,7 @@
     },
     "Main_Jump_Clones_Cooldown_Seconds" : {
       "comment" : "下次跳跃: %ds",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -28105,7 +29455,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "1 Month"
+            "value" : "1M"
           }
         },
         "zh-Hans" : {
@@ -28121,7 +29471,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "1 Year"
+            "value" : "1Y"
           }
         },
         "zh-Hans" : {
@@ -28137,7 +29487,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "3 Months"
+            "value" : "3M"
           }
         },
         "zh-Hans" : {
@@ -28386,7 +29736,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantity"
+            "value" : "Qty"
           }
         },
         "zh-Hans" : {
@@ -30955,6 +32305,29 @@
         }
       }
     },
+    "Main_Setting_Data_Repair" : {
+      "comment" : "数据修复",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data Repair"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановление данных"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "数据修复"
+          }
+        }
+      }
+    },
     "Main_Setting_Database_Language" : {
       "comment" : "数据库语言",
       "localizations" : {
@@ -30974,6 +32347,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "数据库语言"
+          }
+        }
+      }
+    },
+    "Main_Setting_Diagnostics" : {
+      "comment" : "诊断与实验",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics & Experiments"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Диагностика и эксперименты"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "诊断与实验"
           }
         }
       }
@@ -31061,6 +32457,75 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "功能设置"
+          }
+        }
+      }
+    },
+    "Main_Setting_Laboratory" : {
+      "comment" : "实验室",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laboratory"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лаборатория"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实验室"
+          }
+        }
+      }
+    },
+    "Main_Setting_Laboratory_Detail" : {
+      "comment" : "诊断、调试与数据修复",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics, debugging, and data repair"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Диагностика, отладка и восстановление данных"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "诊断、调试与数据修复"
+          }
+        }
+      }
+    },
+    "Main_Setting_Laboratory_Settings" : {
+      "comment" : "实验室设置",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laboratory Settings"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки лаборатории"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实验室设置"
           }
         }
       }
@@ -32312,6 +33777,98 @@
         }
       }
     },
+    "Main_Setting_TimeZone" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time Zone"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Часовой пояс"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "时区设置"
+          }
+        }
+      }
+    },
+    "Main_Setting_TimeZone_Current" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current Time Zone"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текущий часовой пояс"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前时区"
+          }
+        }
+      }
+    },
+    "Main_Setting_TimeZone_EVE" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UTC+0 (EVE Time)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UTC+0 (время EVE)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UTC+0（EVE 时间）"
+          }
+        }
+      }
+    },
+    "Main_Setting_TimeZone_Footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applies to displayed dates and times. The home screen server time always uses UTC+0."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Применяется к отображению даты и времени. Время сервера на главном экране всегда отображается в UTC+0."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用于日期和时间显示。首页服务器时间始终使用 UTC+0。"
+          }
+        }
+      }
+    },
     "Main_Setting_Title" : {
       "localizations" : {
         "en" : {
@@ -32631,6 +34188,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "技能目录详情"
+          }
+        }
+      }
+    },
+    "Main_Skills_Category_Progress" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Category progress"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分类总进度"
           }
         }
       }
@@ -33894,13 +35467,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skill Queue (%d) - %@ remaining"
+            "value" : "Skill Queue (%d) - %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "技能队列 (%d) - 剩余%@"
+            "state" : "needs_review",
+            "value" : "技能队列 (%d) - %@"
           }
         }
       }
@@ -33962,8 +35535,32 @@
         }
       }
     },
+    "Main_Skills_Queue_Training_Compact" : {
+      "comment" : "Countdown with compact duration",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Training: %d skills(%@)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изучается: %d навыков(%@)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "训练中: %d个技能(%@)"
+          }
+        }
+      }
+    },
     "Main_Skills_Queue_Training_Days" : {
       "comment" : "训练中 - %d个技能 - %dd %dh %dm",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -33987,6 +35584,7 @@
     },
     "Main_Skills_Queue_Training_Hours" : {
       "comment" : "训练中 - %d个技能 - %dh %dm %ds",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -34010,6 +35608,7 @@
     },
     "Main_Skills_Queue_Training_Minutes" : {
       "comment" : "训练中 - %d个技能 - %dm %ds",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -34241,7 +35840,31 @@
         }
       }
     },
+    "Main_Sovereignty_Time_Compact" : {
+      "comment" : "Time until campaign starts",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@后"
+          }
+        }
+      }
+    },
     "Main_Sovereignty_Time_Days" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -34258,6 +35881,7 @@
       }
     },
     "Main_Sovereignty_Time_Hours" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -34274,6 +35898,7 @@
       }
     },
     "Main_Sovereignty_Time_Minutes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -37217,6 +38842,7 @@
       }
     },
     "Module_Status_Overload" : {
+      "comment" : "超载",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -37727,7 +39353,31 @@
         }
       }
     },
+    "Orders_Remaining_Compact" : {
+      "comment" : "Order expiry countdown",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expire in %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Истекает через %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@后过期"
+          }
+        }
+      }
+    },
     "Orders_Remaining_Days" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -37744,6 +39394,7 @@
       }
     },
     "Orders_Remaining_Days_Hours" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -37760,6 +39411,7 @@
       }
     },
     "Orders_Remaining_Hours" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -37776,6 +39428,7 @@
       }
     },
     "Orders_Remaining_Hours_Minutes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -37792,6 +39445,7 @@
       }
     },
     "Orders_Remaining_Minutes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -40123,6 +41777,9 @@
         }
       }
     },
+    "PriceBaseline" : {
+
+    },
     "Processing_Data" : {
       "comment" : "正在处理数据...",
       "localizations" : {
@@ -41704,22 +43361,6 @@
         }
       }
     },
-    "SDE_Already_Latest_Hint" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Data package is up to date"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "数据包已是最新"
-          }
-        }
-      }
-    },
     "SDE_Changes_Absent" : {
       "comment" : "SDE change report",
       "localizations" : {
@@ -42416,22 +44057,6 @@
         }
       }
     },
-    "SDE_Check_Hint" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap to check for data package and icon updates"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "点按检查数据包与图标更新"
-          }
-        }
-      }
-    },
     "SDE_Check_Ready" : {
       "localizations" : {
         "en" : {
@@ -42483,22 +44108,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "检查 SDE 更新"
-          }
-        }
-      }
-    },
-    "SDE_Checking_Subtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connecting to CloudKit…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在连接 CloudKit…"
           }
         }
       }
@@ -42631,13 +44240,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "View SDE Info"
+            "value" : "View / Update SDE"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "查看 SDE 信息"
+            "value" : "查看 / 更新 SDE"
           }
         }
       }
@@ -43281,22 +44890,6 @@
         }
       }
     },
-    "SDE_Status_Latest" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Latest"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最新"
-          }
-        }
-      }
-    },
     "SDE_Status_Pending" : {
       "localizations" : {
         "en" : {
@@ -43309,22 +44902,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "等待中"
-          }
-        }
-      }
-    },
-    "SDE_Status_Update" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Update"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "可更新"
           }
         }
       }
@@ -43406,22 +44983,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "查看 SDE 更新细节"
-          }
-        }
-      }
-    },
-    "SDE_View_Update" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "View Available Update"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "查看可用更新"
           }
         }
       }
@@ -46657,6 +48218,121 @@
         }
       }
     },
+    "Time_Compact_Days" : {
+      "comment" : "Compact duration days",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldd"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldд"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld天"
+          }
+        }
+      }
+    },
+    "Time_Compact_Hours" : {
+      "comment" : "Compact duration hours",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldh"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldч"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld时"
+          }
+        }
+      }
+    },
+    "Time_Compact_Join" : {
+      "comment" : "Join duration components",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@%@"
+          }
+        }
+      }
+    },
+    "Time_Compact_Minutes" : {
+      "comment" : "Compact duration minutes",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldm"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldм"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld分"
+          }
+        }
+      }
+    },
+    "Time_Compact_Seconds" : {
+      "comment" : "Compact duration seconds",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%llds"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldс"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld秒"
+          }
+        }
+      }
+    },
     "Time_Days" : {
       "comment" : "%dd",
       "localizations" : {
@@ -46713,7 +48389,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d天%d小时"
+            "value" : "%d天%d时"
           }
         }
       }
@@ -46737,6 +48413,7 @@
     },
     "Time_Days_Hours_Minutes" : {
       "comment" : "Time Format",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -46775,6 +48452,7 @@
       }
     },
     "Time_Days_Minutes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -46791,6 +48469,7 @@
       }
     },
     "Time_Days_Seconds" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -46855,6 +48534,29 @@
         }
       }
     },
+    "Time_Hours_Compact" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%dh"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%dч"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d时"
+          }
+        }
+      }
+    },
     "Time_Hours_Long" : {
       "localizations" : {
         "en" : {
@@ -46889,7 +48591,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d小时%d分"
+            "value" : "%d时%d分"
           }
         }
       }
@@ -46912,6 +48614,7 @@
       }
     },
     "Time_Hours_Seconds" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -46993,7 +48696,31 @@
         }
       }
     },
+    "Time_Minutes_Compact" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%dm"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%dм"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d分"
+          }
+        }
+      }
+    },
     "Time_Minutes_Seconds" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -47026,6 +48753,7 @@
       }
     },
     "Time_Seconds" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

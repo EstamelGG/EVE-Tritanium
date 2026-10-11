@@ -18,10 +18,29 @@ class Step4 {
     private let damageTypeAttributeIds: [Int] = [114, 116, 117, 118]
 
     /// 递归计算过程中记录的详细信息，用于调试
+    private var attributeTraces: [UUID: [Int: AttributeTrace]] = [:]
     private var attributeCalculationProcess: [String: String] = [:]
 
-    /// 属性计算缓存
+    private struct AttributeKey: Hashable {
+        let itemType: ItemType
+        let index: Int
+        let attributeId: Int
+    }
+
+    private struct Source {
+        let itemType: ItemType
+        let index: Int
+        let typeId: Int
+        let attributes: [Int: Double]
+        let modifiers: [Int: [SimAttributeModifier]]
+    }
+
+    /// 属性计算缓存（仅在单次计算内有效）
     private class Cache {
+        var sources: [UUID: Source] = [:]
+        var evaluating: Set<AttributeKey> = []
+        var aggregateModes: [Int: String] = [:]
+
         var ship: [Int: Double] = [:]
         var character: [Int: Double] = [:]
         var modules: [Int: [Int: Double]] = [:]
@@ -115,6 +134,7 @@ class Step4 {
 
         // 清空计算过程
         attributeCalculationProcess = [:]
+        attributeTraces = [:]
 
         // 创建输出对象
         var output = SimulationOutput(from: input)
@@ -128,11 +148,43 @@ class Step4 {
             moduleInstanceMap[module.instanceId] = (module, index)
         }
 
+        func register(_ item: Any, _ type: ItemType, _ index: Int, _ id: UUID) {
+            let details = getItemDetails(item: item)
+            cache.sources[id] = Source(itemType: type, index: index, typeId: details.typeId,
+                                       attributes: details.attributes, modifiers: details.modifiers)
+        }
+        register(input.ship, .ship, 0, input.ship.instanceId)
+        register(input.character, .character, 0, input.character.instanceId)
+        for (index, module) in input.modules.enumerated() {
+            register(module, .module, index, module.instanceId)
+            if let charge = module.charge {
+                register(charge, .charge, index, charge.instanceId)
+            }
+        }
+        for (index, item) in input.drones.enumerated() {
+            register(item, .drone, index, item.instanceId)
+        }
+        for (index, item) in (input.fighters ?? []).enumerated() {
+            register(item, .fighter, index, item.instanceId)
+        }
+        for (index, item) in input.implants.enumerated() {
+            register(item, .implant, index, item.instanceId)
+        }
+        for (index, item) in input.skills.enumerated() {
+            register(item, .skill, index, item.instanceId)
+        }
+        for (index, item) in input.environmentEffects.enumerated() {
+            cache.sources[item.instanceId] = Source(itemType: .environment, index: index,
+                                                    typeId: item.typeId, attributes: item.attributes, modifiers: [:])
+        }
+
         // 计算所有物品的属性值
         calculateValues(input: input, cache: cache, moduleInstanceMap: moduleInstanceMap)
 
         // 将计算结果更新到输出对象
         updateOutputWithCachedValues(input: input, output: &output, cache: cache)
+
+        output.attributeTraces = attributeTraces
 
         // 仅在调试模式下显示日志（不影响计算）
         if AppConfiguration.Fitting.showDebug {
@@ -356,6 +408,7 @@ class Step4 {
             applyDamageMultiplierBonusMaxToModuleIfNeeded(
                 &output.modules[index], isSpoolUpFull: input.modules[index].isSpoolUpFull
             )
+            applyRepairSpoolToModule(&output.modules[index], isSpoolUpFull: input.modules[index].isSpoolUpFull)
         }
 
         // 更新无人机属性
@@ -398,7 +451,7 @@ class Step4 {
     }
 
     /// 若模块存在 `damageMultiplierBonusMax`（2734），将各伤害类型数值乘以 `(1 + bonus)`。
-    /// 未完全预热时按 `bonus = 1` 参与计算（见装配「完全预热」开关）。
+    /// 未完全预热时按 `bonus = 0` 参与计算（见装配「完全预热」开关）。
     private func applyDamageMultiplierBonusMaxToModuleIfNeeded(
         _ module: inout SimModuleOutput, isSpoolUpFull: Bool
     ) {
@@ -410,6 +463,8 @@ class Step4 {
         let factor = 1.0 + effectiveBonus
         for attributeId in damageTypeAttributeIds {
             if var v = module.attributes[attributeId] {
+                recordSpool(instanceID: module.instanceId, attributeID: attributeId, before: v, factor: factor,
+                            module: module, sourceAttributeID: damageMultiplierBonusMaxAttributeId)
                 v *= factor
                 module.attributes[attributeId] = v
                 if let attrName = getAttributeName(for: attributeId) {
@@ -420,6 +475,8 @@ class Step4 {
         if var charge = module.charge {
             for attributeId in damageTypeAttributeIds {
                 if var v = charge.attributes[attributeId] {
+                    recordSpool(instanceID: charge.instanceId, attributeID: attributeId, before: v, factor: factor,
+                                module: module, sourceAttributeID: damageMultiplierBonusMaxAttributeId)
                     v *= factor
                     charge.attributes[attributeId] = v
                     if let attrName = getAttributeName(for: attributeId) {
@@ -429,6 +486,37 @@ class Step4 {
             }
             module.charge = charge
         }
+    }
+
+    /// Triglavian mutadaptive remote armor repairers: full spool changes repair amount,
+    /// never local tank, capacitor need or cycle time. Applied once to the final output.
+    private func applyRepairSpoolToModule(_ module: inout SimModuleOutput, isSpoolUpFull: Bool) {
+        guard isSpoolUpFull,
+              let bonus = module.attributes[2797] ?? module.attributesByName["repairMultiplierBonusMax"],
+              bonus > 0,
+              let amount = module.attributes[84] ?? module.attributesByName["armorDamageAmount"]
+        else { return }
+        recordSpool(instanceID: module.instanceId, attributeID: 84, before: amount, factor: 1 + bonus,
+                    module: module, sourceAttributeID: 2797)
+        let repairedAmount = amount * (1 + bonus)
+        module.attributes[84] = repairedAmount
+        module.attributesByName["armorDamageAmount"] = repairedAmount
+    }
+
+    private func recordSpool(instanceID: UUID, attributeID: Int, before: Double, factor: Double,
+                             module: SimModuleOutput, sourceAttributeID: Int)
+    {
+        guard factor != 1 else { return }
+        let modifier = SimAttributeModifier(sourceTypeID: module.typeId, sourceName: module.name,
+                                            operation: "Spool", value: factor, stackingPenalty: false, sourceAttributeId: sourceAttributeID,
+                                            sourceItemType: .module, sourceItemIndex: nil, sourceFlag: module.flag, effectId: nil,
+                                            effectCategory: nil, sourceInstanceId: module.instanceId, targetInstanceId: instanceID)
+        var trace = attributeTraces[instanceID]?[attributeID]
+            ?? AttributeTrace(baseValue: before, steps: [], finalValue: before)
+        trace.steps.append(AttributeTraceStep(modifier: modifier, operation: "Spool", operand: factor,
+                                              penalty: 1, before: before, after: before * factor))
+        trace.finalValue = before * factor
+        attributeTraces[instanceID, default: [:]][attributeID] = trace
     }
 
     /// 计算单个属性的值
@@ -448,15 +536,38 @@ class Step4 {
             return
         }
 
+        let key = AttributeKey(itemType: itemType, index: itemIndex, attributeId: attributeId)
+        cache.evaluating.insert(key)
+        defer { cache.evaluating.remove(key) }
+
+        // 保持原来“常规修饰后乘突变倍率”的局部公式，但在缓存前应用，
+        // 让所有依赖该属性的对象都读到相同的最终值。
+        let mutationMultiplier: Double
+        switch itemType {
+        case .module: mutationMultiplier = input.modules[itemIndex].mutatedAttributes[attributeId] ?? 1
+        case .drone: mutationMultiplier = input.drones[itemIndex].mutatedAttributes[attributeId] ?? 1
+        default: mutationMultiplier = 1
+        }
+
         // 当前属性值，初始为基础值
         var currentValue = baseValue
 
         // 获取当前物品的instanceId用于生成唯一的计算过程键
         let instanceId = getInstanceId(itemType: itemType, itemIndex: itemIndex, input: input)
-        let instanceIdShort = String(instanceId.uuidString.prefix(8))
+        let instanceIdShort = AppConfiguration.Fitting.showDebug ? String(instanceId.uuidString.prefix(8)) : ""
+
+        var traceSteps: [AttributeTraceStep] = []
+        defer {
+            let final = cache.getValue(itemType: itemType, itemIndex: itemIndex, attributeId: attributeId) ?? baseValue
+            if !traceSteps.isEmpty {
+                attributeTraces[instanceId, default: [:]][attributeId] = AttributeTrace(
+                    baseValue: baseValue, steps: traceSteps, finalValue: final
+                )
+            }
+        }
 
         // 记录计算过程（仅在调试模式下）
-        let attrName = getAttributeName(for: attributeId) ?? "未知属性"
+        let attrName = AppConfiguration.Fitting.showDebug ? (getAttributeName(for: attributeId) ?? "未知属性") : ""
         var process: String?
         if AppConfiguration.Fitting.showDebug {
             process =
@@ -465,11 +576,15 @@ class Step4 {
 
         // 如果没有修饰器，直接缓存基础值
         if modifiers.isEmpty {
+            if mutationMultiplier != 1 {
+                traceSteps.append(AttributeTraceStep(modifier: nil, operation: "Mutation", operand: mutationMultiplier,
+                                                     penalty: 1, before: baseValue, after: baseValue * mutationMultiplier))
+            }
             cache.setValue(
-                itemType: itemType, itemIndex: itemIndex, attributeId: attributeId, value: baseValue
+                itemType: itemType, itemIndex: itemIndex, attributeId: attributeId, value: baseValue * mutationMultiplier
             )
             if AppConfiguration.Fitting.showDebug, var processValue = process {
-                processValue += "\n  无修饰器，最终值：\(baseValue)"
+                processValue += "\n  无修饰器，突变倍率：\(mutationMultiplier)，最终值：\(baseValue * mutationMultiplier)"
                 attributeCalculationProcess["\(instanceIdShort):\(attributeId)"] = processValue
             }
             return
@@ -481,9 +596,10 @@ class Step4 {
             "PostMul", "PostDiv", "PostPercent", "PostAssign",
         ]
 
+        let groupedModifiers = Dictionary(grouping: modifiers, by: \.operation)
         for operation in operationTypes {
             // 获取当前操作类型的所有修饰器
-            let operationModifiers = modifiers.filter { $0.operation == operation }
+            let operationModifiers = groupedModifiers[operation] ?? []
             if operationModifiers.isEmpty {
                 continue
             }
@@ -500,11 +616,21 @@ class Step4 {
                 moduleInstanceMap: moduleInstanceMap
             )
 
+            traceSteps.append(contentsOf: operationResult.steps)
             currentValue = operationResult.newValue
             if AppConfiguration.Fitting.showDebug, var processValue = process {
                 processValue += operationResult.process
                 process = processValue
             }
+        }
+
+        if mutationMultiplier != 1 {
+            traceSteps.append(AttributeTraceStep(modifier: nil, operation: "Mutation", operand: mutationMultiplier,
+                                                 penalty: 1, before: currentValue, after: currentValue * mutationMultiplier))
+        }
+        currentValue *= mutationMultiplier
+        if mutationMultiplier != 1, AppConfiguration.Fitting.showDebug {
+            process = (process ?? "") + "\n  突变倍率: \(mutationMultiplier)"
         }
 
         // 缓存计算结果
@@ -556,8 +682,9 @@ class Step4 {
         input: SimulationInput,
         cache: Cache,
         moduleInstanceMap: [UUID: (module: SimModule, index: Int)]
-    ) -> (newValue: Double, process: String) {
+    ) -> (newValue: Double, process: String, steps: [AttributeTraceStep]) {
         var newValue = currentValue
+        var steps: [AttributeTraceStep] = []
         var process = AppConfiguration.Fitting.showDebug ? "\n  \(operation): \(currentValue)" : ""
 
         // 如果没有修饰器，直接返回
@@ -565,7 +692,7 @@ class Step4 {
             if AppConfiguration.Fitting.showDebug {
                 process += "\n    无修饰器应用"
             }
-            return (newValue, process)
+            return (newValue, process, steps)
         }
 
         // 过滤出符合当前状态要求的修饰器
@@ -597,7 +724,7 @@ class Step4 {
             if AppConfiguration.Fitting.showDebug {
                 process += "\n    没有符合当前状态的修饰器"
             }
-            return (newValue, process)
+            return (newValue, process, steps)
         }
 
         // 对 dbuff 修饰器进行去重处理（只保留强度最高的）
@@ -612,6 +739,7 @@ class Step4 {
         case "PreAssign", "PostAssign":
             // 直接赋值，取最大或最小值（根据属性是否highIsGood）
             let isHighGood = step3.isAttributeHighGood(attributeId: attributeId)
+            var bestModifier: SimAttributeModifier?
             var bestValue: Double?
             var bestSource = ""
 
@@ -624,25 +752,19 @@ class Step4 {
                     moduleInstanceMap: moduleInstanceMap
                 )
 
-                let sourceName = modifier.sourceName
-                let sourceAttrName = getAttributeName(for: modifier.sourceAttributeId) ?? "未知属性"
-
-                if bestValue == nil {
+                if bestValue == nil || (isHighGood ? sourceValue > bestValue! : sourceValue < bestValue!) {
+                    bestModifier = modifier
                     bestValue = sourceValue
-                    bestSource =
-                        "\(sourceName)的\(sourceAttrName)(\(modifier.sourceAttributeId)): \(sourceValue)"
-                } else if isHighGood, sourceValue > bestValue! {
-                    bestValue = sourceValue
-                    bestSource =
-                        "\(sourceName)的\(sourceAttrName)(\(modifier.sourceAttributeId)): \(sourceValue)"
-                } else if !isHighGood, sourceValue < bestValue! {
-                    bestValue = sourceValue
-                    bestSource =
-                        "\(sourceName)的\(sourceAttrName)(\(modifier.sourceAttributeId)): \(sourceValue)"
+                    if AppConfiguration.Fitting.showDebug {
+                        let name = getAttributeName(for: modifier.sourceAttributeId) ?? "未知属性"
+                        bestSource = "\(modifier.sourceName)的\(name)(\(modifier.sourceAttributeId)): \(sourceValue)"
+                    }
                 }
             }
 
             if let value = bestValue {
+                steps.append(AttributeTraceStep(modifier: bestModifier, operation: operation, operand: value,
+                                                penalty: 1, before: newValue, after: value))
                 newValue = value
                 if AppConfiguration.Fitting.showDebug {
                     process += "\n    直接赋值为\(bestSource)"
@@ -653,9 +775,9 @@ class Step4 {
             // 乘法、除法和百分比修饰器
 
             // 分为三组：非叠加惩罚、正值叠加惩罚、负值叠加惩罚
-            var nonStackingValues: [(value: Double, source: String)] = []
-            var positiveStackingValues: [(value: Double, source: String)] = []
-            var negativeStackingValues: [(value: Double, source: String)] = []
+            var nonStackingValues: [(value: Double, source: String, modifier: SimAttributeModifier, operand: Double)] = []
+            var positiveStackingValues: [(value: Double, source: String, modifier: SimAttributeModifier, operand: Double)] = []
+            var negativeStackingValues: [(value: Double, source: String, modifier: SimAttributeModifier, operand: Double)] = []
 
             // 收集所有值并分组
             for modifier in finalModifiers {
@@ -679,24 +801,29 @@ class Step4 {
                     transformedValue = sourceValue
                 }
 
-                let sourceName = modifier.sourceName
-                let sourceAttrName = getAttributeName(for: modifier.sourceAttributeId) ?? "未知属性"
-                let source = "\(sourceName)的\(sourceAttrName)(\(modifier.sourceAttributeId))"
+                var source = ""
+                if AppConfiguration.Fitting.showDebug {
+                    let name = getAttributeName(for: modifier.sourceAttributeId) ?? "未知属性"
+                    source = "\(modifier.sourceName)的\(name)(\(modifier.sourceAttributeId))"
+                }
 
                 if modifier.stackingPenalty, stackableOperations.contains(operation) {
                     if transformedValue < 0 {
-                        negativeStackingValues.append((transformedValue, source))
+                        negativeStackingValues.append((transformedValue, source, modifier, sourceValue))
                     } else {
-                        positiveStackingValues.append((transformedValue, source))
+                        positiveStackingValues.append((transformedValue, source, modifier, sourceValue))
                     }
                 } else {
-                    nonStackingValues.append((transformedValue, source))
+                    nonStackingValues.append((transformedValue, source, modifier, sourceValue))
                 }
             }
 
             // 应用非叠加惩罚的修饰器
-            for (value, source) in nonStackingValues {
+            for (value, source, modifier, operand) in nonStackingValues {
+                let before = newValue
                 newValue *= (1.0 + value)
+                steps.append(AttributeTraceStep(modifier: modifier, operation: operation, operand: operand,
+                                                penalty: 1, before: before, after: newValue))
                 if AppConfiguration.Fitting.showDebug {
                     process += "\n    * (1 + \(value)) [\(source)] = \(newValue)"
                 }
@@ -711,10 +838,13 @@ class Step4 {
                 process += "\n    正值叠加惩罚:"
             }
 
-            for (index, (value, source)) in positiveStackingValues.enumerated() {
+            for (index, (value, source, modifier, operand)) in positiveStackingValues.enumerated() {
                 let penalty = pow(penaltyFactor, Double(index * index))
                 let penalizedValue = value * penalty
+                let before = newValue
                 newValue *= (1.0 + penalizedValue)
+                steps.append(AttributeTraceStep(modifier: modifier, operation: operation, operand: operand,
+                                                penalty: penalty, before: before, after: newValue))
                 if AppConfiguration.Fitting.showDebug {
                     process +=
                         "\n    * (1 + \(value) * \(penalty)) [\(source), 第\(index + 1)级惩罚] = \(newValue)"
@@ -726,10 +856,13 @@ class Step4 {
                 process += "\n    负值叠加惩罚:"
             }
 
-            for (index, (value, source)) in negativeStackingValues.enumerated() {
+            for (index, (value, source, modifier, operand)) in negativeStackingValues.enumerated() {
                 let penalty = pow(penaltyFactor, Double(index * index))
                 let penalizedValue = value * penalty
+                let before = newValue
                 newValue *= (1.0 + penalizedValue)
+                steps.append(AttributeTraceStep(modifier: modifier, operation: operation, operand: operand,
+                                                penalty: penalty, before: before, after: newValue))
                 if AppConfiguration.Fitting.showDebug {
                     process +=
                         "\n    * (1 + \(value) * \(penalty)) [\(source), 第\(index + 1)级惩罚] = \(newValue)"
@@ -754,7 +887,10 @@ class Step4 {
                     continue
                 }
 
+                let before = newValue
                 newValue += value
+                steps.append(AttributeTraceStep(modifier: modifier, operation: operation, operand: sourceValue,
+                                                penalty: 1, before: before, after: newValue))
 
                 if AppConfiguration.Fitting.showDebug {
                     let sourceName = modifier.sourceName
@@ -773,7 +909,7 @@ class Step4 {
             break
         }
 
-        return (newValue, process)
+        return (newValue, process, steps)
     }
 
     /// 根据缓存或递归计算获取单个源属性的值。
@@ -797,12 +933,18 @@ class Step4 {
             return value
         }
 
-        // 取 baseValue → 递归 calculateAttributeValue → 再查 cache
-        if let baseValue = baseValue {
+        let key = AttributeKey(itemType: itemType, index: itemIndex, attributeId: sourceAttributeId)
+        if cache.evaluating.contains(key) {
+            Logger.warning("检测到属性循环依赖: \(typeId)/\(sourceAttributeId)，使用基础值终止该依赖边")
+            return baseValue ?? SDEMemoryStore.dogmaAttributes[sourceAttributeId]?.defaultValue ?? 0
+        }
+
+        // PostAssign 可创建没有基础值的属性；与顶层求值一样从 0 开始。
+        if baseValue != nil || !modifiers.isEmpty {
             calculateAttributeValue(
                 typeId: typeId,
                 attributeId: sourceAttributeId,
-                baseValue: baseValue,
+                baseValue: baseValue ?? 0,
                 modifiers: modifiers,
                 itemType: itemType,
                 itemIndex: itemIndex,
@@ -830,169 +972,16 @@ class Step4 {
     ) -> Double {
         let sourceAttributeId = modifier.sourceAttributeId
 
-        // 必须有sourceInstanceId才能进行查找
-        guard let sourceInstanceId = modifier.sourceInstanceId else {
-            // 如果没有sourceInstanceId，使用默认值
+        guard let id = modifier.sourceInstanceId, let source = cache.sources[id] else {
             return SDEMemoryStore.dogmaAttributes[sourceAttributeId]?.defaultValue ?? 0.0
         }
-
-        // 在飞船中查找
-        if input.ship.instanceId == sourceInstanceId {
-            return getSourceAttributeValueFromCache(
-                sourceAttributeId: sourceAttributeId,
-                itemType: .ship,
-                itemIndex: 0,
-                typeId: input.ship.typeId,
-                baseValue: input.ship.baseAttributes[sourceAttributeId],
-                modifiers: input.ship.attributeModifiers[sourceAttributeId] ?? [],
-                input: input,
-                cache: cache,
-                moduleInstanceMap: moduleInstanceMap
-            )
-        }
-
-        // 在角色中查找
-        if input.character.instanceId == sourceInstanceId {
-            return getSourceAttributeValueFromCache(
-                sourceAttributeId: sourceAttributeId,
-                itemType: .character,
-                itemIndex: 0,
-                typeId: input.character.typeId,
-                baseValue: input.character.baseAttributes[sourceAttributeId],
-                modifiers: input.character.attributeModifiers[sourceAttributeId] ?? [],
-                input: input,
-                cache: cache,
-                moduleInstanceMap: moduleInstanceMap
-            )
-        }
-
-        // 在模块中查找（使用字典快速访问）
-        if let (module, moduleIndex) = moduleInstanceMap[sourceInstanceId] {
-            return getSourceAttributeValueFromCache(
-                sourceAttributeId: sourceAttributeId,
-                itemType: .module,
-                itemIndex: moduleIndex,
-                typeId: module.typeId,
-                baseValue: module.attributes[sourceAttributeId],
-                modifiers: module.attributeModifiers[sourceAttributeId] ?? [],
-                input: input,
-                cache: cache,
-                moduleInstanceMap: moduleInstanceMap
-            )
-        }
-
-        // 在弹药中查找
-        for (index, module) in input.modules.enumerated() {
-            if let charge = module.charge, charge.instanceId == sourceInstanceId {
-                return getSourceAttributeValueFromCache(
-                    sourceAttributeId: sourceAttributeId,
-                    itemType: .charge,
-                    itemIndex: index,
-                    typeId: charge.typeId,
-                    baseValue: charge.attributes[sourceAttributeId],
-                    modifiers: charge.attributeModifiers[sourceAttributeId] ?? [],
-                    input: input,
-                    cache: cache,
-                    moduleInstanceMap: moduleInstanceMap
-                )
-            }
-        }
-
-        // 在无人机中查找
-        for (index, drone) in input.drones.enumerated() {
-            if drone.instanceId == sourceInstanceId {
-                return getSourceAttributeValueFromCache(
-                    sourceAttributeId: sourceAttributeId,
-                    itemType: .drone,
-                    itemIndex: index,
-                    typeId: drone.typeId,
-                    baseValue: drone.attributes[sourceAttributeId],
-                    modifiers: drone.attributeModifiers[sourceAttributeId] ?? [],
-                    input: input,
-                    cache: cache,
-                    moduleInstanceMap: moduleInstanceMap
-                )
-            }
-        }
-
-        // 在舰载机中查找
-        if let fighters = input.fighters {
-            for (index, fighter) in fighters.enumerated() {
-                if fighter.instanceId == sourceInstanceId {
-                    return getSourceAttributeValueFromCache(
-                        sourceAttributeId: sourceAttributeId,
-                        itemType: .fighter,
-                        itemIndex: index,
-                        typeId: fighter.typeId,
-                        baseValue: fighter.attributes[sourceAttributeId],
-                        modifiers: fighter.attributeModifiers[sourceAttributeId] ?? [],
-                        input: input,
-                        cache: cache,
-                        moduleInstanceMap: moduleInstanceMap
-                    )
-                }
-            }
-        }
-
-        // 在植入体中查找
-        for (index, implant) in input.implants.enumerated() {
-            if implant.instanceId == sourceInstanceId {
-                return getSourceAttributeValueFromCache(
-                    sourceAttributeId: sourceAttributeId,
-                    itemType: .implant,
-                    itemIndex: index,
-                    typeId: implant.typeId,
-                    baseValue: implant.attributes[sourceAttributeId],
-                    modifiers: implant.attributeModifiers[sourceAttributeId] ?? [],
-                    input: input,
-                    cache: cache,
-                    moduleInstanceMap: moduleInstanceMap
-                )
-            }
-        }
-
-        // 在环境效果中查找
-        for (index, environment) in input.environmentEffects.enumerated() {
-            if environment.instanceId == sourceInstanceId {
-                if let value = cache.getValue(
-                    itemType: .environment, itemIndex: index, attributeId: sourceAttributeId
-                ) {
-                    return value
-                }
-
-                if let baseValue = environment.attributes[sourceAttributeId] {
-                    cache.setValue(
-                        itemType: .environment,
-                        itemIndex: index,
-                        attributeId: sourceAttributeId,
-                        value: baseValue
-                    )
-                    return baseValue
-                }
-
-                return SDEMemoryStore.dogmaAttributes[sourceAttributeId]?.defaultValue ?? 0.0
-            }
-        }
-
-        // 在技能中查找
-        for (index, skill) in input.skills.enumerated() {
-            if skill.instanceId == sourceInstanceId {
-                return getSourceAttributeValueFromCache(
-                    sourceAttributeId: sourceAttributeId,
-                    itemType: .skill,
-                    itemIndex: index,
-                    typeId: skill.typeId,
-                    baseValue: skill.attributes[sourceAttributeId],
-                    modifiers: skill.attributeModifiers[sourceAttributeId] ?? [],
-                    input: input,
-                    cache: cache,
-                    moduleInstanceMap: moduleInstanceMap
-                )
-            }
-        }
-
-        // 如果没有找到对应的实例或属性，使用默认值
-        return SDEMemoryStore.dogmaAttributes[sourceAttributeId]?.defaultValue ?? 0.0
+        return getSourceAttributeValueFromCache(
+            sourceAttributeId: sourceAttributeId, itemType: source.itemType,
+            itemIndex: source.index, typeId: source.typeId,
+            baseValue: source.attributes[sourceAttributeId],
+            modifiers: source.modifiers[sourceAttributeId] ?? [],
+            input: input, cache: cache, moduleInstanceMap: moduleInstanceMap
+        )
     }
 
     /// 显示属性计算结果，用于调试和验证
@@ -1210,8 +1199,15 @@ class Step4 {
         }
 
         // 获取所有 dbuff_id 的 aggregateMode
-        let dbuffIds = Array(dbuffGroups.keys.map { abs($0) }) // 转换为正数的 dbuff_id
-        let aggregateModes = getAggregateModes(for: dbuffIds)
+        let dbuffIds = dbuffGroups.filter { $0.value.count > 1 }.keys.map { abs($0) }
+        let missingIds = dbuffIds.filter { cache.aggregateModes[$0] == nil }
+        if !missingIds.isEmpty {
+            let loaded = getAggregateModes(for: missingIds)
+            for id in missingIds {
+                cache.aggregateModes[id] = loaded[id] ?? "Default"
+            }
+        }
+        let aggregateModes = cache.aggregateModes
 
         // 对每组 dbuff 修饰器进行去重，根据 aggregateMode 选择保留策略
         var deduplicatedDbuffModifiers: [SimAttributeModifier] = []

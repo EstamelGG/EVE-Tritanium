@@ -9,6 +9,7 @@ enum CharacterAssetsIconSize {
 
 /// 共用的图标视图（模块内共享，供主列表与 LocationAssetsView 使用）
 struct AssetIconView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     private let iconName: String?
     private let uiImage: UIImage?
     let size: CGFloat
@@ -40,6 +41,7 @@ struct AssetIconView: View {
 
 /// 人物归属行：头像 + 名称（与搜索存放位置行一致）
 struct AssetOwnerRowLabel: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let ownerId: Int
     let ownerName: String?
     let ownerPortrait: UIImage?
@@ -62,6 +64,7 @@ struct AssetOwnerRowLabel: View {
 
 /// 位置行内容（主列表与位置详情页共用）
 struct AssetLocationRowContent: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let location: AssetTreeNode
     let stationNameCache: [Int64: String]?
     let solarSystemNameCache: [Int: String]?
@@ -132,6 +135,7 @@ struct AssetLocationRowContent: View {
 
 /// 位置行视图
 private struct LocationRowView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let entry: AssetLocationWithOwner
     @EnvironmentObject private var viewModel: CharacterAssetsViewModel
 
@@ -151,6 +155,7 @@ private struct LocationRowView: View {
 
 /// 合并模式下的位置行视图（横向铺开多个人物头像）
 private struct MergedLocationRowView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let merged: MergedAssetLocation
     @EnvironmentObject private var viewModel: CharacterAssetsViewModel
 
@@ -245,6 +250,7 @@ private func localizedProgressText(_ progress: AssetLoadingProgress) -> String {
 
 /// 数据加载时间视图
 private struct DataLoadTimeView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let loadTime: Date
 
     var body: some View {
@@ -255,6 +261,7 @@ private struct DataLoadTimeView: View {
 }
 
 struct CharacterAssetsView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var viewModel: CharacterAssetsViewModel
     @State private var searchText = ""
     @State private var searchTask: Task<Void, Never>?
@@ -688,6 +695,7 @@ struct CharacterAssetsView: View {
 // MARK: - 设置
 
 struct AssetsSettingsSheet: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @ObservedObject var viewModel: CharacterAssetsViewModel
     @Environment(\.dismiss) private var dismiss
 

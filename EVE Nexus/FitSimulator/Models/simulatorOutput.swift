@@ -22,6 +22,8 @@ struct SimulationOutput {
     /// 技能计算结果
     var characterSkillCalculatedAttributes: [Int: [Int: Double]] = [:] // 技能ID: [属性ID: 计算后的值]
 
+    var attributeTraces: [UUID: [Int: AttributeTrace]] = [:]
+
     /// 原始输入数据的引用
     var originalInput: SimulationInput
 

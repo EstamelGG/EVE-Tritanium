@@ -6,6 +6,7 @@ import UserNotifications
 struct EVE_NexusApp: App {
     @AppStorage("selectedLanguage") private var selectedLanguage: String?
     @AppStorage("selectedDatabaseLanguage") private var selectedDatabaseLanguage: String?
+    @AppStorage("selectedTimeZone") private var selectedTimeZone = "local"
     @AppStorage("selectedTheme") private var selectedTheme: String = "system"
     @StateObject private var databaseManager = DatabaseManager()
     @StateObject private var rateLimitAlertManager = RateLimitAlertManager.shared
@@ -21,6 +22,11 @@ struct EVE_NexusApp: App {
     }
 
     init() {
+        // Hosted unit tests prepare their own bundled data; avoid concurrent SDE loads,
+        // OTA updates and account/network side effects while the test runner is active.
+        if Self.isUnitTestHost {
+            return
+        }
         // 配置 Pulse 日志系统（必须在其他初始化之前）
         Logger.configure()
 
@@ -455,7 +461,9 @@ struct EVE_NexusApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                if isInitialized {
+                if Self.isUnitTestHost {
+                    Color.clear
+                } else if isInitialized {
                     ContentView(databaseManager: databaseManager)
                         .transition(.opacity)
                 } else {
@@ -478,11 +486,22 @@ struct EVE_NexusApp: App {
             .animation(.easeInOut(duration: 0.5), value: isInitialized)
             // 主题统一在根视图生效，开屏页与主界面共享同一份映射（@AppStorage 变化即时刷新）
             .preferredColorScheme(preferredColorScheme)
+            .environment(\.locale, Locale(identifier: selectedLanguage ?? "en"))
+            .environment(\.timeZone, FormatUtil.displayTimeZone(for: selectedTimeZone))
+            .environment(\.calendar, FormatUtil.appCalendar)
             .alert(NSLocalizedString("RateLimit_Alert_Title", comment: ""), isPresented: $rateLimitAlertManager.shouldShowRateLimitAlert) {
                 Button(NSLocalizedString("RateLimit_Alert_OK", comment: "")) {}
             } message: {
                 Text(NSLocalizedString("RateLimit_Alert_Message", comment: ""))
             }
         }
+    }
+
+    private static var isUnitTestHost: Bool {
+        #if DEBUG
+            NSClassFromString("XCTestCase") != nil
+        #else
+            false
+        #endif
     }
 }

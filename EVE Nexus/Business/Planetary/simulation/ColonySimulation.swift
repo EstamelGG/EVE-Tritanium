@@ -43,6 +43,36 @@ class ColonySimulation {
     /// 当前正在模拟的殖民地引用，用于日志记录
     private static var colony: Colony?
 
+    /// 每轮克隆后建立一次；字典仅用于查找，事件与路由仍按原数组顺序处理。
+    private struct Lookup {
+        var pins: [Int64: Pin] = [:]
+        var incoming: [Int64: [Route]] = [:]
+        var outgoing: [Int64: [Route]] = [:]
+        var incomingByType: [Int64: [Int: [Route]]] = [:]
+        var programs: [ObjectIdentifier: ExtractionSimulation.Program] = [:]
+
+        init(colony: Colony) {
+            for pin in colony.pins {
+                // 与 first(where:) 一致，重复 ID 保留第一个设施。
+                if pins[pin.id] == nil {
+                    pins[pin.id] = pin
+                }
+                if let extractor = pin as? Pin.Extractor,
+                   let baseValue = extractor.baseValue, let cycleTime = extractor.cycleTime
+                {
+                    programs[ObjectIdentifier(extractor)] = ExtractionSimulation.Program(
+                        baseValue: baseValue, cycleDuration: cycleTime
+                    )
+                }
+            }
+            for route in colony.routes {
+                incoming[route.destinationPinId, default: []].append(route)
+                outgoing[route.sourcePinId, default: []].append(route)
+                incomingByType[route.destinationPinId, default: [:]][route.type.id, default: []].append(route)
+            }
+        }
+    }
+
     // MARK: - 公共方法
 
     /// 模拟殖民地
@@ -60,26 +90,7 @@ class ColonySimulation {
             return simulatedColony
         }
 
-        // 记录设施类型统计
-        var extractorCount = 0
-        var factoryCount = 0
-        var storageCount = 0
-        var commandCenterCount = 0
-        var launchpadCount = 0
-
-        for pin in simulatedColony.pins {
-            if pin is Pin.Extractor {
-                extractorCount += 1
-            } else if pin is Pin.Factory {
-                factoryCount += 1
-            } else if pin is Pin.Storage {
-                storageCount += 1
-            } else if pin is Pin.CommandCenter {
-                commandCenterCount += 1
-            } else if pin is Pin.Launchpad {
-                launchpadCount += 1
-            }
-        }
+        let lookup = Lookup(colony: simulatedColony)
 
         // 检查并处理已经在生产周期中的工厂
         for pin in simulatedColony.pins {
@@ -109,6 +120,7 @@ class ColonySimulation {
                     var tempEventQueue: [(date: Date, pinId: Int64)] = []
                     let products = [outputType: outputQuantity]
                     routeCommodityOutput(
+                        lookup: lookup,
                         colony: simulatedColony, sourcePin: factory, commodities: products,
                         currentTime: simulatedColony.currentSimTime, eventQueue: &tempEventQueue
                     )
@@ -125,6 +137,7 @@ class ColonySimulation {
         // 运行事件驱动的模拟
         let startTime = simulatedColony.currentSimTime
         runEventDrivenSimulation(
+            lookup: lookup,
             colony: &simulatedColony, targetTime: targetTime, startTime: startTime,
             eventQueue: &eventQueue, progressCallback: progressCallback
         )
@@ -139,24 +152,6 @@ class ColonySimulation {
         simulatedColony.overview = getColonyOverview(
             routes: simulatedColony.routes, pins: simulatedColony.pins
         )
-
-        // 记录模拟后的设施状态统计
-        var activeExtractorCount = 0
-        var activeFactoryCount = 0
-        var runningFactoryCount = 0
-
-        for pin in simulatedColony.pins {
-            if let extractor = pin as? Pin.Extractor, extractor.isActive {
-                activeExtractorCount += 1
-            } else if let factory = pin as? Pin.Factory {
-                if factory.isActive {
-                    activeFactoryCount += 1
-                }
-                if factory.lastCycleStartTime != nil {
-                    runningFactoryCount += 1
-                }
-            }
-        }
 
         return simulatedColony
     }
@@ -391,7 +386,7 @@ class ColonySimulation {
     ///   - startTime: 模拟开始时间
     ///   - eventQueue: 事件队列（inout参数）
     ///   - progressCallback: 可选的进度回调
-    private static func runEventDrivenSimulation(colony: inout Colony, targetTime: Date, startTime: Date, eventQueue: inout [(date: Date, pinId: Int64)], progressCallback: SimulationProgressCallback?) {
+    private static func runEventDrivenSimulation(lookup: Lookup, colony: inout Colony, targetTime: Date, startTime: Date, eventQueue: inout [(date: Date, pinId: Int64)], progressCallback: SimulationProgressCallback?) {
         // 保存当前模拟时间
         var currentSimTime = colony.currentSimTime
 
@@ -401,6 +396,7 @@ class ColonySimulation {
         // 进度跟踪变量（每次模拟开始时重置）
         var lastReportedProgress: Double = -1.0
         var eventCount = 0
+        let totalTime = targetTime.timeIntervalSince(startTime)
 
         // 检查事件队列
         if eventQueue.isEmpty {
@@ -433,7 +429,6 @@ class ColonySimulation {
 
             // 计算并报告进度（每处理一定数量的事件或进度有明显变化时报告）
             if let progressCallback = progressCallback {
-                let totalTime = targetTime.timeIntervalSince(startTime)
                 if totalTime > 0 {
                     let elapsedTime = currentSimTime.timeIntervalSince(startTime)
                     let progress = min(max(elapsedTime / totalTime, 0.0), 1.0)
@@ -447,7 +442,7 @@ class ColonySimulation {
             }
 
             // 获取要处理的设施
-            guard let pin = colony.pins.first(where: { $0.id == pinId }) else {
+            guard let pin = lookup.pins[pinId] else {
                 continue
             }
 
@@ -464,11 +459,12 @@ class ColonySimulation {
             // 如果设施可以运行，处理该设施
             if canRun(pin: pin, time: targetTime) {
                 // 1. 先运行设施并获取产出的资源
-                let commodities = run(pin: pin, time: currentSimTime, eventQueue: &eventQueue)
+                let commodities = run(lookup: lookup, pin: pin, time: currentSimTime, eventQueue: &eventQueue)
 
                 // 2. 如果设施是消费者，然后处理输入路由
                 if isConsumer(pin: pin) {
                     routeCommodityInput(
+                        lookup: lookup,
                         colony: colony, destinationPin: pin, currentTime: currentSimTime, eventQueue: &eventQueue
                     )
                 }
@@ -481,6 +477,7 @@ class ColonySimulation {
                 // 4. 如果设施产出了资源，处理输出路由
                 if !commodities.isEmpty {
                     routeCommodityOutput(
+                        lookup: lookup,
                         colony: colony, sourcePin: pin, commodities: commodities,
                         currentTime: currentSimTime, eventQueue: &eventQueue
                     )
@@ -544,7 +541,7 @@ class ColonySimulation {
                 // 立即运行工厂，开始生产周期
                 // 注意：这里需要创建一个临时事件队列，因为这是在模拟结束后调用的
                 var tempEventQueue: [(date: Date, pinId: Int64)] = []
-                _ = runFactory(factory: factory, time: colony.currentSimTime, eventQueue: &tempEventQueue)
+                _ = runFactory(lookup: lookup, factory: factory, time: colony.currentSimTime, eventQueue: &tempEventQueue)
             }
         }
 
@@ -558,11 +555,11 @@ class ColonySimulation {
     ///   - time: 当前时间
     ///   - eventQueue: 事件队列（inout参数）
     /// - Returns: 产出的资源
-    private static func run(pin: Pin, time: Date, eventQueue: inout [(date: Date, pinId: Int64)]) -> [ItemType: Int64] {
+    private static func run(lookup: Lookup, pin: Pin, time: Date, eventQueue: inout [(date: Date, pinId: Int64)]) -> [ItemType: Int64] {
         var products: [ItemType: Int64] = [:]
 
         if let extractor = pin as? Pin.Extractor {
-            runExtractor(extractor: extractor, time: time)
+            runExtractor(lookup: lookup, extractor: extractor, time: time)
 
             // 收集提取器产出的资源
             if let productType = extractor.productType, extractor.isActive {
@@ -577,7 +574,7 @@ class ColonySimulation {
             }
         } else if let factory = pin as? Pin.Factory {
             // 运行工厂并获取生产状态
-            let productionStatus = runFactory(factory: factory, time: time, eventQueue: &eventQueue)
+            let productionStatus = runFactory(lookup: lookup, factory: factory, time: time, eventQueue: &eventQueue)
 
             // 只有当工厂完成了一个生产周期时，才收集产出
             if productionStatus == .completedCycle, let schematic = factory.schematic {
@@ -598,7 +595,7 @@ class ColonySimulation {
     /// - Parameters:
     ///   - extractor: 提取器
     ///   - time: 当前时间
-    private static func runExtractor(extractor: Pin.Extractor, time: Date) {
+    private static func runExtractor(lookup: Lookup, extractor: Pin.Extractor, time: Date) {
         guard let productType = extractor.productType,
               let baseValue = extractor.baseValue,
               let installTime = extractor.installTime,
@@ -608,12 +605,9 @@ class ColonySimulation {
         }
 
         // 计算产量
-        let output = ExtractionSimulation.getProgramOutput(
-            baseValue: baseValue,
-            startTime: installTime,
-            currentTime: time,
-            cycleTime: cycleTime
-        )
+        let program = lookup.programs[ObjectIdentifier(extractor)]
+            ?? ExtractionSimulation.Program(baseValue: baseValue, cycleDuration: cycleTime)
+        let output = program.output(startTime: installTime, currentTime: time)
 
         // 将产出的资源添加到存储中
         let currentQuantity = extractor.contents[productType] ?? 0
@@ -647,7 +641,7 @@ class ColonySimulation {
     ///   - time: 当前时间
     ///   - eventQueue: 事件队列（inout参数）
     /// - Returns: 工厂生产状态
-    private static func runFactory(factory: Pin.Factory, time: Date, eventQueue: inout [(date: Date, pinId: Int64)]) -> FactoryProductionStatus {
+    private static func runFactory(lookup: Lookup, factory: Pin.Factory, time: Date, eventQueue: inout [(date: Date, pinId: Int64)]) -> FactoryProductionStatus {
         // 首先检查是否有配方
         guard let schematic = factory.schematic else {
             return .notProduced
@@ -674,7 +668,7 @@ class ColonySimulation {
                 factory.lastRunTime = time
 
                 // 工厂完成周期后，尝试从仓储设施重新填充其缓冲区
-                refillFactoryBuffer(factory: factory, time: time, eventQueue: &eventQueue)
+                refillFactoryBuffer(lookup: lookup, factory: factory, time: time, eventQueue: &eventQueue)
 
                 if hasEnoughInputs(factory: factory) {
                     // 立即开始新的生产周期
@@ -694,7 +688,7 @@ class ColonySimulation {
                     factory.hasReceivedInputs = false
 
                     // 继续尝试填充缓冲区
-                    refillFactoryBuffer(factory: factory, time: time, eventQueue: &eventQueue)
+                    refillFactoryBuffer(lookup: lookup, factory: factory, time: time, eventQueue: &eventQueue)
                 }
 
                 // 返回completedCycle，让run函数收集产出
@@ -744,7 +738,7 @@ class ColonySimulation {
             factory.hasReceivedInputs = false
 
             // 工厂开始生产后，尝试从仓储设施重新填充其缓冲区
-            refillFactoryBuffer(factory: factory, time: time, eventQueue: &eventQueue)
+            refillFactoryBuffer(lookup: lookup, factory: factory, time: time, eventQueue: &eventQueue)
 
             return .startedCycle // 开始新的生产周期
         } else {
@@ -996,16 +990,16 @@ class ColonySimulation {
     ///   - destinationPin: 目标设施
     ///   - currentTime: 当前模拟时间
     ///   - eventQueue: 事件队列（inout参数）
-    private static func routeCommodityInput(colony: Colony, destinationPin: Pin, currentTime: Date, eventQueue: inout [(date: Date, pinId: Int64)]) {
+    private static func routeCommodityInput(lookup: Lookup, colony _: Colony, destinationPin: Pin, currentTime: Date, eventQueue: inout [(date: Date, pinId: Int64)]) {
         // 获取以该设施为目标的所有路由
-        let routesToEvaluate = colony.routes.filter { $0.destinationPinId == destinationPin.id }
+        let routesToEvaluate = lookup.incoming[destinationPin.id] ?? []
 
         // 记录接收资源的设施和数量
         var pinsReceivingCommodities: [Int64: [ItemType: Int64]] = [:]
 
         for route in routesToEvaluate {
             // 获取源设施
-            guard let sourcePin = colony.pins.first(where: { $0.id == route.sourcePinId }) else {
+            guard let sourcePin = lookup.pins[route.sourcePinId] else {
                 continue
             }
 
@@ -1044,7 +1038,7 @@ class ColonySimulation {
 
         // 处理接收到资源的设施
         for (receivingPinId, _) in pinsReceivingCommodities {
-            guard let receivingPin = colony.pins.first(where: { $0.id == receivingPinId }) else {
+            guard let receivingPin = lookup.pins[receivingPinId] else {
                 continue
             }
 
@@ -1062,9 +1056,9 @@ class ColonySimulation {
     ///   - commodities: 要路由的资源
     ///   - currentTime: 当前模拟时间
     ///   - eventQueue: 事件队列（inout参数）
-    private static func routeCommodityOutput(
-        colony: Colony, sourcePin: Pin, commodities: [ItemType: Int64], currentTime: Date, eventQueue: inout [(date: Date, pinId: Int64)]
-    ) {
+    private static func routeCommodityOutput(lookup: Lookup,
+                                             colony: Colony, sourcePin: Pin, commodities: [ItemType: Int64], currentTime: Date, eventQueue: inout [(date: Date, pinId: Int64)])
+    {
         // 记录接收资源的设施和数量
         var pinsReceivingCommodities: [Int64: [ItemType: Int64]] = [:]
 
@@ -1072,9 +1066,8 @@ class ColonySimulation {
         var remainingCommodities = commodities
 
         // 获取并排序路由
-        var (processorRoutes, storageRoutes) = getSortedRoutesForPin(
-            colony: colony, pinId: sourcePin.id, commodities: commodities
-        )
+        var (processorRoutes, storageRoutes) = getSortedRoutesForPin(lookup: lookup,
+                                                                     colony: colony, pinId: sourcePin.id, commodities: commodities)
 
         // 优先处理处理器路由（工厂优先）
         var done = false
@@ -1083,7 +1076,7 @@ class ColonySimulation {
         while !processorRoutes.isEmpty, !done {
             let route = processorRoutes.removeFirst()
 
-            guard let destinationPin = colony.pins.first(where: { $0.id == route.destinationId })
+            guard let destinationPin = lookup.pins[route.destinationId]
             else {
                 continue
             }
@@ -1117,7 +1110,7 @@ class ColonySimulation {
         while !storageRoutes.isEmpty, !done {
             let route = storageRoutes.removeFirst()
 
-            guard let destinationPin = colony.pins.first(where: { $0.id == route.destinationId })
+            guard let destinationPin = lookup.pins[route.destinationId]
             else {
                 continue
             }
@@ -1158,7 +1151,7 @@ class ColonySimulation {
 
         // 处理接收到资源的设施
         for (receivingPinId, commoditiesAdded) in pinsReceivingCommodities {
-            guard let receivingPin = colony.pins.first(where: { $0.id == receivingPinId }) else {
+            guard let receivingPin = lookup.pins[receivingPinId] else {
                 continue
             }
 
@@ -1172,6 +1165,7 @@ class ColonySimulation {
                !commoditiesAdded.isEmpty
             {
                 routeCommodityOutput(
+                    lookup: lookup,
                     colony: colony, sourcePin: receivingPin, commodities: commoditiesAdded,
                     currentTime: currentTime, eventQueue: &eventQueue
                 )
@@ -1222,9 +1216,8 @@ class ColonySimulation {
     ///   - pinId: 设施ID
     ///   - commodities: 资源
     /// - Returns: 处理器路由和存储路由的元组
-    private static func getSortedRoutesForPin(
-        colony: Colony, pinId: Int64, commodities: [ItemType: Int64]
-    ) -> (
+    private static func getSortedRoutesForPin(lookup: Lookup,
+                                              colony _: Colony, pinId: Int64, commodities: [ItemType: Int64]) -> (
         [(sortingKey: Double, destinationId: Int64, commodityType: ItemType, quantity: Int64)],
         [(sortingKey: Double, destinationId: Int64, commodityType: ItemType, quantity: Int64)]
     ) {
@@ -1237,14 +1230,14 @@ class ColonySimulation {
             []
 
         // 筛选和排序路由
-        for route in colony.routes.filter({ $0.sourcePinId == pinId }) {
+        for route in lookup.outgoing[pinId] ?? [] {
             // 如果路由的资源类型不在待处理资源中，跳过
             if !commodities.keys.contains(route.type) {
                 continue
             }
 
             // 获取目标设施
-            guard let destinationPin = colony.pins.first(where: { $0.id == route.destinationPinId })
+            guard let destinationPin = lookup.pins[route.destinationPinId]
             else {
                 continue
             }
@@ -1433,13 +1426,13 @@ class ColonySimulation {
     ///   - factory: 工厂
     ///   - time: 当前时间
     ///   - eventQueue: 事件队列（inout参数）
-    private static func refillFactoryBuffer(factory: Pin.Factory, time: Date, eventQueue: inout [(date: Date, pinId: Int64)]) {
-        guard let colony = colony, let schematic = factory.schematic else {
+    private static func refillFactoryBuffer(lookup: Lookup, factory: Pin.Factory, time: Date, eventQueue: inout [(date: Date, pinId: Int64)]) {
+        guard colony != nil, let schematic = factory.schematic else {
             return
         }
 
         // 获取所有指向该工厂的路由
-        let incomingRoutes = colony.routes.filter { $0.destinationPinId == factory.id }
+        let incomingRoutes = lookup.incoming[factory.id] ?? []
         if incomingRoutes.isEmpty {
             return
         }
@@ -1454,10 +1447,10 @@ class ColonySimulation {
             }
 
             // 查找可以提供该材料的仓储设施和路由
-            let relevantRoutes = incomingRoutes.filter { $0.type.id == inputType.id }
+            let relevantRoutes = lookup.incomingByType[factory.id]?[inputType.id] ?? []
             for route in relevantRoutes {
                 // 查找源设施
-                guard let sourcePin = colony.pins.first(where: { $0.id == route.sourcePinId }),
+                guard let sourcePin = lookup.pins[route.sourcePinId],
                       isStorage(pin: sourcePin)
                 else {
                     continue

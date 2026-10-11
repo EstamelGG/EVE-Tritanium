@@ -21,16 +21,47 @@ class ExtractionSimulation {
         currentTime: Date,
         cycleTime: TimeInterval
     ) -> Int64 {
-        let startTimeSeconds = Int64(startTime.timeIntervalSince1970 * Double(SEC))
-        let currentTimeSeconds = Int64(currentTime.timeIntervalSince1970 * Double(SEC))
-        let cycleTimeSeconds = Int64(cycleTime * Double(SEC))
+        Program(baseValue: baseValue, cycleDuration: cycleTime)
+            .output(startTime: startTime, currentTime: currentTime)
+    }
 
-        return getProgramOutput(
-            baseValue: baseValue,
-            startTime: startTimeSeconds,
-            currentTime: currentTimeSeconds,
-            cycleTime: cycleTimeSeconds
-        )
+    /// 固定采集参数；仅复用常量，保留原公式的运算顺序和逐周期取整。
+    struct Program {
+        private let baseValue: Int
+        private let cycleTime: Int64
+        private let barWidth: Double
+        private let phaseShift: Double
+
+        init(baseValue: Int, cycleDuration: TimeInterval) {
+            self.baseValue = baseValue
+            cycleTime = Int64(cycleDuration * Double(SEC))
+            barWidth = Double(cycleTime) / Double(SEC) / 900.0
+            phaseShift = pow(Double(baseValue), 0.7)
+        }
+
+        func output(startTime: Date, currentTime: Date) -> Int64 {
+            let startTimeSeconds = Int64(startTime.timeIntervalSince1970 * Double(SEC))
+            let currentTimeSeconds = Int64(currentTime.timeIntervalSince1970 * Double(SEC))
+            return output(startTime: startTimeSeconds, currentTime: currentTimeSeconds)
+        }
+
+        func prediction(cycleIndex: Int) -> Int64 {
+            output(startTime: 0, currentTime: Int64(cycleIndex + 1) * cycleTime)
+        }
+
+        private func output(startTime: Int64, currentTime: Int64) -> Int64 {
+            let timeDiff = currentTime - startTime
+            let cycleNum = max((timeDiff + SEC) / cycleTime - 1, 0)
+            let t = (Double(cycleNum) + 0.5) * barWidth
+            let decayValue = Double(baseValue) / (1.0 + t * decayFactor)
+            let sinA = cos(phaseShift + t * f1)
+            let sinB = cos(phaseShift / 2.0 + t * f2)
+            let sinC = cos(t * f3)
+            let sinStuff = max((sinA + sinB + sinC) / 3.0, 0.0)
+            let barHeight = decayValue * (1.0 + noiseFactor * sinStuff)
+            let output = barWidth * barHeight
+            return Int64(floor(output))
+        }
     }
 
     /// 预测未来多个周期的产出
@@ -44,55 +75,12 @@ class ExtractionSimulation {
         cycleDuration: TimeInterval,
         length: Int
     ) -> [Int64] {
+        let program = Program(baseValue: baseValue, cycleDuration: cycleDuration)
         var results = [Int64]()
-        let startTime: Int64 = 0
-        let cycleTime = Int64(cycleDuration * Double(SEC))
-
+        results.reserveCapacity(length)
         for i in 0 ..< length {
-            let currentTime = Int64(i + 1) * cycleTime
-            results.append(
-                getProgramOutput(
-                    baseValue: baseValue,
-                    startTime: startTime,
-                    currentTime: currentTime,
-                    cycleTime: cycleTime
-                )
-            )
+            results.append(program.prediction(cycleIndex: i))
         }
-
         return results
-    }
-
-    // MARK: - Private Methods
-
-    private static func getProgramOutput(
-        baseValue: Int,
-        startTime: Int64,
-        currentTime: Int64,
-        cycleTime: Int64
-    ) -> Int64 {
-        let timeDiff = currentTime - startTime
-        let cycleNum = max((timeDiff + SEC) / cycleTime - 1, 0)
-        let barWidth = Double(cycleTime) / Double(SEC) / 900.0
-        let t = (Double(cycleNum) + 0.5) * barWidth
-
-        // 计算衰减值
-        let decayValue = Double(baseValue) / (1.0 + t * decayFactor)
-
-        // 计算相移
-        let phaseShift = pow(Double(baseValue), 0.7)
-
-        // 计算波动
-        let sinA = cos(phaseShift + t * f1)
-        let sinB = cos(phaseShift / 2.0 + t * f2)
-        let sinC = cos(t * f3)
-        let sinStuff = max((sinA + sinB + sinC) / 3.0, 0.0)
-
-        // 计算最终产量
-        let barHeight = decayValue * (1.0 + noiseFactor * sinStuff)
-        let output = barWidth * barHeight
-
-        // 向下取整
-        return Int64(floor(output))
     }
 }

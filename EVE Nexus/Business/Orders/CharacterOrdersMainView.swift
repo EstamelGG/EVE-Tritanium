@@ -342,37 +342,10 @@ struct CharacterOrdersView: View {
                 return NSLocalizedString("Orders_Expired", comment: "")
             }
 
-            let days = Int(remainingTime) / (24 * 3600)
-            let hours = (Int(remainingTime) % (24 * 3600)) / 3600
-            let minutes = (Int(remainingTime) % 3600) / 60
-
-            if days > 0 {
-                if hours > 0 {
-                    return String(
-                        format: NSLocalizedString("Orders_Remaining_Days_Hours", comment: ""), days,
-                        hours
-                    )
-                } else {
-                    return String(
-                        format: NSLocalizedString("Orders_Remaining_Days", comment: ""), days
-                    )
-                }
-            } else if hours > 0 {
-                if minutes > 0 {
-                    return String(
-                        format: NSLocalizedString("Orders_Remaining_Hours_Minutes", comment: ""),
-                        hours, minutes
-                    )
-                } else {
-                    return String(
-                        format: NSLocalizedString("Orders_Remaining_Hours", comment: ""), hours
-                    )
-                }
-            } else {
-                return String(
-                    format: NSLocalizedString("Orders_Remaining_Minutes", comment: ""), minutes
-                )
-            }
+            return String(
+                format: NSLocalizedString("Orders_Remaining_Compact", comment: "Order expiry countdown"),
+                FormatUtil.formatCompactDuration(remainingTime, rounding: .ceil)
+            )
         }
 
         // 使用FormatUtil进行日期处理，无需自定义格式化器

@@ -73,11 +73,9 @@ final class WalletJournalViewModel: ObservableObject {
 
     // 使用FormatUtil进行日期处理，无需自定义格式化器
 
-    private let calendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.current // 使用本地时区
-        return calendar
-    }()
+    private var calendar: Calendar {
+        FormatUtil.appCalendar
+    }
 
     init(characterId: Int) {
         self.characterId = characterId
@@ -97,7 +95,7 @@ final class WalletJournalViewModel: ObservableObject {
         var income: Double = 0
         var expense: Double = 0
 
-        let calendar = Calendar.current
+        let calendar = FormatUtil.appCalendar
         let now = Date()
         let startDate: Date
 
@@ -132,6 +130,18 @@ final class WalletJournalViewModel: ObservableObject {
     func updateTotals() {
         let allEntries = journalGroups.flatMap { $0.entries }
         calculateTotals(from: allEntries)
+    }
+
+    /// Rebuild display groups from loaded entries without fetching or changing timestamps.
+    func regroupForTimeZone() {
+        let entries = journalGroups.flatMap { $0.entries }
+        let grouped = Dictionary(grouping: entries) { entry in
+            calendar.startOfDay(for: FormatUtil.parseUTCDate(entry.date) ?? .distantPast)
+        }
+        journalGroups = grouped.map { date, entries in
+            let sortedEntries = entries.sorted { $0.id > $1.id }
+            return WalletJournalGroup(date: date, entries: sortedEntries)
+        }.sorted { $0.date > $1.date }
     }
 
     func loadJournalData(forceRefresh: Bool = false) async {
@@ -182,7 +192,7 @@ final class WalletJournalViewModel: ObservableObject {
                     if let oldestEntry = entries.min(by: { $0.date < $1.date }),
                        let oldestDate = FormatUtil.parseUTCDate(oldestEntry.date)
                     {
-                        let calendar = Calendar.current
+                        let calendar = FormatUtil.appCalendar
                         let now = Date()
                         let days =
                             calendar.dateComponents([.day], from: oldestDate, to: now).day ?? 0
@@ -308,6 +318,7 @@ final class WalletJournalViewModel: ObservableObject {
 
 /// 特定日期的钱包流水详情视图
 struct WalletJournalDayDetailView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let group: WalletJournalGroup
     @State private var displayedEntries: [WalletJournalEntry] = []
     @State private var showingCount = 100
@@ -349,6 +360,7 @@ struct WalletJournalDayDetailView: View {
 }
 
 struct WalletJournalView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var viewModel: WalletJournalViewModel
 
     // 使用FormatUtil进行日期处理，无需自定义格式化器
@@ -654,6 +666,9 @@ struct WalletJournalView: View {
                 }
             }
         }
+        .onChange(of: displayTimeZone.identifier) { _, _ in
+            viewModel.regroupForTimeZone()
+        }
         .listStyle(.insetGrouped)
         .refreshable {
             await viewModel.loadJournalData(forceRefresh: true)
@@ -688,6 +703,7 @@ struct WalletJournalView: View {
 
 /// 钱包流水条目行视图
 struct WalletJournalEntryRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let entry: WalletJournalEntry
 
     private func formatRefType(_ refType: String) -> String {

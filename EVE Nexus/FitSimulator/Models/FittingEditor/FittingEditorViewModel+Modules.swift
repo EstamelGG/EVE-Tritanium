@@ -87,11 +87,11 @@ extension FittingEditorViewModel {
         saveConfiguration()
     }
 
-    /// 加载配置后的统一校验（两阶段装配的第二阶段）：
-    /// 乐观安装并跑完计算管线后，用**计算后**的同组限制统一校验并降级，有降级则补算一次。
+    /// 每次计算后的统一校验：
+    /// 乐观安装并跑完计算管线后，用**计算后**的同组限制统一校验并降级，返回是否发生变化，由调用方补算。
     /// 解决"装配数量/同组上限依赖计算结果（如加成处理器增加脉冲波槽位）而逐个安装时无法得知"的死锁。
-    func validateGroupLimitsAfterCalculation() {
-        guard let output = simulationOutput else { return }
+    func validateGroupLimitsAfterCalculation() -> Bool {
+        guard let output = simulationOutput else { return false }
 
         let groups = Dictionary(grouping: simulationInput.modules) { $0.groupID }
         var changed = false
@@ -101,11 +101,11 @@ extension FittingEditorViewModel {
             guard let outModule = output.modules.first(where: { $0.groupID == groupID })
             else { continue }
 
-            // 1. 装配数量上限（计算后值）：超限模块按槽位倒序强制离线，保留装配
+            // 1. 与安装校验顺序一致，保留靠前槽位；超限模块离线但不移除。
             let maxFitted = Int(outModule.attributesByName["maxGroupFitted"] ?? 0)
             if maxFitted > 0, modules.count > maxFitted {
                 let overflow = modules
-                    .sorted { ($0.flag?.rawValue ?? "") > ($1.flag?.rawValue ?? "") }
+                    .sorted { ($0.flag?.rawValue ?? "") < ($1.flag?.rawValue ?? "") }
                     .dropFirst(maxFitted)
                 for m in overflow where m.status > 0 {
                     if let idx = simulationInput.modules.firstIndex(where: { $0.instanceId == m.instanceId }) {
@@ -134,8 +134,8 @@ extension FittingEditorViewModel {
 
         if changed {
             Logger.info("计算后同组限制校验发生降级，补算一次属性")
-            calculateAttributes()
         }
+        return changed
     }
 
     /// 查询物品的属性（按ID和按名称，内存索引）

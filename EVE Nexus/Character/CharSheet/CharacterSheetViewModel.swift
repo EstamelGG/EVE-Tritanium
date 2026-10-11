@@ -361,23 +361,7 @@ extension CharacterSheetViewModel {
     }
 
     func formatRemainingTime(_ seconds: TimeInterval) -> String {
-        let days = Int(seconds) / 86400
-        let hours = (Int(seconds) % 86400) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
-
-        if days > 0 {
-            return String(
-                format: NSLocalizedString("Time_Days_Hours_Minutes", comment: ""), days, hours, minutes
-            )
-        } else if hours > 0 {
-            return String(
-                format: NSLocalizedString("Time_Hours_Minutes", comment: ""), hours, minutes
-            )
-        } else {
-            return String.localizedStringWithFormat(
-                NSLocalizedString("Time_Minutes", comment: ""), minutes
-            )
-        }
+        return FormatUtil.formatCompactDuration(seconds, rounding: .ceil)
     }
 
     func formatDate(_ date: Date) -> String {

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ShowPlanetaryInfo: View {
+    @Environment(\.locale) private var displayLocale
     private typealias TypeRef = (typeID: Int, name: String, iconFileName: String)
 
     let itemID: Int

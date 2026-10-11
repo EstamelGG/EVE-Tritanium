@@ -42,23 +42,9 @@ class PreparedSovereignty: NSObject, Identifiable, @unchecked Sendable, Observab
             return NSLocalizedString("Main_Sovereignty_Started", comment: "")
         }
 
-        let days = Int(timeUntilStart / (24 * 60 * 60))
-        let hours = Int((timeUntilStart.truncatingRemainder(dividingBy: 24 * 60 * 60)) / (60 * 60))
-        let minutes = Int((timeUntilStart.truncatingRemainder(dividingBy: 60 * 60)) / 60)
-
-        if days > 0 {
-            return String(
-                format: NSLocalizedString("Main_Sovereignty_Time_Days", comment: ""), days, hours
-            )
-        } else if hours > 0 {
-            return String(
-                format: NSLocalizedString("Main_Sovereignty_Time_Hours", comment: ""), hours,
-                minutes
-            )
-        } else {
-            return String(
-                format: NSLocalizedString("Main_Sovereignty_Time_Minutes", comment: ""), minutes
-            )
-        }
+        return String(
+            format: NSLocalizedString("Main_Sovereignty_Time_Compact", comment: "Time until campaign starts"),
+            FormatUtil.formatCompactDuration(timeUntilStart, rounding: .ceil)
+        )
     }
 }

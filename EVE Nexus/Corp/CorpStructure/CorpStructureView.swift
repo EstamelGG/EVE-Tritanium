@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CorpStructureView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     @StateObject private var viewModel: CorpStructureViewModel
     @State private var showSettings = false
@@ -259,6 +260,7 @@ struct CorpStructureView: View {
 }
 
 struct StructureCell: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let structure: [String: Any]
     let iconName: String?
     let isLowFuel: Bool
@@ -372,32 +374,12 @@ struct StructureCell: View {
         let localTime = FormatUtil.formatDateToLocalTime(date)
 
         let remainingTime = date.timeIntervalSince(Date())
-        let days = Int(remainingTime / (24 * 3600))
-        let hours = Int((remainingTime.truncatingRemainder(dividingBy: 24 * 3600)) / 3600)
-        let minutes = Int((remainingTime.truncatingRemainder(dividingBy: 3600)) / 60)
-
-        let remainingTimeString: String
-        if days > 0 {
-            if hours > 0 {
-                remainingTimeString = String(
-                    format: NSLocalizedString("Corp_Structure_Time_Format_Days_Hours", comment: ""),
-                    days, hours
-                )
-            } else {
-                remainingTimeString = String(
-                    format: NSLocalizedString("Corp_Structure_Time_Format_Days", comment: ""), days
-                )
-            }
-        } else if hours > 0 {
-            remainingTimeString = String(
-                format: NSLocalizedString("Corp_Structure_Time_Format_Hours", comment: ""), hours
+        let remainingTimeString = remainingTime <= 0
+            ? NSLocalizedString("Corp_Structure_Fuel_Expired", comment: "Fuel expired")
+            : String(
+                format: NSLocalizedString("Corp_Structure_Time_Compact", comment: "Time until fuel expires"),
+                FormatUtil.formatCompactDuration(remainingTime, rounding: .ceil)
             )
-        } else {
-            remainingTimeString = String(
-                format: NSLocalizedString("Corp_Structure_Time_Format_Minutes", comment: ""),
-                minutes
-            )
-        }
 
         return (localTime, remainingTimeString)
     }

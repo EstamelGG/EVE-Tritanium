@@ -103,6 +103,8 @@ struct IncidentsListView: View {
 // MARK: - 事件行视图（第一层）
 
 struct IncidentRowView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let incident: RSSItem
 
     var body: some View {
@@ -140,6 +142,8 @@ struct IncidentRowView: View {
 // MARK: - 事件详情视图（第二层）
 
 struct IncidentDetailView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let incident: RSSItem
 
     var body: some View {

@@ -69,6 +69,7 @@ class CharacterPortraitLoader: ObservableObject {
 
 /// 头像视图（懒加载：占位图 + .task 按需加载，视图消失时自动取消）
 struct CharacterPortrait: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     let size: CGFloat
     let displaySize: CGFloat
@@ -276,6 +277,7 @@ class CharacterMailListViewModel: ObservableObject {
 
 /// 邮件列表项视图
 private struct MailListItemView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     let mail: EVEMail
     let viewModel: CharacterMailListViewModel
@@ -317,6 +319,7 @@ private struct MailListItemView: View {
 
 /// 邮件加载指示器（初始加载和加载更多共用）
 private struct MailLoadingIndicator: View {
+    @Environment(\.timeZone) private var displayTimeZone
     var body: some View {
         HStack {
             Spacer()
@@ -333,6 +336,7 @@ private struct MailLoadingIndicator: View {
 }
 
 struct CharacterMailListView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     let labelId: Int?
     let title: String

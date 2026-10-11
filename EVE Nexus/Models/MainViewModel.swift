@@ -60,9 +60,6 @@ class MainViewModel: ObservableObject {
     @Published var serverStatus: ServerStatus?
     @Published var selectedCharacter: EVECharacterInfo?
     @Published var characterPortrait: UIImage?
-    @Published var cloneJumpStatus: String = NSLocalizedString(
-        "Main_Jump_Clones_Available", comment: ""
-    )
     @Published var cloneCooldownEndDate: Date? = nil // 克隆冷却结束时间
     @Published var skillQueueEndDate: Date? = nil // 技能队列完成时间
     @Published var skillQueueCount: Int = 0 // 技能队列中的技能数量
@@ -174,19 +171,13 @@ class MainViewModel: ObservableObject {
                     let timeSinceLastJump = now.timeIntervalSince(jumpDate)
 
                     if timeSinceLastJump >= cloneCooldownPeriod {
-                        cloneJumpStatus = NSLocalizedString("Main_Jump_Clones_Ready", comment: "")
                         cloneCooldownEndDate = nil
                     } else {
                         // 计算并缓存冷却完成时间，但不使用定时器更新
                         cloneCooldownEndDate = jumpDate.addingTimeInterval(cloneCooldownPeriod)
-                        // 设置基本状态，具体倒计时由CloneCountdownView组件处理
-                        cloneJumpStatus = NSLocalizedString(
-                            "Main_Jump_Clones_Available", comment: ""
-                        )
                     }
                 }
             } else {
-                cloneJumpStatus = NSLocalizedString("Main_Jump_Clones_Ready", comment: "")
                 cloneCooldownEndDate = nil
             }
         }
@@ -605,7 +596,6 @@ class MainViewModel: ObservableObject {
         cache.clear()
         cachedCloneCooldownPeriod = nil
         lastCloneCooldownCalculation = nil
-        cloneJumpStatus = NSLocalizedString("Main_Jump_Clones_Available", comment: "")
     }
 
     /// 从本地快速更新数据（缓存+数据库）

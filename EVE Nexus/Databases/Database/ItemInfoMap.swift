@@ -172,7 +172,8 @@ enum ItemInfoMap {
     static func getItemInfoView(
         itemID: Int,
         databaseManager: DatabaseManager,
-        modifiedAttributes: [Int: Double]? = nil
+        modifiedAttributes: [Int: Double]? = nil,
+        showFittingButton: Bool = false
     ) -> AnyView {
         guard let itemCategory = SDEMemoryStore.type(for: itemID) else {
             Logger.error("ItemInfoMap - 无法获取物品分类信息，itemID: \(itemID)")
@@ -196,7 +197,8 @@ enum ItemInfoMap {
                 ShowItemInfo(
                     databaseManager: databaseManager,
                     itemID: itemID,
-                    modifiedAttributes: modifiedAttributes
+                    modifiedAttributes: modifiedAttributes,
+                    showFittingButton: showFittingButton
                 )
             )
         }

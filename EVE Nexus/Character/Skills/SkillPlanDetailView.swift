@@ -13,6 +13,7 @@ private enum SkillPlanNetworkLoadingPhase: Equatable {
 }
 
 struct SkillPlanDetailView: View {
+    @Environment(\.locale) private var displayLocale
     @State private var plan: SkillPlan
     let characterId: Int
     @ObservedObject var databaseManager: DatabaseManager
@@ -251,6 +252,7 @@ struct SkillPlanDetailView: View {
                 Text(NSLocalizedString("Main_Skills_Required_Time", comment: "需要时间"))
                 Spacer()
                 Text(FormatUtil.formatCompactDuration(displayedRequiredTrainingTime))
+                    .fontDesign(.monospaced)
                     .foregroundColor(.secondary)
                     .contentTransition(.interpolate)
                     .animation(.easeInOut(duration: 0.35), value: displayedRequiredTrainingTime)
@@ -877,6 +879,7 @@ struct SkillPlanDetailView: View {
                         .foregroundColor(.green)
                 } else {
                     Text(FormatUtil.formatCompactDuration(skill.trainingTime))
+                        .fontDesign(.monospaced)
                 }
             }
             .font(.caption)

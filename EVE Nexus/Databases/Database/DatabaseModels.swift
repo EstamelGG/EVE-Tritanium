@@ -88,7 +88,8 @@ struct DatabaseListItem: Identifiable {
     init?(
         typeID: Int,
         databaseManager: DatabaseManager,
-        eligibleMarketGroupIDs: Set<Int>? = nil
+        eligibleMarketGroupIDs: Set<Int>? = nil,
+        showFittingButton: Bool = false
     ) {
         guard let info = SDEMemoryStore.type(for: typeID) else { return nil }
 
@@ -126,7 +127,7 @@ struct DatabaseListItem: Identifiable {
             marketGroupID: info.marketGroupID,
             attributeCompareEligible: isEligible,
             navigationDestination: ItemInfoMap.getItemInfoView(
-                itemID: typeID, databaseManager: databaseManager
+                itemID: typeID, databaseManager: databaseManager, showFittingButton: showFittingButton
             )
         )
     }

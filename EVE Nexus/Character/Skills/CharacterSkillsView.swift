@@ -11,6 +11,9 @@ struct ImplantAttributes {
 }
 
 struct CharacterSkillsView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     let databaseManager: DatabaseManager
     @State private var skillQueue: [SkillQueueItem] = []
@@ -143,16 +146,6 @@ struct CharacterSkillsView: View {
         return false
     }
 
-    /// 获取技能的当前等级（队列中最低等级-1）
-    private func getCurrentLevel(for skillId: Int) -> Int {
-        let minLevel =
-            activeSkills
-                .filter { $0.skill_id == skillId }
-                .map { $0.finished_level }
-                .min() ?? 1
-        return minLevel - 1
-    }
-
     /// 动态判断技能是否正在训练
     private func isSkillCurrentlyTraining(_ item: SkillQueueItem) -> Bool {
         let now = Date()
@@ -198,13 +191,7 @@ struct CharacterSkillsView: View {
     var body: some View {
         List {
             if isLoading || !isDataReady {
-                Section(NSLocalizedString("Main_Skills_Categories", comment: "")) {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-                }
+                CharacterSkillsSkeleton()
             } else {
                 // 第一个列表 - 属性和技能目录导航
                 navigationSection
@@ -284,6 +271,11 @@ struct CharacterSkillsView: View {
     @ViewBuilder
     private var skillQueueSection: some View {
         let currentActiveSkills = activeSkills // 根据触发器重新计算
+        // 从同一份可见队列一次性计算等级，避免每行重复筛选、排序整个队列。
+        let currentLevels = currentActiveSkills.reduce(into: [Int: Int]()) { levels, item in
+            let level = item.finished_level - 1
+            levels[item.skill_id] = min(levels[item.skill_id] ?? level, level)
+        }
 
         Section {
             if skillQueue.isEmpty {
@@ -300,7 +292,7 @@ struct CharacterSkillsView: View {
                             itemID: item.skill_id
                         )
                     } label: {
-                        skillQueueItemView(item)
+                        skillQueueItemView(item, currentLevel: currentLevels[item.skill_id] ?? 0)
                     }
                 }
             }
@@ -419,6 +411,7 @@ struct CharacterSkillsView: View {
                     FormatUtil.formatCompactDuration(totalTime, rounding: .ceil)
                 )
             )
+            .fontDesign(.monospaced)
         } else {
             Text(
                 String(
@@ -429,7 +422,7 @@ struct CharacterSkillsView: View {
         }
     }
 
-    private func skillQueueItemView(_ item: SkillQueueItem) -> some View {
+    private func skillQueueItemView(_ item: SkillQueueItem, currentLevel: Int) -> some View {
         HStack(spacing: 8) {
             if let icon = skillIcon {
                 icon
@@ -456,7 +449,7 @@ struct CharacterSkillsView: View {
                     .font(.caption)
                     .padding(.trailing, 2)
                     SkillLevelIndicator(
-                        currentLevel: getCurrentLevel(for: item.skill_id),
+                        currentLevel: currentLevel,
                         trainingLevel: item.finished_level,
                         isTraining: isSkillCurrentlyTraining(item)
                     )
@@ -486,6 +479,7 @@ struct CharacterSkillsView: View {
                 TimelineView(.periodic(from: Date(), by: 1.0)) { timeline in
                     let now = timeline.date
                     let realtimeProgress = calculateRealtimeProgress(item, at: now)
+                    let displayedSkillPoints = Int(realtimeProgress.current)
                     VStack(spacing: 2) {
                         HStack(spacing: 2) {
                             Text(
@@ -493,16 +487,21 @@ struct CharacterSkillsView: View {
                                     format: NSLocalizedString(
                                         "Main_Skills_Points_Progress", comment: ""
                                     ),
-                                    FormatUtil.formatInteger(Int(realtimeProgress.current)),
+                                    FormatUtil.formatInteger(displayedSkillPoints),
                                     FormatUtil.formatInteger(realtimeProgress.total)
                                 )
                             )
-                            .font(.caption)
+                            .font(.system(.caption, design: .monospaced))
                             .foregroundColor(.secondary)
+                            .contentTransition(reduceMotion ? .opacity : .numericText(value: Double(displayedSkillPoints)))
+                            .animation(
+                                reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.35, dampingFraction: 0.78),
+                                value: displayedSkillPoints
+                            )
 
                             if let rate = trainingRates[item.skill_id] {
                                 Text("(\(FormatUtil.formatInteger(rate))/h)")
-                                    .font(.caption)
+                                    .font(.system(.caption, design: .monospaced))
                                     .foregroundColor(.secondary)
                             }
 
@@ -520,7 +519,7 @@ struct CharacterSkillsView: View {
                                             FormatUtil.formatCompactDuration(remainingTime, rounding: .ceil)
                                         )
                                     )
-                                    .font(.caption)
+                                    .font(.system(.caption, design: .monospaced))
                                     .foregroundColor(.secondary)
                                 } else {
                                     Text(NSLocalizedString("Main_Skills_Completed", comment: "完成"))
@@ -553,12 +552,12 @@ struct CharacterSkillsView: View {
                             FormatUtil.formatInteger(progress.total)
                         )
                     )
-                    .font(.caption)
+                    .font(.system(.caption, design: .monospaced))
                     .foregroundColor(.secondary)
 
                     if let rate = trainingRates[item.skill_id] {
                         Text("(\(FormatUtil.formatInteger(rate))/h)")
-                            .font(.caption)
+                            .font(.system(.caption, design: .monospaced))
                             .foregroundColor(.secondary)
                     }
 
@@ -633,7 +632,7 @@ struct CharacterSkillsView: View {
                         FormatUtil.formatCompactDuration(remainingTime, rounding: .ceil)
                     )
                 )
-                .font(.caption)
+                .font(.system(.caption, design: .monospaced))
                 .foregroundColor(.secondary)
             }
         } else if let startDate = item.start_date,
@@ -647,7 +646,7 @@ struct CharacterSkillsView: View {
                     FormatUtil.formatCompactDuration(trainingTime, rounding: .ceil)
                 )
             )
-            .font(.caption)
+            .font(.system(.caption, design: .monospaced))
             .foregroundColor(.secondary)
         } else if isQueuePaused {
             // 如果队列暂停且没有服务器时间，才使用计算的时间
@@ -662,7 +661,7 @@ struct CharacterSkillsView: View {
                         FormatUtil.formatCompactDuration(trainingTime, rounding: .ceil)
                     )
                 )
-                .font(.caption)
+                .font(.system(.caption, design: .monospaced))
                 .foregroundColor(.secondary)
             }
         }
@@ -698,7 +697,7 @@ struct CharacterSkillsView: View {
                             FormatUtil.format(Double(actualSP))
                         )
                     )
-                    .font(.caption)
+                    .font(.system(.caption, design: .monospaced))
                     .foregroundColor(.secondary)
                 }
 
@@ -717,6 +716,7 @@ struct CharacterSkillsView: View {
                     FormatUtil.format(Double(calculation.totalSkillPoints))
                 )
             )
+            .fontDesign(.monospaced)
             if let totalCost = totalInjectorCost {
                 Text(
                     String(
@@ -726,6 +726,7 @@ struct CharacterSkillsView: View {
                         FormatUtil.formatISK(totalCost)
                     )
                 )
+                .font(.system(.caption, design: .monospaced))
             }
         }
         .font(.caption)
@@ -761,7 +762,7 @@ struct CharacterSkillsView: View {
 
     private func loadSkillQueue(forceRefresh: Bool = false) async {
         // 仅在没有已有数据时显示加载状态；刷新时保留现有数据，避免列表闪烁
-        let hasExistingData = !skillQueue.isEmpty
+        let hasExistingData = isDataReady
         if !hasExistingData {
             isLoading = true
             isDataReady = false

@@ -9,16 +9,13 @@ class Step5 {
         self.databaseManager = databaseManager
     }
 
-    /// 处理推进模块的速度修正和突变属性修正
+    /// 处理推进模块的速度修正（突变已在 Step4 缓存前应用）
     /// - Parameter output: 经过Step4计算的输出数据
     /// - Returns: 修正后的输出数据
     func process(output: SimulationOutput) -> SimulationOutput {
         var modifiedOutput = output
 
-        // 1. 应用突变属性修正（在速度修正之前）
-        modifiedOutput = applyMutationAttributes(output: modifiedOutput)
-
-        // 2. 查找第一个激活状态的推进模块
+        // 查找第一个激活状态的推进模块
         let activePropulsionModule = findFirstActivePropulsionModule(modules: modifiedOutput.modules)
 
         if let propulsionModule = activePropulsionModule {
@@ -30,112 +27,35 @@ class Step5 {
                 propulsionModule: propulsionModule
             )
 
+            let id = output.originalInput.ship.instanceId
+            let before = output.ship.attributes[37] ?? 0
+            let after = modifiedOutput.ship.attributes[37] ?? before
+            if before != after {
+                let source = output.originalInput.modules.first { $0.instanceId == propulsionModule.instanceId }
+                let modifier = SimAttributeModifier(sourceTypeID: propulsionModule.typeId,
+                                                    sourceName: propulsionModule.name, operation: "Propulsion", value: 0,
+                                                    stackingPenalty: false, sourceAttributeId: 20, sourceItemType: .module,
+                                                    sourceItemIndex: nil, sourceFlag: source?.flag, effectId: nil, effectCategory: nil,
+                                                    sourceInstanceId: propulsionModule.instanceId, targetInstanceId: id)
+                var trace = modifiedOutput.attributeTraces[id]?[37]
+                    ?? AttributeTrace(baseValue: before, steps: [], finalValue: before)
+                trace.steps.append(AttributeTraceStep(modifier: modifier, operation: "Propulsion",
+                                                      operand: before == 0 ? 1 : after / before, penalty: 1, before: before, after: after,
+                                                      dependencies: [
+                                                          AttributeTraceDependency(instanceID: propulsionModule.instanceId, attributeID: 20,
+                                                                                   value: propulsionModule.attributesByName["speedFactor"] ?? 0),
+                                                          AttributeTraceDependency(instanceID: propulsionModule.instanceId, attributeID: 567,
+                                                                                   value: propulsionModule.attributesByName["speedBoostFactor"] ?? 0),
+                                                          AttributeTraceDependency(instanceID: id, attributeID: 4,
+                                                                                   value: output.ship.attributesByName["mass"] ?? 0),
+                                                      ]))
+                trace.finalValue = after
+                modifiedOutput.attributeTraces[id, default: [:]][37] = trace
+            }
+
             Logger.info("已应用推进模块速度修正")
         } else {
             Logger.info("未找到激活的推进模块，跳过速度修正")
-        }
-
-        return modifiedOutput
-    }
-
-    /// 应用突变属性到模块和无人机的计算后属性
-    /// - Parameter output: 经过Step4计算的输出数据
-    /// - Returns: 应用突变属性后的输出数据
-    private func applyMutationAttributes(output: SimulationOutput) -> SimulationOutput {
-        var modifiedOutput = output
-
-        // 应用模块的突变属性
-        for i in 0 ..< modifiedOutput.modules.count {
-            let moduleOutput = modifiedOutput.modules[i]
-
-            // 从原始输入中找到对应的模块（通过instanceId匹配）
-            if let originalModule = output.originalInput.modules.first(where: { $0.instanceId == moduleOutput.instanceId }),
-               !originalModule.mutatedAttributes.isEmpty
-            {
-                // 查询属性ID到属性名称的映射
-                let attrIds = Array(originalModule.mutatedAttributes.keys)
-                guard !attrIds.isEmpty else { continue }
-
-                // 内存索引构建属性 ID → 属性名（attribute_key）映射
-                let attrIdToName: [Int: String] = Dictionary(
-                    uniqueKeysWithValues: attrIds.compactMap { id in
-                        SDEMemoryStore.dogmaAttribute(for: id).map { (id, $0.name) }
-                    }
-                )
-
-                // 对每个突变属性，将计算后的值乘以突变倍数
-                var updatedAttributes = moduleOutput.attributes
-                var updatedAttributesByName = moduleOutput.attributesByName
-
-                for (attributeID, multiplier) in originalModule.mutatedAttributes {
-                    if let currentValue = updatedAttributes[attributeID] {
-                        let mutatedValue = currentValue * multiplier
-                        updatedAttributes[attributeID] = mutatedValue
-
-                        // 同时更新属性名称字典
-                        if let attributeName = attrIdToName[attributeID] {
-                            updatedAttributesByName[attributeName] = mutatedValue
-                        }
-
-                        if AppConfiguration.Fitting.showDebug {
-                            Logger.info("应用突变属性: 模块 \(moduleOutput.name), 属性ID \(attributeID), 计算后值: \(currentValue), 突变倍数: \(multiplier), 突变后值: \(mutatedValue)")
-                        }
-                    }
-                }
-
-                // 创建更新后的模块输出
-                var updatedModule = moduleOutput
-                updatedModule.attributes = updatedAttributes
-                updatedModule.attributesByName = updatedAttributesByName
-                modifiedOutput.modules[i] = updatedModule
-            }
-        }
-
-        // 应用无人机的突变属性
-        for i in 0 ..< modifiedOutput.drones.count {
-            let droneOutput = modifiedOutput.drones[i]
-
-            // 从原始输入中找到对应的无人机（通过instanceId匹配）
-            if let originalDrone = output.originalInput.drones.first(where: { $0.instanceId == droneOutput.instanceId }),
-               !originalDrone.mutatedAttributes.isEmpty
-            {
-                // 查询属性ID到属性名称的映射
-                let attrIds = Array(originalDrone.mutatedAttributes.keys)
-                guard !attrIds.isEmpty else { continue }
-
-                // 内存索引构建属性 ID → 属性名（attribute_key）映射
-                let attrIdToName: [Int: String] = Dictionary(
-                    uniqueKeysWithValues: attrIds.compactMap { id in
-                        SDEMemoryStore.dogmaAttribute(for: id).map { (id, $0.name) }
-                    }
-                )
-
-                // 对每个突变属性，将计算后的值乘以突变倍数
-                var updatedAttributes = droneOutput.attributes
-                var updatedAttributesByName = droneOutput.attributesByName
-
-                for (attributeID, multiplier) in originalDrone.mutatedAttributes {
-                    if let currentValue = updatedAttributes[attributeID] {
-                        let mutatedValue = currentValue * multiplier
-                        updatedAttributes[attributeID] = mutatedValue
-
-                        // 同时更新属性名称字典
-                        if let attributeName = attrIdToName[attributeID] {
-                            updatedAttributesByName[attributeName] = mutatedValue
-                        }
-
-                        if AppConfiguration.Fitting.showDebug {
-                            Logger.info("应用突变属性: 无人机 \(droneOutput.name), 属性ID \(attributeID), 计算后值: \(currentValue), 突变倍数: \(multiplier), 突变后值: \(mutatedValue)")
-                        }
-                    }
-                }
-
-                // 创建更新后的无人机输出
-                var updatedDrone = droneOutput
-                updatedDrone.attributes = updatedAttributes
-                updatedDrone.attributesByName = updatedAttributesByName
-                modifiedOutput.drones[i] = updatedDrone
-            }
         }
 
         return modifiedOutput
@@ -181,11 +101,10 @@ class Step5 {
         // 获取推进模块的属性
         let speedFactor = propulsionModule.attributesByName["speedFactor"] ?? 0
         let speedBoostFactor = propulsionModule.attributesByName["speedBoostFactor"] ?? 0
-        let massAddition = propulsionModule.attributesByName["massAddition"] ?? 0
 
         Logger.info("速度修正前 - 质量: \(currentMass), 最大速度: \(currentMaxVelocity)")
         Logger.info(
-            "推进模块属性 - speedFactor: \(speedFactor), speedBoostFactor: \(speedBoostFactor), massAddition: \(massAddition)"
+            "推进模块属性 - speedFactor: \(speedFactor), speedBoostFactor: \(speedBoostFactor)"
         )
 
         // 根据propulsionModules.yaml的逻辑计算velocityBoost:

@@ -765,7 +765,7 @@ extension FitConvert {
             flag: flag,
             quantity: 1,
             type_id: moduleTypeId,
-            status: 1, // 默认在线状态
+            status: nil, // EFT 未指定启动状态，交给加载器选择默认状态
             charge_type_id: chargeTypeId,
             charge_quantity: chargeTypeId != nil ? 1 : nil
         )

@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 
 struct BlueprintCalculatorResultView: View {
+    @Environment(\.locale) private var displayLocale
     let databaseManager: DatabaseManager
     let calculationResult: BlueprintCalcUtil.BlueprintCalcResult
     let blueprintInfo: DatabaseListItem

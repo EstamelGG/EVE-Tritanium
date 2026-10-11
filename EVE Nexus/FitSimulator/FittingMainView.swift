@@ -2,8 +2,10 @@ import SwiftUI
 
 /// 配置列表视图
 struct FittingMainView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sourceType: FittingSourceType = .local
     @State private var searchText = ""
+    @State private var expandedShipIds: Set<Int> = []
     @State private var showShipSelector = false
     @State private var isShowingAddFittingDialog = false
     // 新建装配（sheet 选船后 push 新装配编辑器）
@@ -45,7 +47,7 @@ struct FittingMainView: View {
         _onlineViewModel = StateObject(wrappedValue: onlineVM)
     }
 
-    /// 当前来源下的导航树（唯一列表数据源，已预排序、单装配已拍平）
+    /// 当前来源下的导航树（唯一列表数据源，已分组、预排序）
     private var currentTree: [FittingGroupNode] {
         switch sourceType {
         case .local:
@@ -456,7 +458,7 @@ struct FittingMainView: View {
         .listRowInsets(EdgeInsets(top: 8, leading: 18, bottom: 8, trailing: 18))
     }
 
-    /// 组页：子项列表（多装配飞船行 + 单装配拍平的装配行），页面大标题随滚动收缩
+    /// 组页：飞船可展开显示全部装配，页面大标题随滚动收缩
     private func groupPage(groupID: Int) -> some View {
         // 从当前树直取最新节点（避免 value 快照在删除/刷新后过期）
         let node = currentTree.first { $0.groupID == groupID }
@@ -465,7 +467,7 @@ struct FittingMainView: View {
             if let node, !node.children.isEmpty {
                 Section(header: Text(NSLocalizedString("Fitting_Section_Ships", comment: ""))) {
                     ForEach(node.children) { child in
-                        childRowView(child)
+                        shipRowView(child)
                     }
                 }
             } else {
@@ -473,8 +475,21 @@ struct FittingMainView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .animation(shipExpansionAnimation, value: expandedShipIds)
         .navigationTitle(node?.groupName ?? "")
         .navigationBarTitleDisplayMode(.large)
+        .modifier(EmptyFittingGroupDismissal(isEmpty: (node?.fittingCount ?? 0) == 0,
+                                             isLoading: isLoading))
+        .onAppear {
+            Task {
+                switch sourceType {
+                case .local:
+                    await localViewModel.loadLocalFittings(forceRefresh: true)
+                case .online:
+                    onlineViewModel.refreshDisplayedFittings()
+                }
+            }
+        }
         .alert(
             NSLocalizedString("Misc_Rename", comment: ""),
             isPresented: $isShowingRenameAlert
@@ -489,33 +504,23 @@ struct FittingMainView: View {
         )
     }
 
-    /// 组页子项行：多装配飞船 → 装配页；单装配拍平 → 直接是装配行
-    @ViewBuilder
-    private func childRowView(_ child: FittingGroupChild) -> some View {
-        switch child {
-        case let .ship(node):
-            shipRowView(node)
-        case let .fitting(node):
-            fittingRowView(node)
-        }
+    private var shipExpansionAnimation: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.32)
     }
 
-    /// 飞船行：第一行飞船名，第二行装配数量摘要
+    /// 飞船标题和装配保持独立 List 行，显式动画化展开状态与行插入/移除。
+    @ViewBuilder
     private func shipRowView(_ node: FittingShipNode) -> some View {
-        let firstFittingName =
-            node.fittings.first.map {
-                $0.name.isEmpty ? NSLocalizedString("Unnamed", comment: "") : $0.name
+        let isExpanded = expandedShipIds.contains(node.typeId)
+        Button {
+            withAnimation(shipExpansionAnimation) {
+                if isExpanded {
+                    expandedShipIds.remove(node.typeId)
+                } else {
+                    expandedShipIds.insert(node.typeId)
+                }
             }
-            ?? NSLocalizedString("Unnamed", comment: "")
-        let summary =
-            node.fittings.count > 1
-                ? String(
-                    format: NSLocalizedString("Fitting_Ship_Fittings_Summary", comment: ""),
-                    firstFittingName, node.fittings.count
-                )
-                : firstFittingName
-
-        return NavigationLink(value: node) {
+        } label: {
             HStack(spacing: 12) {
                 Image(uiImage: IconManager.shared.loadUIImage(for: node.shipInfo.iconFileName))
                     .resizable()
@@ -527,57 +532,35 @@ struct FittingMainView: View {
                         .foregroundColor(.primary)
                         .lineLimit(1)
 
-                    Text(summary)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                    Text(String(
+                        format: NSLocalizedString("Fitting_Ship_Fittings_Summary", comment: "飞船行第二行的装配数量摘要"),
+                        node.fittings.count
+                    ))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
                 }
 
                 Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .animation(shipExpansionAnimation, value: isExpanded)
             }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityValue(Text(isExpanded ? "Fitting_List_Expanded" : "Fitting_List_Collapsed"))
         .listRowInsets(EdgeInsets(top: 8, leading: 18, bottom: 8, trailing: 18))
-    }
 
-    /// 装配页：单个飞船的装配列表，页面大标题随滚动收缩
-    private func shipPage(typeId: Int) -> some View {
-        // 从当前树直取最新节点
-        let shipNode = currentTree
-            .flatMap(\.children)
-            .compactMap { child -> FittingShipNode? in
-                if case let .ship(node) = child, node.typeId == typeId {
-                    return node
-                }
-                return nil
-            }
-            .first
-
-        return List {
-            if let shipNode, !shipNode.fittings.isEmpty {
-                Section(header: Text(NSLocalizedString("Fitting_Section_Fittings", comment: ""))) {
-                    ForEach(shipNode.fittings) { fitting in
-                        fittingRowView(fitting)
-                    }
-                }
-            } else {
-                NoDataSection()
+        if isExpanded {
+            ForEach(node.fittings) { fitting in
+                fittingRowView(fitting, indentation: 20)
+                    .transition(reduceMotion ? .identity : .move(edge: .top).combined(with: .opacity))
             }
         }
-        .listStyle(.insetGrouped)
-        .navigationTitle(shipNode?.shipInfo.name ?? "Unknown")
-        .navigationBarTitleDisplayMode(.large)
-        .alert(
-            NSLocalizedString("Misc_Rename", comment: ""),
-            isPresented: $isShowingRenameAlert
-        ) {
-            renameAlertContent()
-        }
-        .fittingDeleteConfirmation(
-            message: deleteConfirmMessage(),
-            isPresented: $isShowingDeleteConfirmation,
-            onConfirm: performDeleteConfirmation,
-            onCancel: { deleteCandidate = nil }
-        )
     }
 
     // MARK: - 搜索结果
@@ -619,9 +602,9 @@ struct FittingMainView: View {
         }
     }
 
-    /// 装配行：全站复用（组页拍平行 / 装配页 / 搜索结果），点击进入装配详情。
+    /// 装配行：全站复用（飞船展开列表 / 搜索结果），点击进入装配详情。
     /// 布局与 shipRowView 保持一致（spacing 12、飞船名单行）
-    private func fittingRowView(_ item: FittingItemNode) -> some View {
+    private func fittingRowView(_ item: FittingItemNode, indentation: CGFloat = 0) -> some View {
         NavigationLink(value: item.ref) {
             HStack(spacing: 12) {
                 Image(uiImage: IconManager.shared.loadUIImage(for: shipIconFileName(item.shipTypeId)))
@@ -645,6 +628,7 @@ struct FittingMainView: View {
 
                 Spacer()
             }
+            .padding(.leading, indentation)
         }
         .listRowInsets(EdgeInsets(top: 8, leading: 18, bottom: 8, trailing: 18))
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -855,17 +839,15 @@ struct FittingMainView: View {
                 fittingDetail(ref: .local(fittingId))
             }
         }
-        // 三级树导航：值驱动，不同值即不同视图身份
+        // 组页内展开飞船，装配行直接导航到详情
         .navigationDestination(for: FittingGroupNode.self) { node in
             groupPage(groupID: node.groupID)
-        }
-        .navigationDestination(for: FittingShipNode.self) { node in
-            shipPage(typeId: node.typeId)
         }
         .navigationDestination(for: FittingRef.self) { ref in
             fittingDetail(ref: ref)
         }
         .onChange(of: sourceType) { _, newValue in
+            expandedShipIds.removeAll()
             // 如果没有角色但尝试切换到线上，切换回本地
             if newValue == .online && onlineViewModel.characterId == nil {
                 sourceType = .local
@@ -1042,5 +1024,33 @@ struct ShipSelectionView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+}
+
+/// Read dismiss inside the destination, and avoid popping while its fitting editor is on top.
+private struct EmptyFittingGroupDismissal: ViewModifier {
+    @Environment(\.dismiss) private var dismiss
+    @State private var isVisible = false
+    let isEmpty: Bool
+    let isLoading: Bool
+
+    private var shouldDismiss: Bool {
+        isEmpty && !isLoading
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                isVisible = true
+                if shouldDismiss {
+                    dismiss()
+                }
+            }
+            .onDisappear { isVisible = false }
+            .onChange(of: shouldDismiss) { _, empty in
+                if empty && isVisible {
+                    dismiss()
+                }
+            }
     }
 }

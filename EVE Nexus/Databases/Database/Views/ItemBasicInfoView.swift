@@ -280,6 +280,7 @@ struct ItemBasicInfoView: View {
                             value: "\(FormatUtil.format(final)) m3",
                             valueColor: getAttributeColor(attributeId: 38, originalValue: original)
                         )
+                        .attributeInfluences([38])
                     }
                     if let mass = itemDetails.mass {
                         let original = Double(mass)
@@ -291,6 +292,7 @@ struct ItemBasicInfoView: View {
                             value: "\(FormatUtil.format(final)) Kg",
                             valueColor: getAttributeColor(attributeId: 4, originalValue: original)
                         )
+                        .attributeInfluences([4])
                     }
                 }
                 .listRowInsets(rowInsets)

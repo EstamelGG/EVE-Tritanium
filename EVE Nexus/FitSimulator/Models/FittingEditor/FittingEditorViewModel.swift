@@ -10,6 +10,12 @@ class FittingEditorViewModel: ObservableObject {
     /// 新的计算结果（使用输出结构）
     @Published private(set) var simulationOutput: SimulationOutput?
 
+    private let capacitorCalculator = FittingCapacitorCalculator()
+    var capacitorStatistics: FittingCapacitorCalculator.Result? {
+        guard let output = simulationOutput else { return nil }
+        return capacitorCalculator.calculate(ship: output.ship, modules: output.modules)
+    }
+
     // 技能选择状态（在配置生命周期内保持，但不持久化到文件）
     @Published var currentSkillsMode: String = UserDefaults.standard.string(forKey: "skillsModePreference") ?? "current_char"
     @Published var currentSelectedCharacterId: Int? = nil
@@ -19,14 +25,16 @@ class FittingEditorViewModel: ObservableObject {
     @Published var isNewFitting: Bool
     @Published var isLocalFitting: Bool = true // 是否为本地配置，默认为true
     @Published var hasUnsavedChanges = false
+    /// 同一次在线编辑的自动保存始终写入同一个本地副本，不改变在线来源身份。
+    private let localCopyFittingId = UUID()
     @Published var errorMessage: String? // 添加错误消息
     @Published var invalidModules: [(module: SimModule, reason: String)] = [] // 无效的模块列表
 
-    // 槽位折叠状态（临时保存，退出页面时自动清除）
-    @Published var hiSlotsCollapsed = false
-    @Published var medSlotsCollapsed = false
-    @Published var loSlotsCollapsed = false
-    @Published var rigSlotsCollapsed = false
+    // 每次打开装配按用户偏好初始化；section 按钮仅改变本次查看的状态。
+    @Published var hiSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault
+    @Published var medSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault
+    @Published var loSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault
+    @Published var rigSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault
 
     // 计算器和数据库
     private let attributeCalculator: AttributeCalculator
@@ -119,8 +127,6 @@ class FittingEditorViewModel: ObservableObject {
             // 计算初始属性
             Logger.info("加载本地配置，计算初始属性")
             calculateAttributes()
-            // 计算后统一校验同组限制（装配数量/在线/激活上限以计算结果为准）
-            validateGroupLimitsAfterCalculation()
             syncSelectedCharacterIdFromPreferencesIfNeeded()
         } catch {
             // 错误处理
@@ -199,8 +205,6 @@ class FittingEditorViewModel: ObservableObject {
 
         Logger.info("创建临时装配视图模型，计算初始属性")
         calculateAttributes()
-        // 计算后统一校验同组限制（装配数量/在线/激活上限以计算结果为准）
-        validateGroupLimitsAfterCalculation()
         syncSelectedCharacterIdFromPreferencesIfNeeded()
     }
 
@@ -264,7 +268,7 @@ class FittingEditorViewModel: ObservableObject {
                 )
 
                 // 装备状态沿用乐观安装结果（localFittingToSimulationInput 已按 getMaxStatus 提升；
-                // 同组限制由 calculateAttributes 后的 validateGroupLimitsAfterCalculation 用计算结果统一校验，
+                // 同组限制由 calculateAttributes 内部用计算结果统一校验，
                 // 此处不再用裸属性逐个 setStatus 降级，避免"先装先占名额"的假性死锁）
                 simulationInput = processedInput
                 // 经 online2local 转换会带上临时 UUID，覆写回在线身份（删除/保存分支依赖）
@@ -311,8 +315,6 @@ class FittingEditorViewModel: ObservableObject {
 
         Logger.info("在线配置转换结束，计算初始属性")
         calculateAttributes()
-        // 计算后统一校验同组限制（装配数量/在线/激活上限以计算结果为准）
-        validateGroupLimitsAfterCalculation()
         if simulationInput.ship.typeId != 0 {
             syncSelectedCharacterIdFromPreferencesIfNeeded()
         }
@@ -330,14 +332,21 @@ class FittingEditorViewModel: ObservableObject {
     }
 
     /// 保存当前配置
-    func saveConfiguration() {
+    @discardableResult
+    func saveConfiguration() -> Bool {
         do {
-            let localFitting = FitConvert.simulationInputToLocalFitting(input: simulationInput)
+            var inputToSave = simulationInput
+            if case .online = inputToSave.fittingId {
+                inputToSave.fittingId = .local(localCopyFittingId)
+            }
+            let localFitting = FitConvert.simulationInputToLocalFitting(input: inputToSave)
             try FitConvert.saveLocalFitting(localFitting)
             hasUnsavedChanges = false
             Logger.info("配置保存成功")
+            return true
         } catch {
             Logger.error("保存配置失败: \(error)")
+            return false
         }
     }
 
@@ -404,8 +413,11 @@ class FittingEditorViewModel: ObservableObject {
             }
         }
 
-        let output = attributeCalculator.calculateAndGenerateOutput(input: simulationInput)
-        simulationOutput = output
+        // 校验只会降低状态，发生变化后再算，直至输入状态与输出属性一致。
+        // 正常编辑只计算一次；只有自动降级才会补算。
+        repeat {
+            simulationOutput = attributeCalculator.calculateAndGenerateOutput(input: simulationInput)
+        } while validateGroupLimitsAfterCalculation()
 
         // 记录输出中的舰载机信息（仅在调试模式下）
         if AppConfiguration.Fitting.showDebug {

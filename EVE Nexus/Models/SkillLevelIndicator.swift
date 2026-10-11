@@ -28,7 +28,7 @@ struct SkillLevelIndicator: View {
     // 颜色定义
     private let darkGray = Color.primary.opacity(0.8)
     private let lightGray = Color.secondary.opacity(0.6)
-    private let cyanColor = Color.cyan.opacity(0.8) // 队列中的等级使用青色
+    private let queueColor = Color.blue // 与技能目录的队列进度及文字保持一致
     private let borderColor = Color.primary.opacity(0.8)
 
     var body: some View {
@@ -75,9 +75,9 @@ struct SkillLevelIndicator: View {
             return darkGray
         }
 
-        // 2. 队列中等待训练的等级使用青色（排除已完成的，因上面已处理）
+        // 2. 队列中等待训练的等级使用蓝色（排除已完成的，因上面已处理）
         if queuedLevels.contains(level) {
-            return cyanColor
+            return queueColor
         }
 
         // 3. 尚未达到的训练目标 / 物品所需等级

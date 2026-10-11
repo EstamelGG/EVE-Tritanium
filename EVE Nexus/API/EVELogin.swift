@@ -225,13 +225,14 @@ class EVELoginViewModel: ObservableObject {
         }
     }
 
-    func loadCharacters() {
+    func loadCharacters(onLoaded: (@MainActor () -> Void)? = nil) {
         Task { @MainActor in
             let allCharacters = EVELogin.shared.loadCharacters()
             let newCharacters = allCharacters.map { $0.character }
 
             // 原子性更新角色列表
             characters = newCharacters
+            onLoaded?()
 
             Logger.info("已加载 \(characters.count) 个角色")
 

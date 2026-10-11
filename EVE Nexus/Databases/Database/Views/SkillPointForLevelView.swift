@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SkillPointForLevelView: View {
+    @Environment(\.locale) private var displayLocale
     let skillId: Int
     let characterId: Int?
     let databaseManager: DatabaseManager

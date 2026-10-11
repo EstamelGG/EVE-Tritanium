@@ -471,25 +471,13 @@ struct SystemRowView: View {
 private struct SecurityDistributionBar: View {
     let stat: SystemPickerSheet.RegionStat
 
-    private let barWidth: CGFloat = 48
-    private let gap: CGFloat = 2
-
     var body: some View {
-        let total = max(stat.total, 1)
-        let usable = max(barWidth - gap * 2, 0)
-
-        HStack(spacing: gap) {
-            segment(color: getSecurityColor(0.6), width: stat.hisec, total: total, usable: usable)
-            segment(color: getSecurityColor(0.4), width: stat.lowsec, total: total, usable: usable)
-            segment(color: getSecurityColor(-0.3), width: stat.nullsec, total: total, usable: usable)
-        }
-    }
-
-    private func segment(color: Color, width count: Int, total: Int, usable: CGFloat) -> some View {
-        let width = count > 0 ? max(CGFloat(count) / CGFloat(total) * usable, 2) : 0
-        return RoundedRectangle(cornerRadius: 2)
-            .fill(color)
-            .frame(width: width)
+        SegmentedProgressBar(segments: [
+            .init(value: Double(stat.hisec), color: getSecurityColor(0.6)),
+            .init(value: Double(stat.lowsec), color: getSecurityColor(0.4)),
+            .init(value: Double(stat.nullsec), color: getSecurityColor(-0.3)),
+        ])
+        .frame(width: 48)
     }
 }
 

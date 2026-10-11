@@ -33,53 +33,54 @@ struct InAppPurchaseView: View {
     }()
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 图标选择列表
-            List {
-                // 说明文本 Section
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: "info.circle")
-                                .foregroundColor(.blue)
-                            Text(NSLocalizedString("IAP_Free_Icons_Badge_Charge", comment: ""))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        HStack {
-                            Image(systemName: "gift.fill")
-                                .foregroundColor(.orange)
-                            Text(NSLocalizedString("IAP_Sponsor_Gift", comment: ""))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+        List {
+            Section {
+                HStack(spacing: 12) {
+                    if let preview = AppIconConfig.composeAppIcon(icon: selectedIcon, badge: selectedBadge) {
+                        Image(uiImage: preview)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 56, height: 56)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .accessibilityHidden(true)
                     }
-                    .padding(.vertical, 4)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(NSLocalizedString("Icon_\(selectedIcon)", comment: ""))
+                            .font(.headline)
+                        Text(NSLocalizedString("IAP_Free_Icons_Badge_Charge", comment: ""))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    if changingIconId != nil {
+                        ProgressView()
+                    }
                 }
+                .padding(.vertical, 2)
+            }
 
-                Section {
-                    ForEach(iconList, id: \.self) { iconName in
-                        IconSelectionRow(
-                            iconName: iconName,
-                            isSelected: selectedIcon == iconName
-                        ) {
-                            selectedIcon = iconName
-                        }
-                    }
+            Section(header: Text(NSLocalizedString("IAP_Choose_Icon", comment: "图标样式"))) {
+                ForEach(iconList, id: \.self) { iconName in
+                    iconRow(iconName)
                 }
             }
-            .listStyle(.insetGrouped)
 
-            // 底部固定的角标选择
-            BottomSelectionView(
-                badgeList: badgeList,
-                selectedBadge: $selectedBadge,
-                purchaseManager: purchaseManager,
-                onPurchaseRequest: { badge in
-                    handlePurchaseRequest(for: badge)
-                }
-            )
+            Section {
+                BottomSelectionView(
+                    badgeList: badgeList,
+                    selectedBadge: $selectedBadge,
+                    purchaseManager: purchaseManager,
+                    onPurchaseRequest: { handlePurchaseRequest(for: $0) }
+                )
+                .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+            } header: {
+                Text(NSLocalizedString("IAP_Choose_Badge", comment: "角标与赞助"))
+            } footer: {
+                Label(NSLocalizedString("IAP_Sponsor_Gift", comment: ""), systemImage: "gift")
+                    .padding(.top, 4)
+            }
         }
+        .listStyle(.insetGrouped)
         .navigationTitle(NSLocalizedString("Main_In_App_Purchase", comment: ""))
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -139,6 +140,14 @@ struct InAppPurchaseView: View {
     }
 
     /// 根据选择的图标和角标生成图标ID
+    private func iconRow(_ iconName: String) -> some View {
+        let isSelected = selectedIcon == iconName
+        return IconSelectionRow(iconName: iconName, isSelected: isSelected) {
+            selectedIcon = iconName
+        }
+        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+    }
+
     private func getIconId() -> String? {
         return AppIconConfig.getIconId(icon: selectedIcon, badge: selectedBadge)
     }
@@ -263,12 +272,8 @@ struct IconSelectionRow: View {
                 Image(iconName)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 50, height: 50)
+                    .frame(width: 40, height: 40)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-                    )
 
                 // 右侧名称和描述
                 VStack(alignment: .leading, spacing: 2) {
@@ -283,22 +288,21 @@ struct IconSelectionRow: View {
 
                 Spacer()
 
-                // 选中状态指示
                 if isSelected {
-                    Image(systemName: "checkmark")
-                        .foregroundColor(.accentColor)
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.accentColor)
                         .font(.system(size: 16, weight: .semibold))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
-            .padding(.vertical, 4)
+            .padding(.vertical, 2)
         }
         .buttonStyle(PlainButtonStyle())
     }
 }
 
-/// 底部固定的角标选择
+/// 与图标列表一起滚动的角标选择和赞助入口
 struct BottomSelectionView: View {
     let badgeList: [String]
     @Binding var selectedBadge: String
@@ -329,9 +333,9 @@ struct BottomSelectionView: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 6) {
             // 免费角标组
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 HStack(spacing: 10) {
                     ForEach(freeBadges, id: \.self) { badge in
                         BadgeSelectionCell(
@@ -355,10 +359,10 @@ struct BottomSelectionView: View {
 
             // 分隔线
             Divider()
-                .padding(.vertical, 4)
+                .padding(.vertical, 2)
 
             // 付费角标组
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 HStack(spacing: 10) {
                     ForEach(paidBadges, id: \.self) { badge in
                         BadgeSelectionCell(
@@ -399,48 +403,39 @@ struct BottomSelectionView: View {
                                     .scaleEffect(0.8)
                             } else {
                                 Image(systemName: "gift.fill")
-                                    .font(.caption)
+                                    .font(.subheadline)
                             }
                             if let price = sponsorPrice, !isSponsoring {
                                 Text(NSLocalizedString("Purchase_Sponsor_Unlock_All", comment: ""))
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .fontWeight(.medium)
                                 Text(price)
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .fontWeight(.semibold)
                             } else if isSponsoring {
                                 Text(NSLocalizedString("Purchase_Processing", comment: ""))
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .fontWeight(.medium)
                             } else {
                                 Text(NSLocalizedString("Purchase_Sponsor_Unlock_All", comment: ""))
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .fontWeight(.medium)
                             }
                         }
                         .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .padding(.horizontal, 12)
                         .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.orange)
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.accentColor)
                         )
                     }
-                    .disabled(isSponsoring)
+                    .buttonStyle(.plain)
+                    .disabled(isSponsoring || purchaseManager.isLoading)
                 }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal)
-        .padding(.vertical)
-        .background(Color(.systemBackground))
-        .overlay(
-            Rectangle()
-                .frame(height: 1)
-                .foregroundColor(Color.primary.opacity(0.15)),
-            alignment: .top
-        )
-        .shadow(color: Color.primary.opacity(0.2), radius: 8, x: 0, y: -4)
     }
 }
 
@@ -463,21 +458,22 @@ struct BadgeSelectionCell: View {
                             .strokeBorder(
                                 style: StrokeStyle(lineWidth: 2, dash: [5, 3])
                             )
-                            .foregroundColor(isSelected ? .accentColor : .gray)
+                            .foregroundColor(.secondary)
 
                         Image(systemName: "minus")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(isSelected ? .accentColor : .gray)
+                            .foregroundColor(.secondary)
                     } else {
                         // 其他角标显示图标
                         RoundedRectangle(cornerRadius: 10)
                             .fill(Color(.systemBackground))
-                            .shadow(color: Color.primary.opacity(0.15), radius: 3, x: 0, y: 2)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.08)))
 
                         Image(badgeName)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .padding(6)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .padding(4)
                             .opacity(isUnlocked ? 1.0 : 0.5)
 
                         // 锁定覆盖层
@@ -490,15 +486,14 @@ struct BadgeSelectionCell: View {
                                 .foregroundColor(.white)
                         }
                     }
-
-                    // 选中状态边框
-                    if isSelected {
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.accentColor, lineWidth: 2.5)
-                    }
                 }
-                .frame(width: 50, height: 50)
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(Rectangle())
             }
+            .accessibilityLabel(badgeName)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
             .buttonStyle(PlainButtonStyle())
             .contentShape(Rectangle())
             .disabled(isPurchasing)

@@ -408,12 +408,16 @@ final class IncursionsViewModel: ObservableObject {
                 // 获取受影响的星系名称（已排序）
                 let systemNames = getInfestedSystemNames(for: incursion)
 
-                // 格式化影响度百分比（整数）
-                let influencePercent = Int(round(incursion.incursion.influence * 100))
+                // 百分比最多保留一位小数，省略末尾的零
+                let influencePercent = FormatUtil.format(min(max(incursion.incursion.influence, 0), 1) * 100, maxFractionDigits: 1)
+                let influenceText = String(
+                    format: NSLocalizedString("Incursions_Influence_Format", comment: ""),
+                    influencePercent
+                )
 
                 // 添加星座信息（包含影响度百分比）
                 let constellationLabel = NSLocalizedString("Incursions_Export_Constellation_Label", comment: "")
-                output += "\(constellationLabel)\(incursion.location.constellationName) (\(influencePercent)%) - \(sovereigntyName)\n"
+                output += "\(constellationLabel)\(incursion.location.constellationName) (\(influenceText)) - \(sovereigntyName)\n"
 
                 // 添加星系列表
                 for systemName in systemNames {
@@ -445,8 +449,7 @@ struct IncursionProgressRow: View {
 
     static let stateOrder = ["established", "mobilizing", "withdrawing"]
     static let progressFillColor = Color(red: 64 / 255, green: 168 / 255, blue: 176 / 255)
-    /// 进度条剩余段的透明度：同色淡化，与实色进度段拉开对比
-    static let progressTrackOpacity: Double = 0.35
+    static let progressTrackColor = Color(red: 130 / 255, green: 55 / 255, blue: 55 / 255)
 
     static func color(for state: String) -> Color {
         switch state {
@@ -495,25 +498,17 @@ struct IncursionProgressRow: View {
                 Text(Self.text(for: state))
                     .foregroundColor(stateColor)
                     .font(.caption)
+                Spacer(minLength: 8)
+                Text(verbatim: "\(FormatUtil.format(min(max(influence, 0), 1) * 100, maxFractionDigits: 1))%")
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .foregroundColor(Self.progressFillColor)
             }
 
-            GeometryReader { geo in
-                let fullWidth = geo.size.width
-                let progressWidth = min(
-                    max(fullWidth * CGFloat(influence), 0),
-                    fullWidth
-                )
-                ZStack(alignment: .leading) {
-                    // 剩余段用同色淡化，与实色进度段形成强对比（不再需要额外的分界线）
-                    Rectangle()
-                        .fill(stateColor.opacity(Self.progressTrackOpacity))
-                    Rectangle()
-                        .fill(Self.progressFillColor)
-                        .frame(width: progressWidth)
-                }
-            }
-            .frame(height: 3)
-            .clipShape(Capsule())
+            let fraction = min(max(influence, 0), 1)
+            SegmentedProgressBar(segments: [
+                .init(value: fraction, color: Self.progressFillColor),
+                .init(value: 1 - fraction, color: Self.progressTrackColor),
+            ])
         }
     }
 }
@@ -583,13 +578,8 @@ struct IncursionCell: View {
                                     )
                                 }
                             }
-                        Text(
-                            "[\(String(format: "%.1f", incursion.incursion.influence * 100))%]"
-                        )
-                        .foregroundColor(.secondary)
-                        .font(.subheadline)
                         if incursion.incursion.hasBoss {
-                            IconManager.shared.loadImage(for: "sansha_boss")
+                            IconManager.shared.loadImage(for: "iconmothership")
                                 .resizable()
                                 .frame(width: 16, height: 16)
                         }
@@ -635,11 +625,16 @@ struct SovereigntyIconView: View {
 
 struct IncursionsView: View {
     @StateObject private var viewModel: IncursionsViewModel
+    @State private var showInformation = false
 
     init(databaseManager: DatabaseManager) {
         // 构造表达式内联在 autoclosure 中，避免父视图每次重渲染都新建 ViewModel；
         // 数据加载已在 ViewModel init 中启动
         _viewModel = StateObject(wrappedValue: IncursionsViewModel(databaseManager: databaseManager))
+    }
+
+    private var canCopyIncursions: Bool {
+        !viewModel.isLoading && !viewModel.preparedIncursions.isEmpty
     }
 
     var body: some View {
@@ -661,13 +656,30 @@ struct IncursionsView: View {
                         )
                     }
                 }
-            } footer: {
+            } header: {
                 if !viewModel.preparedIncursions.isEmpty {
                     Text(
                         "\(viewModel.preparedIncursions.count) \(NSLocalizedString("Main_Setting_Static_Resource_Incursions_num", comment: ""))"
                     )
                 }
             }
+            Group {
+                if canCopyIncursions {
+                    Section {
+                        Button {
+                            Task {
+                                await viewModel.exportIncursionsToClipboard()
+                            }
+                        } label: {
+                            Label("Incursions_Copy_To_Clipboard", systemImage: "doc.on.doc")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                    }
+                    .transition(.opacity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.3), value: canCopyIncursions)
         }
         .listStyle(.insetGrouped)
         .refreshable {
@@ -677,14 +689,15 @@ struct IncursionsView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    Task {
-                        await viewModel.exportIncursionsToClipboard()
-                    }
+                    showInformation = true
                 } label: {
-                    Image(systemName: "square.and.arrow.up")
+                    Image(systemName: "info.circle")
                 }
-                .disabled(viewModel.isLoading || viewModel.preparedIncursions.isEmpty)
+                .accessibilityLabel(Text("Incursions_Info_Title"))
             }
+        }
+        .sheet(isPresented: $showInformation) {
+            IncursionsInformationView()
         }
         .alert(
             viewModel.exportSuccess
@@ -700,6 +713,274 @@ struct IncursionsView: View {
 }
 
 // MARK: - Preview
+
+private struct IncursionsInformationView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                informationSection(
+                    title: Text("Incursions_Info_Overview_Title"),
+                    body: Text("Incursions_Info_Overview_Body")
+                )
+                Section {
+                    stageExample(
+                        state: "established", number: 1,
+                        detail: Text("Incursions_Info_Established_Detail")
+                    )
+                    stageExample(
+                        state: "mobilizing", number: 2,
+                        detail: Text("Incursions_Info_Mobilizing_Detail")
+                    )
+                    stageExample(
+                        state: "withdrawing", number: 3,
+                        detail: Text("Incursions_Info_Withdrawing_Detail")
+                    )
+                } header: {
+                    Text("Incursions_Info_Stages_Title")
+                }
+                Section {
+                    influenceExample(value: 1, detail: Text("Incursions_Info_Influence_High"))
+                    influenceExample(value: 0.5, detail: Text("Incursions_Info_Influence_Medium"))
+                    influenceExample(value: 0, detail: Text("Incursions_Info_Influence_Low"))
+                    Text("Incursions_Info_Influence_Body")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.vertical, 4)
+                } header: {
+                    Text("Incursions_Info_Influence_Title")
+                } footer: {
+                    Text("Incursions_Info_Examples_Note")
+                }
+                Section {
+                    effectRow(icon: "effectcyno", text: Text("Incursions_Info_Jamming"))
+                    effectRow(icon: "effecttax", text: Text("Incursions_Info_Bounties"))
+                    effectRow(icon: "effectresistancedecrease", text: Text("Incursions_Info_Resistances"))
+                    effectRow(icon: "effectdamagedecrease", text: Text("Incursions_Info_Damage"))
+                } header: {
+                    Text("Incursions_Info_Effects_Title")
+                }
+                Section {
+                    siteInformationRow(
+                        title: Text("Incursions_Info_Vanguard"), icon: "incursionlight",
+                        firstLabel: Text("Incursions_Info_Resistance_Penalty"), firstValue: "10%",
+                        secondLabel: Text("Incursions_Info_Damage_Penalty"), secondValue: "10%"
+                    )
+                    siteInformationRow(
+                        title: Text("Incursions_Info_Assault"), icon: "incursionmedium",
+                        firstLabel: Text("Incursions_Info_Resistance_Penalty"), firstValue: "25%",
+                        secondLabel: Text("Incursions_Info_Damage_Penalty"), secondValue: "25%"
+                    )
+                    siteInformationRow(
+                        title: Text("Incursions_Info_Headquarters"), icon: "incursionheavy",
+                        firstLabel: Text("Incursions_Info_Resistance_Penalty"), firstValue: "50%",
+                        secondLabel: Text("Incursions_Info_Damage_Penalty"), secondValue: "50%"
+                    )
+                } header: {
+                    Text("Incursions_Info_Penalties_Title")
+                }
+                informationSection(
+                    title: Text("Incursions_Info_Ending_Title"),
+                    body: Text("Incursions_Info_Ending_Body")
+                )
+                Section {
+                    HStack(alignment: .center, spacing: 12) {
+                        Image("iconmothership")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 32, height: 32)
+                        Text("Incursions_Info_Mothership_Detected")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .layoutPriority(1)
+                    }
+                    .padding(.vertical, 4)
+                }
+                Section {
+                    siteInformationRow(
+                        title: Text("Incursions_Info_Staging"), icon: "incursionstaging",
+                        firstLabel: Text("Incursions_Info_Max_ISK"), firstValue: "3,500,000",
+                        secondLabel: Text("Incursions_Info_Max_LP"), secondValue: "400"
+                    )
+                    siteInformationRow(
+                        title: Text("Incursions_Info_Vanguard"), icon: "incursionlight",
+                        firstLabel: Text("Incursions_Info_Max_ISK"), firstValue: "15,000,000",
+                        secondLabel: Text("Incursions_Info_Max_LP"), secondValue: "2,000"
+                    )
+                    siteInformationRow(
+                        title: Text("Incursions_Info_Assault"), icon: "incursionmedium",
+                        firstLabel: Text("Incursions_Info_Max_ISK"), firstValue: "26,000,000",
+                        secondLabel: Text("Incursions_Info_Max_LP"), secondValue: "5,000"
+                    )
+                    siteInformationRow(
+                        title: Text("Incursions_Info_Headquarters"), icon: "incursionheavy",
+                        firstLabel: Text("Incursions_Info_Max_ISK"), firstValue: "45,000,000",
+                        secondLabel: Text("Incursions_Info_Max_LP"), secondValue: "10,000"
+                    )
+                } header: {
+                    Text("Incursions_Info_Rewards_Title")
+                } footer: {
+                    Text("Incursions_Info_Rewards_Note")
+                }
+                informationSection(
+                    title: Text("Incursions_Info_LP_Settlement_Title"),
+                    body: Text("Incursions_Info_LP_Settlement_Body")
+                )
+                informationSection(
+                    title: Text("Incursions_Info_LP_Uses_Title"),
+                    body: Text("Incursions_Info_LP_Uses_Body")
+                )
+                Section {
+                    Text("Incursions_Info_LP_Conversion_Body")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.vertical, 4)
+                } header: {
+                    Text("Incursions_Info_LP_Conversion_Title")
+                } footer: {
+                    Text("Incursions_Info_LP_Conversion_Note")
+                }
+                Section {
+                    siteInformationRow(
+                        title: Text("Incursions_Info_Staging"), icon: "incursionstaging",
+                        firstLabel: Text("Incursions_Info_Optimal_Pilots"), firstValue: "3–5",
+                        secondLabel: Text("Incursions_Info_Fleet_Range"), secondValue: "1–3"
+                    )
+                    siteInformationRow(
+                        title: Text("Incursions_Info_Vanguard"), icon: "incursionlight",
+                        firstLabel: Text("Incursions_Info_Optimal_Pilots"), firstValue: "5–15",
+                        secondLabel: Text("Incursions_Info_Fleet_Range"), secondValue: "1–25"
+                    )
+                    siteInformationRow(
+                        title: Text("Incursions_Info_Assault"), icon: "incursionmedium",
+                        firstLabel: Text("Incursions_Info_Optimal_Pilots"), firstValue: "10–30",
+                        secondLabel: Text("Incursions_Info_Fleet_Range"), secondValue: "1–40"
+                    )
+                    siteInformationRow(
+                        title: Text("Incursions_Info_Headquarters"), icon: "incursionheavy",
+                        firstLabel: Text("Incursions_Info_Optimal_Pilots"), firstValue: "20–60",
+                        secondLabel: Text("Incursions_Info_Fleet_Range"), secondValue: "11–70"
+                    )
+                } header: {
+                    Text("Incursions_Info_Fleet_Title")
+                } footer: {
+                    Text("Incursions_Info_Fleet_Note")
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle(Text("Incursions_Info_Title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Common_Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func effectRow(icon: String, text: Text) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(icon)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(.primary)
+                .frame(width: 24, height: 24)
+            text
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func siteInformationRow(
+        title: Text, icon: String,
+        firstLabel: Text, firstValue: String,
+        secondLabel: Text, secondValue: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(icon)
+                    .renderingMode(.original)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+                title
+                    .font(.subheadline.weight(.semibold))
+            }
+            informationValue(label: firstLabel, value: firstValue)
+            informationValue(label: secondLabel, value: secondValue)
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func informationValue(label: Text, value: String) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                label
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+                Spacer(minLength: 12)
+                Text(verbatim: value)
+                    .monospacedDigit()
+                    .fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                label.foregroundStyle(.secondary)
+                Text(verbatim: value).monospacedDigit()
+            }
+        }
+        .font(.subheadline)
+    }
+
+    private func informationSection(title: Text, body: Text) -> some View {
+        Section {
+            body
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 4)
+        } header: {
+            title
+        }
+    }
+
+    private func stageExample(state: String, number: Int, detail: Text) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(verbatim: "\(number)")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(IncursionProgressRow.color(for: state))
+                .frame(width: 30, height: 30)
+                .background(IncursionProgressRow.color(for: state).opacity(0.12), in: Circle())
+            VStack(alignment: .leading, spacing: 6) {
+                Text(IncursionProgressRow.text(for: state))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(IncursionProgressRow.color(for: state))
+                detail
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func influenceExample(value: Double, detail: Text) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            IncursionProgressRow(state: "established", influence: value)
+            detail
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 8)
+    }
+}
 
 #Preview("入侵进度行 - 三种阶段（浅色）") {
     IncursionProgressRowPreviewList()
@@ -720,7 +1001,7 @@ private struct IncursionProgressRowPreviewList: View {
                 Section {
                     ForEach(influences, id: \.self) { influence in
                         HStack(spacing: 12) {
-                            Text("\(Int((influence * 100).rounded()))%")
+                            Text("\(FormatUtil.format(influence * 100, maxFractionDigits: 1))%")
                                 .font(.caption.monospacedDigit())
                                 .foregroundColor(.secondary)
                                 .frame(width: 40, alignment: .trailing)

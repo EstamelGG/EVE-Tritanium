@@ -4,6 +4,8 @@ typealias CorpIndustryJob = CorpIndustryAPI.CorpIndustryJob
 
 /// 军团工业项目倒计时组件 - 使用SwiftUI原生TimelineView
 struct CorpIndustryCountdownView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let endDate: Date
 
     var body: some View {
@@ -21,52 +23,14 @@ struct CorpIndustryCountdownView: View {
             return NSLocalizedString("Industry_Status_completed", comment: "")
         }
 
-        let totalSeconds = Int(remainingTime)
-        let days = totalSeconds / (24 * 3600)
-        let hours = (totalSeconds % (24 * 3600)) / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let seconds = totalSeconds % 60
-
-        if days > 0 {
-            if hours > 0 {
-                return String(
-                    format: NSLocalizedString("Industry_Remaining_Days_Hours", comment: ""),
-                    days, hours
-                )
-            } else {
-                return String(
-                    format: NSLocalizedString("Industry_Remaining_Days", comment: ""),
-                    days
-                )
-            }
-        } else if hours > 0 {
-            if minutes > 0 {
-                return String(
-                    format: NSLocalizedString("Industry_Remaining_Hours_Minutes", comment: ""),
-                    hours, minutes
-                )
-            } else {
-                return String(
-                    format: NSLocalizedString("Industry_Remaining_Hours", comment: ""),
-                    hours
-                )
-            }
-        } else if minutes > 0 {
-            return String(
-                format: NSLocalizedString("Industry_Remaining_Minutes_Seconds", comment: "%d分%d秒"),
-                minutes, seconds
-            )
-        } else {
-            return String(
-                format: NSLocalizedString("Industry_Remaining_Seconds", comment: "%d秒"),
-                seconds
-            )
-        }
+        return FormatUtil.formatCompactDuration(remainingTime, rounding: .ceil)
     }
 }
 
 /// 军团工业项目实时进度条组件
 struct CorpIndustryProgressView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let job: CorpIndustryJob
 
     var body: some View {
@@ -75,7 +39,8 @@ struct CorpIndustryProgressView: View {
                 progress: getProgress(at: context.date),
                 color: getProgressColor(at: context.date),
                 height: 4,
-                cornerRadius: 2
+                cornerRadius: 2,
+                showPulse: job.status == "active"
             )
         }
     }
@@ -547,6 +512,8 @@ class CorpIndustryViewModel: ObservableObject {
 }
 
 struct CorpIndustryView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     @StateObject private var viewModel: CorpIndustryViewModel
     @State private var showFilterSheet = false
@@ -578,20 +545,10 @@ struct CorpIndustryView: View {
     var body: some View {
         List {
             if viewModel.isLoading {
-                VStack(spacing: 16) {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-
-                    if !viewModel.loadingProgress.isEmpty {
-                        Text(viewModel.loadingProgress)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding()
+                IndustrySkeleton(
+                    showsOperationRange: false,
+                    loadingMessages: viewModel.loadingProgress.isEmpty ? [] : [viewModel.loadingProgress]
+                )
             } else if let error = viewModel.error,
                       !viewModel.isLoading && viewModel.jobs.isEmpty
             {
@@ -772,6 +729,8 @@ struct CorpIndustryView: View {
 }
 
 struct CorpIndustryJobRow: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let job: CorpIndustryJob
     let blueprintName: String
     let blueprintIcon: String?
@@ -901,11 +860,7 @@ struct CorpIndustryJobRow: View {
 
     /// 格式化日期
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        formatter.timeZone = TimeZone.current
-        return formatter.string(from: date)
+        return FormatUtil.formatDate(date, dateStyle: .short, timeStyle: .short)
     }
 
     /// 获取活动类型文本
@@ -1135,6 +1090,8 @@ struct CorpIndustryJobRow: View {
 }
 
 struct CorpIndustryFilterSheet: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     @ObservedObject var viewModel: CorpIndustryViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme

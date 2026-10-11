@@ -10,8 +10,6 @@ struct EnvironmentSettingsView: View {
     @Binding var pendingSelectionItem: DatabaseListItem?
     let onCommit: () -> Void
 
-    @State private var effectListCategory: EnvironmentOptions.Category?
-
     var body: some View {
         List {
             Section {
@@ -34,16 +32,17 @@ struct EnvironmentSettingsView: View {
 
             Section(header: Text(NSLocalizedString("Environment_Select_Category", comment: "选择类别"))) {
                 ForEach(EnvironmentOptions.Category.allCases) { category in
-                    Button {
-                        effectListCategory = category
+                    NavigationLink {
+                        EnvironmentEffectListView(
+                            databaseManager: databaseManager,
+                            category: category,
+                            selectedTypeId: $selectedTypeId,
+                            onItemSelected: { item in
+                                pendingSelectionItem = item
+                            }
+                        )
                     } label: {
-                        HStack {
-                            EnvironmentCategoryRow(category: category)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
+                        EnvironmentCategoryRow(category: category)
                     }
                     .foregroundColor(.primary)
                 }
@@ -52,7 +51,10 @@ struct EnvironmentSettingsView: View {
 
             if let item = pendingSelectionItem {
                 Section(header: Text(NSLocalizedString("Environment_Current_Selection", comment: "当前选择"))) {
-                    DatabaseListItemView(item: item, showDetails: false)
+                    EnvironmentEffectRowContent(
+                        item: item,
+                        rowIconAssetName: EnvironmentEffectNaming.item(for: item.id)?.rowIconAssetName
+                    )
                 }
                 .listRowInsets(environmentCategoryRowInsets)
             }
@@ -62,29 +64,6 @@ struct EnvironmentSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear {
             onCommit()
-        }
-        .sheet(item: $effectListCategory) { category in
-            NavigationStack {
-                EnvironmentEffectListView(
-                    databaseManager: databaseManager,
-                    category: category,
-                    selectedTypeId: $selectedTypeId,
-                    onItemSelected: { item in
-                        pendingSelectionItem = item
-                    }
-                )
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button {
-                            effectListCategory = nil
-                        } label: {
-                            Image(systemName: "xmark")
-                                .foregroundColor(.primary)
-                        }
-                    }
-                }
-            }
-            .presentationDragIndicator(.visible)
         }
     }
 }
@@ -106,6 +85,8 @@ private struct EnvironmentCategoryRow: View {
 }
 
 struct EnvironmentEffectListView: View {
+    @Environment(\.dismiss) private var dismiss
+
     let databaseManager: DatabaseManager
     let category: EnvironmentOptions.Category
     @Binding var selectedTypeId: Int?
@@ -113,6 +94,7 @@ struct EnvironmentEffectListView: View {
 
     @State private var sections: [EnvironmentEffectSection] = []
     @State private var flatItems: [EnvironmentEffectItem] = []
+    @State private var descriptions: [Int: String] = [:]
     @State private var isLoading = true
 
     private var isGroupedList: Bool {
@@ -160,10 +142,12 @@ struct EnvironmentEffectListView: View {
         EnvironmentEffectSelectionRow(
             item: item.asDatabaseListItem(),
             rowIconAssetName: item.rowIconAssetName,
+            effectDescription: descriptions[item.typeId] ?? "",
             isSelected: selectedTypeId == item.typeId
         ) {
             selectedTypeId = item.typeId
             onItemSelected(item.asDatabaseListItem())
+            dismiss()
         }
     }
 
@@ -180,15 +164,10 @@ struct EnvironmentEffectListView: View {
 
         // 内存索引构建环境效果物品
         let loadedItems: [EnvironmentEffectItem] = typeIds.compactMap { typeId in
-            guard let info = SDEMemoryStore.type(for: typeId) else { return nil }
-            return EnvironmentEffectNaming.makeItem(
-                typeId: typeId,
-                enName: info.enName,
-                localName: info.name,
-                iconFileName: info.iconFilename,
-                category: category
-            )
+            EnvironmentEffectNaming.item(for: typeId)
         }
+
+        descriptions = EnvironmentEffectSummary.descriptions(typeIds: typeIds, databaseManager: databaseManager)
 
         switch category {
         case .wormhole:
@@ -211,24 +190,20 @@ struct EnvironmentEffectListView: View {
 private struct EnvironmentEffectSelectionRow: View {
     let item: DatabaseListItem
     let rowIconAssetName: String?
+    let effectDescription: String
     let isSelected: Bool
     let onSelect: () -> Void
 
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 12) {
-                if let rowIconAssetName {
-                    Image(rowIconAssetName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 32, height: 32)
-                        .cornerRadius(6)
-
-                    Text(item.name)
-                        .foregroundColor(.primary)
-                } else {
-                    DatabaseListItemView(item: item, showDetails: false)
-                }
+                EnvironmentEffectRowContent(
+                    item: item,
+                    rowIconAssetName: rowIconAssetName,
+                    effectDescription: effectDescription.isEmpty
+                        ? NSLocalizedString("Environment_Effect_Unavailable", comment: "")
+                        : effectDescription
+                )
 
                 Spacer()
 
@@ -242,5 +217,44 @@ private struct EnvironmentEffectSelectionRow: View {
         .buttonStyle(.plain)
         .foregroundColor(.primary)
         .listRowInsets(environmentSelectionRowInsets)
+    }
+}
+
+/// 分类列表与当前选择共用环境图标，避免深渊效果回退到缺失的物品图标。
+private struct EnvironmentEffectRowContent: View {
+    let item: DatabaseListItem
+    let rowIconAssetName: String?
+
+    var effectDescription: String? = nil
+
+    var body: some View {
+        HStack(alignment: effectDescription == nil ? .center : .top, spacing: 12) {
+            if let rowIconAssetName {
+                Image(rowIconAssetName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 32, height: 32)
+                    .cornerRadius(6)
+            } else {
+                Image(uiImage: IconManager.shared.loadUIImage(for: item.iconFileName))
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 32, height: 32)
+                    .cornerRadius(6)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.name)
+                    .foregroundColor(.primary)
+                if let effectDescription {
+                    Text(effectDescription)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, effectDescription == nil ? 0 : 4)
     }
 }

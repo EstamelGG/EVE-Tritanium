@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CharacterAttributesView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     @State private var attributes: CharacterAttributes?
     @State private var isLoading = true
@@ -148,6 +149,7 @@ struct CharacterAttributesView: View {
 }
 
 struct AttributeRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let name: String
     let icon: String
     let value: Int

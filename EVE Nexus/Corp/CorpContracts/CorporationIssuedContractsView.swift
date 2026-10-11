@@ -30,11 +30,9 @@ final class CorporationIssuedContractsViewModel: ObservableObject {
     let character: EVECharacterInfo
     let databaseManager: DatabaseManager
 
-    private let calendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.current
-        return calendar
-    }()
+    private var calendar: Calendar {
+        FormatUtil.appCalendar
+    }
 
     init(characterId: Int, character: EVECharacterInfo) {
         self.characterId = characterId
@@ -206,6 +204,7 @@ final class CorporationIssuedContractsViewModel: ObservableObject {
 }
 
 struct CorporationIssuedContractsView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var viewModel: CorporationIssuedContractsViewModel
     @State private var showSettings = false
 
@@ -867,6 +866,7 @@ struct CorporationIssuedContractsView: View {
 
 /// 专门用于公司发起合同的 ContractRow，price 始终显示为绿色正号
 struct CorporationIssuedContractRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let contract: ContractInfo
     let databaseManager: DatabaseManager
     let groupingMode: PersonalContractsViewModel.GroupingMode
@@ -1092,7 +1092,7 @@ struct CorporationIssuedContractRow: View {
                     if groupingMode == .byIssueDate {
                         if contract.status == "outstanding" {
                             let remainingDays =
-                                Calendar.current.dateComponents(
+                                FormatUtil.appCalendar.dateComponents(
                                     [.day],
                                     from: Date(),
                                     to: contract.date_expired
@@ -1126,7 +1126,7 @@ struct CorporationIssuedContractRow: View {
                         if contract.status == "outstanding" || contract.status == "in_progress" {
                             if contract.status == "outstanding" {
                                 let remainingDays =
-                                    Calendar.current.dateComponents(
+                                    FormatUtil.appCalendar.dateComponents(
                                         [.day],
                                         from: Date(),
                                         to: contract.date_expired

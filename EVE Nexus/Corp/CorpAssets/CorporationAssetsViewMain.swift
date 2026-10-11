@@ -7,6 +7,7 @@ private enum IconSize {
 
 /// 位置行视图
 private struct LocationRowView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let location: AssetTreeNode
     @EnvironmentObject private var viewModel: CorporationAssetsViewModel
 
@@ -52,6 +53,7 @@ private struct LocationRowView: View {
 
 /// 位置名称视图
 private struct LocationNameView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let location: AssetTreeNode
     @EnvironmentObject private var viewModel: CorporationAssetsViewModel
 
@@ -81,6 +83,7 @@ private struct LocationNameView: View {
 
 /// 数据加载时间视图
 private struct DataLoadTimeView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let loadTime: Date
 
     var body: some View {
@@ -92,6 +95,7 @@ private struct DataLoadTimeView: View {
 
 /// 包装视图，用于获取军团ID
 struct CorporationAssetsViewWrapper: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     @State private var corporationId: Int?
     @State private var isLoading = true
@@ -149,6 +153,7 @@ struct CorporationAssetsViewWrapper: View {
 }
 
 struct CorporationAssetsView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var viewModel: CorporationAssetsViewModel
     @State private var searchText = ""
     @State private var searchTask: Task<Void, Never>?

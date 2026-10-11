@@ -57,6 +57,8 @@ private struct ImplantInfo {
 }
 
 struct CharacterClonesView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let character: EVECharacterInfo
     @ObservedObject var databaseManager: DatabaseManager
     @State private var cloneInfo: CharacterCloneInfo?
@@ -338,11 +340,7 @@ struct CharacterClonesView: View {
     }
 
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .medium
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        return formatter.string(from: date)
+        return FormatUtil.formatDate(date, dateStyle: .medium, timeStyle: .medium)
     }
 
     private func getStationIcon(typeId: Int, databaseManager _: DatabaseManager) -> String? {
@@ -352,6 +350,8 @@ struct CharacterClonesView: View {
 
 /// 克隆体位置行视图
 struct CloneLocationRow: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let locationId: Int
     let locationType: String
     let databaseManager: DatabaseManager
@@ -460,6 +460,8 @@ struct CloneLocationRow: View {
 
 /// 克隆体位置详情视图
 struct CloneLocationDetailView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let clones: [JumpClone]
     let databaseManager: DatabaseManager
     @State private var implantDetailsMap: [Int: [ImplantInfo]] = [:] // 修改类型

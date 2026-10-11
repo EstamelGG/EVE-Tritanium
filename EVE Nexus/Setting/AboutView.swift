@@ -132,7 +132,6 @@ struct AboutView: View {
             databaseVersionInfo = AppConfiguration.Database.detailedVersionInfo
             reloadSDESource()
         }
-        .task { await SDEUpdateChecker.shared.checkForUpdates() }
         .onAppear {
             databaseVersionInfo = AppConfiguration.Database.detailedVersionInfo
             reloadSDESource()

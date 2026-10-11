@@ -275,6 +275,7 @@ struct BlueprintActivityHeader: View {
 
 /// 主视图
 struct ShowBluePrintInfo: View {
+    @Environment(\.locale) private var displayLocale
     let blueprintID: Int
     let databaseManager: DatabaseManager
     @State private var manufacturing: BlueprintActivity?

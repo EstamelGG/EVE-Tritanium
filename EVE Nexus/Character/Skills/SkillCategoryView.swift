@@ -73,65 +73,26 @@ class SkillCategoryViewModel: ObservableObject {
 
     /// 获取指定技能组中在队列中的技能数量（仅未完成的，按技能ID去重）
     func getQueueCount(for group: SkillGroup) -> Int {
-        let groupSkillIds = Set(group.skills.map { $0.skill_id })
+        let groupSkillIds = allSkillsDict.filter { $0.value.groupID == group.id }.keys
         return groupSkillIds.filter { hasActiveQueueItem($0) }.count
     }
 
-    /// 获取指定技能组中队列中技能的点数总和
+    /// 整个分类的队列待训练点数，扣除已获得的 SP，避免与绿色部分重复。
     func getQueueSkillPoints(for group: SkillGroup) -> Int {
-        let groupSkillIds = Set(group.skills.map { $0.skill_id })
-        let queueSkillsInGroup = skillQueue.filter { groupSkillIds.contains($0.skill_id) }
-            .sorted { $0.queue_position < $1.queue_position } // 按队列位置排序
-
-        // 用于跟踪每个技能当前应该从哪个等级开始计算
-        var skillCurrentLevels: [Int: Int] = [:]
-
-        var totalQueuePoints = 0
-        for queueItem in queueSkillsInGroup {
-            // 获取技能的当前等级和倍增系数
-            guard let skillInfo = allSkillsDict[queueItem.skill_id] else { continue }
-
-            // 确定起始等级：如果这个技能在队列中第一次出现，使用实际当前等级
-            // 否则使用队列中前一个等级的目标等级
-            let startLevel: Int
-            if let previousLevel = skillCurrentLevels[queueItem.skill_id] {
-                // 这个技能在队列中已经出现过，从前一个目标等级开始
-                startLevel = previousLevel
-            } else {
-                // 这个技能第一次在队列中出现，从实际当前等级开始
-                startLevel = max(0, skillInfo.currentLevel)
-            }
-
-            let targetLevel = queueItem.finished_level
-            let timeMultiplier = skillInfo.timeMultiplier
-
-            // 如果目标等级 <= 起始等级，跳过
-            if targetLevel <= startLevel {
-                continue
-            }
-
-            // 确保目标等级在有效范围内（1-5）
-            guard targetLevel >= 1 && targetLevel <= 5 else {
-                continue
-            }
-
-            // 计算从起始等级到目标等级需要的点数
-            let targetLevelPoints = SkillTreeManager.skillPoints(
-                level: targetLevel,
-                multiplier: timeMultiplier
-            ) ?? 0
-            let startLevelPoints = SkillTreeManager.skillPoints(
-                level: startLevel,
-                multiplier: timeMultiplier
-            ) ?? 0
-
-            totalQueuePoints += targetLevelPoints - startLevelPoints
-
-            // 更新这个技能的下一个起始等级为当前目标等级
-            skillCurrentLevels[queueItem.skill_id] = targetLevel
+        var targetLevels: [Int: Int] = [:]
+        let now = Date()
+        for item in skillQueue {
+            guard let info = allSkillsDict[item.skill_id], info.groupID == group.id,
+                  (1 ... 5).contains(item.finished_level),
+                  item.finish_date.map({ $0 > now }) ?? true else { continue }
+            targetLevels[item.skill_id] = max(targetLevels[item.skill_id] ?? 0, item.finished_level)
         }
-
-        return totalQueuePoints
+        return targetLevels.reduce(0) { total, item in
+            guard let info = allSkillsDict[item.key],
+                  let targetSP = SkillTreeManager.skillPoints(level: item.value, multiplier: info.timeMultiplier)
+            else { return total }
+            return total + max(0, targetSP - info.currentSkillPoints)
+        }
     }
 
     /// 检查技能是否有未完成的队列项（用于"队列中"section，排除已全部完成的技能）
@@ -150,6 +111,13 @@ class SkillCategoryViewModel: ObservableObject {
     /// 检查技能是否正在训练
     func isSkillCurrentlyTraining(_ skillId: Int) -> Bool {
         return skillQueue.first { $0.skill_id == skillId && $0.isCurrentlyTraining } != nil
+    }
+
+    /// 使用完整分类判断，避免筛选隐藏正在训练的技能后丢失标签。
+    func isGroupCurrentlyTraining(_ group: SkillGroup) -> Bool {
+        skillQueue.contains {
+            $0.isCurrentlyTraining && allSkillsDict[$0.skill_id]?.groupID == group.id
+        }
     }
 
     /// 获取技能在队列中的等级集合（排除正在训练的等级）
@@ -413,6 +381,7 @@ class SkillCategoryViewModel: ObservableObject {
 
 /// 通用技能单元格视图
 struct SkillCellView: View {
+    @Environment(\.locale) private var displayLocale
     let skill:
         (
             typeId: Int,
@@ -423,16 +392,19 @@ struct SkillCellView: View {
             trainingRate: Int?
         )
     let viewModel: SkillCategoryViewModel?
+    let showsQueueStatus: Bool
 
     init(
         skill: (
             typeId: Int, name: String, timeMultiplier: Double, currentSkillPoints: Int?,
             currentLevel: Int?, trainingRate: Int?
         ),
-        viewModel: SkillCategoryViewModel? = nil
+        viewModel: SkillCategoryViewModel? = nil,
+        showsQueueStatus: Bool = true
     ) {
         self.skill = skill
         self.viewModel = viewModel
+        self.showsQueueStatus = showsQueueStatus
     }
 
     var body: some View {
@@ -442,6 +414,8 @@ struct SkillCellView: View {
                     .lineLimit(1)
                 if skill.timeMultiplier >= 1 {
                     Text("(×\(String(format: "%.0f", skill.timeMultiplier)))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
 
@@ -488,9 +462,11 @@ struct SkillCellView: View {
                     )
 
                     Text(pointsText)
+                        .font(.system(.caption, design: .monospaced))
 
                     if let rate = skill.trainingRate {
                         Text("(\(FormatUtil.formatInteger(rate))/h)")
+                            .font(.system(.caption, design: .monospaced))
                     }
                     Spacer()
 
@@ -513,6 +489,7 @@ struct SkillCellView: View {
                                 FormatUtil.formatCompactDuration(trainingTime, rounding: .ceil)
                             )
                         )
+                        .font(.system(.caption, design: .monospaced))
                     }
                 }
 
@@ -522,14 +499,19 @@ struct SkillCellView: View {
 
                 if isTraining {
                     HStack {
-                        Text(NSLocalizedString("Main_Skills_Training", comment: ""))
-                            .foregroundColor(.green)
+                        HStack(spacing: 4) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 8, weight: .semibold))
+                                .accessibilityHidden(true)
+                            Text(NSLocalizedString("Main_Skills_Training", comment: ""))
+                        }
+                        .foregroundStyle(.blue)
                         Spacer()
                     }
-                } else if hasActiveQueue {
+                } else if showsQueueStatus && hasActiveQueue {
                     HStack {
                         Text(NSLocalizedString("Main_Skills_In_Queue", comment: ""))
-                            .foregroundColor(.cyan)
+                            .foregroundColor(.blue)
                         Spacer()
                     }
                 }
@@ -546,13 +528,134 @@ struct SkillCellView: View {
     }
 }
 
+/// 分类进度始终以整个分类的满级技能点为基准，不随筛选改变。
+private struct SkillCategoryRow: View {
+    let group: SkillGroup
+    let queueCount: Int
+    let queueSkillPoints: Int
+    let isTraining: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var progress: Double {
+        guard group.maxTotalSkillPoints > 0 else { return 0 }
+        return min(max(Double(group.learnedTotalSkillPoints) / Double(group.maxTotalSkillPoints), 0), 1)
+    }
+
+    private var progressColor: Color {
+        progress >= 1
+            ? (colorScheme == .dark
+                ? Color(red: 1.0, green: 0.84, blue: 0.25)
+                : Color(red: 0.95, green: 0.72, blue: 0.08))
+            : .green
+    }
+
+    private var queuedProgress: Double {
+        guard group.maxTotalSkillPoints > 0 else { return 0 }
+        return min(max(Double(queueSkillPoints) / Double(group.maxTotalSkillPoints), 0), 1 - progress)
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(SkillGroupIconManager.shared.getIconName(for: group.id))
+                .resizable()
+                .scaledToFit()
+                .frame(width: 32, height: 32)
+                .modifier(SkillGroupIconModifier(colorScheme: colorScheme))
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .center, spacing: 6) {
+                    Text(group.name)
+                        .font(.body.weight(.medium))
+                        .fixedSize(horizontal: false, vertical: true)
+                    if isTraining {
+                        Text("Main_Skills_Training")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.blue)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(.blue.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+                            .fixedSize()
+                    }
+                    if progress >= 1 {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(progressColor)
+                    }
+                    Spacer(minLength: 4)
+                    if group.maxTotalSkillPoints > 0 {
+                        Text(verbatim: "\(FormatUtil.format(progress * 100, maxFractionDigits: 1))%")
+                            .font(.system(.caption, design: .monospaced).weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel(Text("Main_Skills_Category_Progress"))
+                            .accessibilityValue(Text(verbatim: "\(FormatUtil.format(progress * 100, maxFractionDigits: 1))%"))
+                    }
+                }
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        skillSummary
+                        Spacer(minLength: 0)
+                        queueSummary
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        skillSummary
+                        queueSummary
+                    }
+                }
+
+                if group.maxTotalSkillPoints > 0 {
+                    if progress >= 1 {
+                        completedProgressBar
+                    } else {
+                        trainingProgressBar
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var completedProgressBar: some View {
+        SegmentedProgressBar(segments: [.init(value: 1, color: progressColor)])
+            .accessibilityHidden(true)
+    }
+
+    private var trainingProgressBar: some View {
+        SegmentedProgressBar(segments: [
+            .init(value: progress, color: progressColor),
+            .init(value: queuedProgress, color: .blue),
+            .init(value: max(0, 1 - progress - queuedProgress), color: .secondary.opacity(0.16)),
+        ])
+        .accessibilityHidden(true)
+    }
+
+    private var skillSummary: some View {
+        (Text("\(group.skills.count) \(NSLocalizedString("Main_Skills_number", comment: ""))")
+            + Text(" · ")
+            + Text("\(FormatUtil.formatInteger(group.totalSkillPoints)) SP")
+            .font(.system(.caption, design: .monospaced)))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    @ViewBuilder
+    private var queueSummary: some View {
+        if queueCount > 0 {
+            Text(String(format: NSLocalizedString("Main_Skills_Queue_Count", comment: ""), queueCount))
+                .font(.caption)
+                .foregroundStyle(.blue)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+}
+
 struct SkillCategoryView: View {
     let characterId: Int
     let databaseManager: DatabaseManager
     @StateObject private var viewModel: SkillCategoryViewModel
     @State private var isFirstAppear = true // 添加一个状态来跟踪是否是首次出现
-    @Environment(\.colorScheme) private var colorScheme
-
     init(characterId: Int, databaseManager: DatabaseManager) {
         self.characterId = characterId
         self.databaseManager = databaseManager
@@ -600,90 +703,15 @@ struct SkillCategoryView: View {
                                     characterId: characterId
                                 )
                             } label: {
-                                HStack(spacing: 8) {
-                                    // 显示技能组图标
-                                    Image(SkillGroupIconManager.shared.getIconName(for: group.id))
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 32, height: 32)
-                                        .cornerRadius(8)
-                                        .modifier(SkillGroupIconModifier(colorScheme: colorScheme))
-
-                                    VStack(alignment: .leading) {
-                                        HStack(spacing: 4) {
-                                            Text(group.name)
-                                            // 如果全部完成，显示绿色对勾图标
-                                            if group.maxTotalSkillPoints > 0,
-                                               group.learnedTotalSkillPoints >= group.maxTotalSkillPoints
-                                            {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundColor(.green)
-                                                    .font(.caption)
-                                            }
-                                        }
-                                        let queueCount = viewModel.getQueueCount(for: group)
-                                        let baseText = "\(group.skills.count) \(NSLocalizedString("Main_Skills_number", comment: "")) - \(FormatUtil.formatInteger(group.totalSkillPoints)) SP"
-
-                                        if queueCount > 0 {
-                                            let queueText = String(format: NSLocalizedString("Main_Skills_Queue_Count", comment: ""), queueCount)
-                                            (Text(baseText) + Text(" - ") + Text(queueText).foregroundColor(.cyan))
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        } else {
-                                            Text(baseText)
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                }
+                                SkillCategoryRow(
+                                    group: group,
+                                    queueCount: viewModel.getQueueCount(for: group),
+                                    queueSkillPoints: viewModel.getQueueSkillPoints(for: group),
+                                    isTraining: viewModel.isGroupCurrentlyTraining(group)
+                                )
                             }
-                            .listRowBackground(
-                                group.maxTotalSkillPoints > 0
-                                    ? GeometryReader { geometry in
-                                        let learnedProgress = Double(group.learnedTotalSkillPoints) / Double(group.maxTotalSkillPoints)
-                                        let learnedWidth = geometry.size.width * min(max(learnedProgress, 0), 1)
-
-                                        // 获取队列中技能的点数
-                                        let queueSkillPoints = viewModel.getQueueSkillPoints(for: group)
-                                        let queueProgress = Double(queueSkillPoints) / Double(group.maxTotalSkillPoints)
-                                        let queueWidthRaw = geometry.size.width * min(max(queueProgress, 0), 1)
-
-                                        // 确保队列宽度不会超出总宽度（从已学部分的结束位置开始）
-                                        let remainingWidth = max(0, geometry.size.width - learnedWidth)
-                                        let queueWidth = min(queueWidthRaw, remainingWidth)
-
-                                        // 判断当前组是否满了
-                                        let isCompleted = viewModel.isGroupCompleted(group)
-
-                                        // 如果组满了，使用浅绿色；否则使用蓝色
-                                        let backgroundColor = isCompleted
-                                            ? Color.green.opacity(0.3)
-                                            : Color.blue.opacity(0.2)
-
-                                        // 队列中技能的点数使用青色
-                                        let queueColor = Color.cyan.opacity(0.3)
-
-                                        ZStack(alignment: .leading) {
-                                            // 使用系统背景色作为底层，保持默认的白色
-                                            Color(UIColor.systemBackground)
-                                                .frame(width: geometry.size.width, height: geometry.size.height)
-
-                                            // 已学技能部分的背景，覆盖在默认行背景上
-                                            backgroundColor
-                                                .frame(width: learnedWidth, height: geometry.size.height)
-
-                                            // 队列中技能的点数，从已学部分的结束位置开始
-                                            if queueWidth > 0 {
-                                                queueColor
-                                                    .frame(width: queueWidth, height: geometry.size.height)
-                                                    .offset(x: learnedWidth)
-                                            }
-                                        }
-                                    }
-                                    : nil
-                            )
                         }
-                        .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
+                        .listRowInsets(EdgeInsets(top: 6, leading: 18, bottom: 6, trailing: 18))
                     }
                 } else {
                     // 显示搜索结果
@@ -809,7 +837,8 @@ struct SkillGroupDetailView: View {
                                             currentLevel: skillInfo.currentLevel,
                                             trainingRate: skillInfo.trainingRate
                                         ),
-                                        viewModel: viewModel
+                                        viewModel: viewModel,
+                                        showsQueueStatus: false
                                     )
                                 }
                             }

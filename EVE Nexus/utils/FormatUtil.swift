@@ -1,6 +1,68 @@
 import Foundation
 
 enum FormatUtil {
+    /// User-facing dates use the app language; parsing and storage keep their fixed locales.
+    static var appLocale: Locale {
+        Locale(identifier: UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en")
+    }
+
+    /// Display preference only; API parsers and stored timestamps remain unchanged.
+    static var appTimeZone: TimeZone {
+        displayTimeZone(for: UserDefaults.standard.string(forKey: "selectedTimeZone") ?? "local")
+    }
+
+    static func displayTimeZone(for selection: String) -> TimeZone {
+        selection == "utc" ? TimeZone(secondsFromGMT: 0)! : .autoupdatingCurrent
+    }
+
+    static var appCalendar: Calendar {
+        var calendar = Calendar.current
+        calendar.timeZone = appTimeZone
+        calendar.locale = appLocale
+        return calendar
+    }
+
+    static func formatDate(
+        _ date: Date,
+        dateStyle: DateFormatter.Style = .medium,
+        timeStyle: DateFormatter.Style = .short,
+        timeZone: TimeZone = appTimeZone
+    ) -> String {
+        let locale = appLocale
+        let key = "style:\(dateStyle.rawValue):\(timeStyle.rawValue)|\(locale.identifier)|\(timeZone.identifier)"
+        let formatter = cachedDisplayDateFormatter(key: key) {
+            let formatter = DateFormatter()
+            formatter.locale = locale
+            formatter.timeZone = timeZone
+            formatter.dateStyle = dateStyle
+            formatter.timeStyle = timeStyle
+            return formatter
+        }
+        return formatter.string(from: date)
+    }
+
+    /// Fixed UI layouts can supply a pattern while sharing the app's locale and timezone.
+    static func formatDate(
+        _ date: Date, pattern: String, locale: Locale = appLocale, timeZone: TimeZone = appTimeZone
+    ) -> String {
+        displayDateFormatter(pattern: pattern, locale: locale, timeZone: timeZone).string(from: date)
+    }
+
+    /// Fixed 24-hour time for compact transaction rows.
+    static func formatTime(_ date: Date) -> String {
+        formatDate(date, pattern: "HH:mm:ss", locale: Locale(identifier: "en_US_POSIX"))
+    }
+
+    /// A stable day key for display grouping; this does not parse raw API timestamps.
+    static func displayDateKey(_ date: Date) -> String {
+        formatDate(date, pattern: "yyyy-MM-dd", locale: Locale(identifier: "en_US_POSIX"))
+    }
+
+    static func parseDisplayDateKey(_ key: String) -> Date? {
+        displayDateFormatter(pattern: "yyyy-MM-dd", locale: Locale(identifier: "en_US_POSIX"))
+            .date(from: key)
+    }
+
     /// 共享的 NumberFormatter 实例
     private static let formatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -329,40 +391,53 @@ enum FormatUtil {
         return formatter
     }()
 
-    /// 本地时间显示格式器（短格式）
-    private static let localDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        formatter.timeZone = TimeZone.current
-        formatter.locale = Locale(identifier: "en_US_POSIX")
+    private static let displayDateFormatterLock = NSLock()
+    private static var displayDateFormatters: [String: DateFormatter] = [:]
+
+    /// Cache immutable formatters by locale and timezone, so preference changes never reuse stale settings.
+    private static func cachedDisplayDateFormatter(key: String, create: () -> DateFormatter) -> DateFormatter {
+        displayDateFormatterLock.lock()
+        defer { displayDateFormatterLock.unlock() }
+        if let cached = displayDateFormatters[key] {
+            return cached
+        }
+        let formatter = create()
+        displayDateFormatters[key] = formatter
         return formatter
-    }()
+    }
+
+    private static func displayDateFormatter(
+        pattern: String, locale: Locale = appLocale, timeZone: TimeZone = appTimeZone
+    ) -> DateFormatter {
+        let key = "pattern:\(pattern)|\(locale.identifier)|\(timeZone.identifier)"
+        return cachedDisplayDateFormatter(key: key) {
+            let formatter = DateFormatter()
+            formatter.locale = locale
+            formatter.timeZone = timeZone
+            formatter.dateFormat = pattern
+            return formatter
+        }
+    }
+
+    /// 本地时间显示格式器（短格式）
+    private static var localDateFormatter: DateFormatter {
+        displayDateFormatter(pattern: "yyyy-MM-dd HH:mm", locale: Locale(identifier: "en_US_POSIX"))
+    }
 
     /// 本地时间显示格式器（带星期）
-    private static let localDateFormatterWithWeekday: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd EEEE HH:mm"
-        formatter.timeZone = TimeZone.current
-        return formatter
-    }()
+    private static var localDateFormatterWithWeekday: DateFormatter {
+        displayDateFormatter(pattern: "yyyy-MM-dd EEEE HH:mm")
+    }
 
     /// 本地日期显示格式器（仅日期）
-    private static let localDateOnlyFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone.current
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter
-    }()
+    private static var localDateOnlyFormatter: DateFormatter {
+        displayDateFormatter(pattern: "yyyy-MM-dd", locale: Locale(identifier: "en_US_POSIX"))
+    }
 
     /// 本地时间显示格式器（仅时间）
-    private static let localTimeOnlyFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss"
-        formatter.timeZone = TimeZone.current
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter
-    }()
+    private static var localTimeOnlyFormatter: DateFormatter {
+        displayDateFormatter(pattern: "HH:mm:ss", locale: Locale(identifier: "en_US_POSIX"))
+    }
 
     // 将UTC日期字符串转换为Date对象
     // - Parameter utcDateString: UTC格式的日期字符串
@@ -474,12 +549,9 @@ enum FormatUtil {
         return formatted
     }
 
-    private static let loadTimestampFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MM/dd HH:mm"
-        formatter.locale = Locale.current
-        return formatter
-    }()
+    private static var loadTimestampFormatter: DateFormatter {
+        displayDateFormatter(pattern: "MM/dd HH:mm")
+    }
 
     /// 数据加载时间等：`MM/dd HH:mm`
     static func formatLoadTimestamp(_ date: Date) -> String {
@@ -510,11 +582,9 @@ enum FormatUtil {
 
     // MARK: - 履历 / 搜索详情
 
-    private static let historyDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy.MM.dd"
-        return formatter
-    }()
+    private static var historyDateFormatter: DateFormatter {
+        displayDateFormatter(pattern: "yyyy.MM.dd")
+    }
 
     static func formatHistoryDateRange(start: Date, end: Date?) -> String {
         let startStr = historyDateFormatter.string(from: start)
@@ -560,9 +630,9 @@ enum FormatUtil {
         formatIntervalDuration(interval, style: .relativePast)
     }
 
-    /// 剩余时间：最多两个单位，不带「前」后缀
+    /// 剩余时间：按实际单位显示，不带「前」后缀
     static func formatRemainingDuration(_ interval: TimeInterval) -> String {
-        formatIntervalDuration(interval, style: .remaining)
+        interval < 0 ? "" : formatCompactDuration(interval)
     }
 
     /// 由 SP 与训练速度推算时长
@@ -573,7 +643,7 @@ enum FormatUtil {
         return formatCompactDuration(TimeInterval(skillPoints) / skillPointsPerHour * 3600)
     }
 
-    /// 蓝图/行星周期：紧凑展示（最多 2 个单位）
+    /// 蓝图/行星周期：紧凑展示
     static func formatBlueprintDuration(_ totalSeconds: Int) -> String {
         formatCompactDuration(TimeInterval(totalSeconds))
     }
@@ -581,27 +651,46 @@ enum FormatUtil {
     // MARK: - 紧凑式时长
 
     enum CompactDurationRounding {
-        /// 截断（系统 `DateComponentsFormatter`）
+        /// 截断到秒。
         case truncate
-        /// 向上取整到秒，余量向粗单位进位（技能剩余/队列）
+        /// 向上取整到显示的最小单位（技能剩余/队列）。
         case ceil
     }
 
-    /// 紧凑本地化时长：默认最多 2 单位、截断（如 `1小时30分钟`）
+    /// 显示最高的两个相邻单位，不补前导零；不足一分钟只显示秒。
     static func formatCompactDuration(
         _ interval: TimeInterval,
-        maximumUnitCount: Int = 2,
         rounding: CompactDurationRounding = .truncate
     ) -> String {
-        switch rounding {
-        case .ceil:
-            return formatCompactDurationCeil(interval)
-        case .truncate:
-            let value = max(0, interval)
-            let formatter = maximumUnitCount == 1 ? compactDurationFormatter1 : compactDurationFormatter2
-            return formatter.string(from: value)
-                ?? String.localizedStringWithFormat(NSLocalizedString("Time_Seconds", comment: ""), Int(value))
+        guard interval.isFinite else { return compactDurationText(seconds: 0) }
+        var seconds = max(0, interval).rounded(.down)
+        if rounding == .ceil {
+            seconds = ceil(max(0, interval))
+            if seconds >= 86400 {
+                seconds = ceil(seconds / 3600) * 3600
+            } else if seconds >= 3600 {
+                seconds = ceil(seconds / 60) * 60
+            }
         }
+        // 避免异常时长转换为 Int 时溢出。
+        let total = Int(min(seconds, Double(Int.max / 2)))
+        return compactDurationText(seconds: total)
+    }
+
+    private static func compactDurationText(seconds: Int) -> String {
+        let values = [seconds / 86400, seconds / 3600 % 24, seconds / 60 % 60, seconds % 60]
+        let templates = [
+            NSLocalizedString("Time_Compact_Days", comment: "Compact duration days"),
+            NSLocalizedString("Time_Compact_Hours", comment: "Compact duration hours"),
+            NSLocalizedString("Time_Compact_Minutes", comment: "Compact duration minutes"),
+            NSLocalizedString("Time_Compact_Seconds", comment: "Compact duration seconds"),
+        ]
+        let first = values.firstIndex(where: { $0 > 0 }) ?? 3
+        // 保留相邻低位的零，避免 8时0分17秒跳成 8时17秒。
+        let indices = first ... min(first + 1, 3)
+        let parts = indices.map { String(format: templates[$0], Int64(values[$0])) }
+        let joinTemplate = NSLocalizedString("Time_Compact_Join", comment: "Join duration components")
+        return parts.dropFirst().reduce(parts[0]) { String(format: joinTemplate, $0, $1) }
     }
 
     /// PI 周期/剩余（同 `formatCompactDuration`）
@@ -619,76 +708,9 @@ enum FormatUtil {
         formatCompactDuration(seconds)
     }
 
-    /// PI 工厂剩余（单单位紧凑，如 `2分钟` / `1小时`）
+    /// PI 工厂剩余（最高双单位，不足一分钟只显示秒）
     static func formatSimulatedDuration(_ interval: TimeInterval) -> String {
-        formatCompactDuration(abs(interval), maximumUnitCount: 1)
-    }
-
-    private static let compactDurationFormatter2: DateComponentsFormatter = {
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.year, .month, .day, .hour, .minute, .second]
-        formatter.unitsStyle = .full
-        formatter.maximumUnitCount = 2
-        formatter.zeroFormattingBehavior = .dropAll
-        return formatter
-    }()
-
-    private static let compactDurationFormatter1: DateComponentsFormatter = {
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.day, .hour, .minute, .second]
-        formatter.unitsStyle = .full
-        formatter.maximumUnitCount = 1
-        formatter.zeroFormattingBehavior = .dropAll
-        return formatter
-    }()
-
-    /// 剩余时长向上取整（最多 2 单位，有秒则向粗单位进位）
-    private static func formatCompactDurationCeil(_ interval: TimeInterval) -> String {
-        let totalSeconds = Int(ceil(max(0, interval)))
-        let days = totalSeconds / (24 * 3600)
-        let remainingSeconds = totalSeconds % (24 * 3600)
-        let hours = remainingSeconds / (60 * 60)
-        let remainingAfterHours = remainingSeconds % (60 * 60)
-        let minutes = remainingAfterHours / 60
-        let seconds = remainingAfterHours % 60
-
-        if days > 0 {
-            if hours > 0 || minutes > 0 || seconds > 0 {
-                let adjustedHours = (minutes > 0 || seconds > 0) ? hours + 1 : hours
-                if adjustedHours > 0 {
-                    return String(format: NSLocalizedString("Time_Days_Hours", comment: ""), days, adjustedHours)
-                }
-            }
-            if minutes > 0 || seconds > 0 {
-                let adjustedMinutes = seconds > 0 ? minutes + 1 : minutes
-                if adjustedMinutes > 0 {
-                    return String(format: NSLocalizedString("Time_Days_Minutes", comment: ""), days, adjustedMinutes)
-                }
-            }
-            if seconds > 0 {
-                return String(format: NSLocalizedString("Time_Days_Seconds", comment: ""), days, seconds)
-            }
-            return String.localizedStringWithFormat(NSLocalizedString("Time_Days", comment: ""), days)
-        }
-        if hours > 0 {
-            if minutes > 0 || seconds > 0 {
-                let adjustedMinutes = seconds > 0 ? minutes + 1 : minutes
-                if adjustedMinutes > 0 {
-                    return String(format: NSLocalizedString("Time_Hours_Minutes", comment: ""), hours, adjustedMinutes)
-                }
-            }
-            if seconds > 0 {
-                return String(format: NSLocalizedString("Time_Hours_Seconds", comment: ""), hours, seconds)
-            }
-            return String.localizedStringWithFormat(NSLocalizedString("Time_Hours", comment: ""), hours)
-        }
-        if minutes > 0 {
-            if seconds > 0 {
-                return String(format: NSLocalizedString("Time_Minutes_Seconds", comment: ""), minutes, seconds)
-            }
-            return String.localizedStringWithFormat(NSLocalizedString("Time_Minutes", comment: ""), minutes)
-        }
-        return String.localizedStringWithFormat(NSLocalizedString("Time_Seconds", comment: ""), seconds)
+        formatCompactDuration(abs(interval))
     }
 
     // MARK: - Private 参数化核心
@@ -746,9 +768,6 @@ enum FormatUtil {
         case .dateTime:
             return localDateFormatter.string(from: date)
         case .dateTimeWithWeekday:
-            localDateFormatterWithWeekday.locale = Locale(
-                identifier: NSLocalizedString("Language_Identifier", comment: "语言标识符")
-            )
             return localDateFormatterWithWeekday.string(from: date)
         case .timeOnly:
             return localTimeOnlyFormatter.string(from: date)

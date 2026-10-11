@@ -2,6 +2,7 @@ import SwiftUI
 
 /// 主权势力星域列表（第二级：该主权拥有的星系分布在哪些星域，各行显示星系数量）
 struct SovereigntyRegionsView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @ObservedObject var databaseManager: DatabaseManager
     let sovereigntyInfo: SovereigntyInfo
 

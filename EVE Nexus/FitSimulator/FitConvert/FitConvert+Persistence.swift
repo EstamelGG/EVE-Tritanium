@@ -76,7 +76,7 @@ extension FitConvert {
                         flag: item.flag,
                         quantity: item.quantity,
                         type_id: item.type_id,
-                        status: 1
+                        status: nil // 在线配置未提供启动状态，由加载器选择默认在线/激活状态
                     )
                 },
                 name: online.name,

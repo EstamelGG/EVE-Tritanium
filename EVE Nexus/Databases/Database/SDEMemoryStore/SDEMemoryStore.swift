@@ -399,6 +399,9 @@ enum SDEMemoryStore {
 
     // MARK: - 存储属性（extension 不能声明存储属性，统一集中在此）
 
+    /// Changes after a complete SDE reload; consumers must discard static-data templates.
+    private(set) static var generation: UInt64 = 0
+
     static var types: [Int: TypeInfo] = [:]
     static var categories: [Int: CategoryInfo] = [:]
     static var groups: [Int: GroupInfo] = [:]
@@ -540,6 +543,8 @@ enum SDEMemoryStore {
             )
             progress?(index + 1, loaders.count)
         }
+
+        generation &+= 1
 
         Logger.info(
             "SDEMemoryStore 已加载 types=\(types.count) categories=\(categories.count) groups=\(groups.count) meta=\(metaGroupNames.count) market=\(marketGroups.count) dogma=\(dogmaAttributes.count) regions=\(regionNames.count) systems=\(solarSystemNames.count) constellations=\(constellationNames.count) factions=\(factions.count) divisions=\(divisionNames.count) ores=\(oreColors.count) compress=\(originToCompressed.count) npcCorps=\(npcCorporations.count) stations=\(stations.count) typeEffects=\(typeEffectIDs.count) dynMappings=\(dynamicResultingTypeIDs.count) dynItemAttrs=\(dynamicItemAttributesByType.count) fighterAbilities=\(fighterAbilities.count) warfareBuffs=\(warfareBuffs.count) certSkills=\(certificateSkills.count) shipMastery=\(shipMasteryCerts.count) typeAttrRows=\(typeAttrValues.count) skillReqs=\(skillRequirements.count) typeMaterials=\(typeMaterialEntries.count) wormholes=\(wormholeList.count) dogmaEffects=\(dogmaEffects.count)"

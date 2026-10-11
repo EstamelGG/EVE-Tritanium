@@ -2,6 +2,7 @@ import SwiftUI
 
 /// 单个技能要求行
 struct SkillRequirementRow: View {
+    @Environment(\.locale) private var displayLocale
     let skillID: Int
     let level: Int
     let timeMultiplier: Double?
@@ -182,6 +183,7 @@ struct SkillRequirementRow: View {
 
 /// 技能要求组显示组件
 struct SkillRequirementsView: View {
+    @Environment(\.locale) private var displayLocale
     let typeID: Int
     let groupName: String
     @ObservedObject var databaseManager: DatabaseManager

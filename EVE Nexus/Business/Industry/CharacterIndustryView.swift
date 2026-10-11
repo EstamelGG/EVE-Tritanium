@@ -50,29 +50,27 @@ struct CharacterIndustryView: View {
         return nil
     }
 
+    private var loadingMessages: [String] {
+        var messages: [String] = []
+        if let progress = viewModel.loadingProgress, progress.total > 1 {
+            messages.append(String.localizedStringWithFormat(
+                NSLocalizedString("Industry_Loading_Progress", comment: "已加载人物 %d/%d"),
+                progress.current, progress.total
+            ))
+        }
+        if let progress = viewModel.skillLoadingProgress, progress.total > 0 {
+            messages.append(String.localizedStringWithFormat(
+                NSLocalizedString("Industry_Loading_Skills_Progress", comment: "正在加载技能数据 %d/%d"),
+                progress.current, progress.total
+            ))
+        }
+        return messages
+    }
+
     var body: some View {
         List {
             if viewModel.isLoading {
-                VStack(alignment: .center, spacing: 12) {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-
-                    // 显示工业项目加载进度（如果有多人物模式且正在加载）
-                    if let progress = viewModel.loadingProgress, progress.total > 1 {
-                        Text(String.localizedStringWithFormat(NSLocalizedString("Industry_Loading_Progress", comment: "已加载人物 %d/%d"), progress.current, progress.total))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-
-                    // 显示技能加载进度
-                    if let skillProgress = viewModel.skillLoadingProgress, skillProgress.total > 0 {
-                        Text(String.localizedStringWithFormat(NSLocalizedString("Industry_Loading_Skills_Progress", comment: "正在加载技能数据 %d/%d"), skillProgress.current, skillProgress.total))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 8)
+                IndustrySkeleton(loadingMessages: loadingMessages)
             } else {
                 // 工业槽位统计 Section - 始终显示
                 Section(

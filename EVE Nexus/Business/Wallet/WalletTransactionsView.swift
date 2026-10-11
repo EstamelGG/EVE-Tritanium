@@ -121,11 +121,9 @@ final class WalletTransactionsViewModel: ObservableObject {
 
     // 使用FormatUtil进行日期处理，无需自定义格式化器
 
-    private let calendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.current // 使用本地时区
-        return calendar
-    }()
+    private var calendar: Calendar {
+        FormatUtil.appCalendar
+    }
 
     init(characterId: Int, databaseManager: DatabaseManager) {
         self.characterId = characterId
@@ -203,7 +201,7 @@ final class WalletTransactionsViewModel: ObservableObject {
         for entry in entries {
             // 创建唯一键：时间（精确到分钟）+ 物品ID + 买卖类型 + 地点ID
             let dateComponents = FormatUtil.parseUTCDate(entry.date) ?? Date()
-            let calendar = Calendar.current
+            let calendar = FormatUtil.appCalendar
             let minuteComponents = calendar.dateComponents(
                 [.year, .month, .day, .hour, .minute], from: dateComponents
             )
@@ -222,6 +220,22 @@ final class WalletTransactionsViewModel: ObservableObject {
                 let maxId2 = $1.originalEntries.map { $0.transaction_id }.max() ?? 0
                 return maxId1 > maxId2
             }
+    }
+
+    /// Rebuild display groups from loaded entries without fetching or changing timestamps.
+    func regroupForTimeZone() {
+        let entries = transactionGroups.flatMap { $0.entries }
+        let grouped = Dictionary(grouping: entries) { entry in
+            calendar.startOfDay(for: FormatUtil.parseUTCDate(entry.date) ?? .distantPast)
+        }
+        transactionGroups = grouped.map { date, entries in
+            let sortedEntries = entries.sorted { $0.transaction_id > $1.transaction_id }
+            return WalletTransactionGroup(
+                date: date,
+                entries: sortedEntries,
+                mergedEntries: mergeSimilarTransactions(sortedEntries)
+            )
+        }.sorted { $0.date > $1.date }
     }
 
     func loadTransactionData(forceRefresh: Bool = false) async {
@@ -386,6 +400,7 @@ final class WalletTransactionsViewModel: ObservableObject {
 
 /// 设置视图
 struct WalletTransactionSettingsView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @ObservedObject var viewModel: WalletTransactionsViewModel
     @Environment(\.dismiss) private var dismiss
 
@@ -423,6 +438,7 @@ struct WalletTransactionSettingsView: View {
 
 /// 特定日期的交易记录详情视图
 struct WalletTransactionDayDetailView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let group: WalletTransactionGroup
     let viewModel: WalletTransactionsViewModel
     let currentCharacter: EVECharacterInfo?
@@ -447,6 +463,7 @@ struct WalletTransactionDayDetailView: View {
 }
 
 struct WalletTransactionsView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var viewModel: WalletTransactionsViewModel
     @State private var currentCharacter: EVECharacterInfo?
 
@@ -488,6 +505,7 @@ struct WalletTransactionsView: View {
 
 /// 交易记录列表视图
 private struct TransactionListView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @ObservedObject var viewModel: WalletTransactionsViewModel
     let currentCharacter: EVECharacterInfo?
 
@@ -554,7 +572,7 @@ private struct TransactionListView: View {
                                     Text(
                                         "\(netProfit >= 0 ? "+" : "")\(FormatUtil.formatISK(netProfit))"
                                     )
-                                    .font(.caption)
+                                    .font(.system(.caption, design: .monospaced))
                                     .foregroundColor(
                                         netProfit > 0 ? .green : netProfit < 0 ? .red : .secondary
                                     )
@@ -568,7 +586,7 @@ private struct TransactionListView: View {
                                     Text(
                                         "\(netProfit >= 0 ? "+" : "")\(FormatUtil.formatISK(netProfit))"
                                     )
-                                    .font(.caption)
+                                    .font(.system(.caption, design: .monospaced))
                                     .foregroundColor(
                                         netProfit > 0 ? .green : netProfit < 0 ? .red : .secondary
                                     )
@@ -580,6 +598,9 @@ private struct TransactionListView: View {
                     .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                 }
             }
+        }
+        .onChange(of: displayTimeZone.identifier) { _, _ in
+            viewModel.regroupForTimeZone()
         }
         .listStyle(.insetGrouped)
         .refreshable {
@@ -622,6 +643,7 @@ private struct TransactionListView: View {
 
 /// 合并交易记录行视图
 struct MergedTransactionEntryRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let entry: MergedTransactionEntry
     let viewModel: WalletTransactionsViewModel
     let currentCharacter: EVECharacterInfo?
@@ -788,6 +810,7 @@ struct MergedTransactionEntryRow: View {
 
 /// 交易对象列表 Sheet
 struct TransactionClientListSheet: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let entry: MergedTransactionEntry
     let currentCharacter: EVECharacterInfo?
     @Environment(\.dismiss) private var dismiss
@@ -971,6 +994,7 @@ struct TransactionClientListSheet: View {
 }
 
 struct WalletTransactionEntryRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let entry: WalletTransactionEntry
     let viewModel: WalletTransactionsViewModel
     let currentCharacter: EVECharacterInfo?

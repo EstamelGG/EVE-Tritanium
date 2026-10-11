@@ -21,20 +21,12 @@ class AttributeCalculator {
         // 创建输入的副本
         var preparedInput = input
 
-        // 执行Step1 - 物品、属性和效果采集阶段
-        Logger.info("执行Step1 - 物品、属性和效果采集阶段")
-        let (itemAttributes, itemAttributesByName, itemEffects) = step1.process(input: input)
-        Logger.info(
-            "Step1完成 - 物品、属性和效果采集完成，收集到\(itemAttributes.count)个物品的属性和\(itemEffects.count)个物品的效果"
-        )
+        // 执行Step1 - 类型和效果采集阶段
+        Logger.info("执行Step1 - 类型和效果采集阶段")
+        let itemEffects = step1.process(input: input)
 
-        // 执行Step2 - 效果修饰器解析阶段
-        Logger.info("执行Step2 - 效果修饰器解析阶段")
-        let attributeModifiers = step2.process(
-            itemAttributes: itemAttributes,
-            itemAttributesByName: itemAttributesByName,
-            itemEffects: itemEffects
-        )
+        // 效果模板不依赖当前属性值，直接解析采集到的效果。
+        let attributeModifiers = step2.process(itemEffects: itemEffects)
         Logger.info("Step2完成 - 解析了\(attributeModifiers.count)个修饰器")
 
         // 执行Step3 - 将修饰器应用到物品属性上
@@ -51,9 +43,9 @@ class AttributeCalculator {
         Logger.info("Step4完成 - 成功计算所有属性的最终值")
 
         // 执行Step5 - 推进模块速度修正
-        Logger.info("执行Step5 - 推进模块速度和突变修正")
+        Logger.info("执行Step5 - 推进模块速度修正")
         output = step5.process(output: output)
-        Logger.info("Step5完成 - 推进模块速度和突变修正完成")
+        Logger.info("Step5完成 - 推进模块速度修正完成")
 
         return output
     }

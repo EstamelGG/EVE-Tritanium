@@ -1,0 +1,3596 @@
+{
+  "scenarios": [
+    {
+      "id": "S01",
+      "title": "武器与批量操作",
+      "source": "ShipFirepowerStatsView.swift; FittingWeaponStatistics.swift; FittingEditorViewModel+Modules.swift",
+      "coverage": [
+        "激光/混合炮/射弹/导弹",
+        "模块自身伤害",
+        "四属性DPS/齐射/伤害分布",
+        "换弹DPS计算层",
+        "同型模块实例隔离",
+        "批量状态/装弹/卸弹",
+        "弹药筛选/变体替换/清缓存",
+        "叠加惩罚"
+      ],
+      "steps": [
+        {
+          "action": "仅切换两门125mm炮中的一门，再使用同型批量切状态/换弹/卸弹。",
+          "expected": "单门操作不影响另一实例；批量仅作用于选择的槽位；重复操作不累加效果。B中HiSlot1的在线未启动状态1应在保存重载后保持为1。"
+        },
+        {
+          "action": "高槽0海军多频L换Scorch L；高槽4鞭挞重导换雷神重导；恢复。",
+          "expected": "射程和伤害类型随弹药更新，恢复后回到基准；弹仓按容量/体积重新计算。"
+        },
+        {
+          "action": "智能炸弹保留启动且不装弹；依次离线两个弹道控制。",
+          "expected": "炸弹采用模块自身伤害；两件弹道控制的同向加成有叠加惩罚。"
+        },
+        {
+          "action": "单独激活重快，在计算层读取不计/计换弹DPS。",
+          "expected": "计换弹=齐射×25/(周期×25+35s)；当前UI没有换弹DPS切换按钮，用单测或调试读取。"
+        }
+      ],
+      "fixtures": [
+        "S01-A",
+        "S01-B状态混合"
+      ]
+    },
+    {
+      "id": "S02",
+      "title": "周期电容与无限注电",
+      "source": "FittingCapacitorCalculator.swift; ShipCapacitorStats.swift",
+      "coverage": [
+        "自然回充/容量/回充峰值",
+        "注电事件/满仓/换弹",
+        "吸电事件",
+        "毁电自身耗电",
+        "供能开关与缓存",
+        "无限备用弹药",
+        "电容稳定/断电/上限显示"
+      ],
+      "steps": [
+        {
+          "action": "依次加载A双供能、B只吸电、C只注电、D无供能，保持全5及其它设置一致。",
+          "expected": "每次按当前模块事件重算；不能继续使用前一装配缓存，不能仅凭平均GJ/s为正判稳定。"
+        },
+        {
+          "action": "比较A和E无备用弹药。",
+          "expected": "已装弹药相同，电容结果完全相同；备用库存不限制注电。"
+        },
+        {
+          "action": "移除注电器已装弹药再装回，调整装备周期/超载。",
+          "expected": "未装弹不注电；装回后无限换弹；周期改变进入缓存键。"
+        },
+        {
+          "action": "观察周期模拟和超时结果；配合现有边界单测。",
+          "expected": "补能不能提前到账，满电溢出不能储存；达到模拟上限只能显示已验证时长下限，不宣称稳定。"
+        }
+      ],
+      "fixtures": [
+        "S02-A双供能",
+        "S02-B只吸电",
+        "S02-C只注电",
+        "S02-D无供能",
+        "S02-E零备用"
+      ]
+    },
+    {
+      "id": "S03",
+      "title": "抗性与三层维修",
+      "source": "ShipRepairStatsView.swift; ShipResistancesStats.swift; shipResourcesStats.swift; Step4.swift",
+      "coverage": [
+        "资源CPU/PG/校准",
+        "盾甲结构抗性/HP/EHP",
+        "被动护盾恢复",
+        "盾甲结构主动维修",
+        "辅助盾修装料",
+        "辅助甲修粘合剂",
+        "远程维修排除",
+        "装备突变到船体传播",
+        "反应式抗性模块静态属性"
+      ],
+      "steps": [
+        {
+          "action": "逐一启停盾修/甲修/结构修，启停高槽远程甲修。",
+          "expected": "各本地维修只改变对应层；远程维修增加耗电但不计本舰维修。"
+        },
+        {
+          "action": "比较A有装料、B辅助盾修和辅助甲修卸弹。",
+          "expected": "ASB耗电和AAR修量按装料效果变化，卸弹后无残留加成。"
+        },
+        {
+          "action": "盾扩突变1.10→1.00→1.10；反复保存、加载和重算。",
+          "expected": "模块capacityBonus为2420→2200→2420；船体护盾随之变化且只应用一次。"
+        },
+        {
+          "action": "分别切换主动硬化、反应式装甲和损伤控制，查看有效维修与EHP。",
+          "expected": "按当前静态抗性计算；不将反应式硬化描述为已有入射伤害自适应战斗模拟。"
+        }
+      ],
+      "fixtures": [
+        "S03-A有装料",
+        "S03-B无装料"
+      ]
+    },
+    {
+      "id": "S04",
+      "title": "推进电子战与脚本",
+      "source": "Step5.swift; ShipMiscStatsView.swift; ModuleSettingsView.swift; SlotEquipmentSelectorView.swift",
+      "coverage": [
+        "AB/MWD质量与速度",
+        "质量/惯性/对齐/跃迁速度",
+        "推进激活互斥",
+        "微跳重激活延迟",
+        "锁定数/距离/分辨率/感应强度",
+        "跟踪/导弹/感应脚本",
+        "扫描探针与隐形",
+        "跃迁稳定点数",
+        "模块属性详情/市场选择器"
+      ],
+      "steps": [
+        {
+          "action": "比较A的AB与B的MWD；先关闭当前推进再启另一个。",
+          "expected": "质量增量只计一次，速度和对齐跟随状态；MWD在线→离线时电容容量惩罚也消失。"
+        },
+        {
+          "action": "微跳从在线改启动；再比较回到在线。",
+          "expected": "电容事件计入重激活延迟；不是普通AB/MWD速度加成。"
+        },
+        {
+          "action": "对跟踪、导弹、感应模块逐一装卸对应脚本；将感应脚本换扫描分辨率。",
+          "expected": "模块/船体相关属性切换且可恢复；锁定距离显示上限300km，目标数取角色与船体上限的较小值。"
+        },
+        {
+          "action": "查看网子/反跳/标记模块选择器，临时替换一个中槽；扫描探针装卸；隐形开关。",
+          "expected": "只校验本舰与模块属性，不虚构目标舰减速或实战扫描结果。"
+        },
+        {
+          "action": "开启/关闭跃迁核心稳定器；替换同槽不同变体。",
+          "expected": "跃迁稳定显示船体负warpScrambleStatus的绝对值；变体装配信息和弹药/突变清理遵循实际兼容性。"
+        }
+      ],
+      "fixtures": [
+        "S04-A加力",
+        "S04-B微曲",
+        "S04-C电子战"
+      ]
+    },
+    {
+      "id": "S05",
+      "title": "无人机与实例突变",
+      "source": "FittingEditorViewModel+Drones.swift; DroneSettingsView.swift; ShipFittingDronesView.swift; ShipFirepowerStatsView.swift",
+      "coverage": [
+        "战斗/岗哨/电子战/后勤无人机",
+        "携带数与出战数",
+        "无人机数量/带宽/舱容限制",
+        "无人机替换/删除/突变",
+        "无人机控制距离",
+        "无人机加成与叠加"
+      ],
+      "steps": [
+        {
+          "action": "改变备用数量，再改变出战数量；替换、删除、重新添加武士组。",
+          "expected": "备用不贡献DPS；出战数线性影响本组输出，其他组不变；突变不串到同型普通实例。"
+        },
+        {
+          "action": "武士damageMultiplier由1.10改1再恢复，切技能并重算。",
+          "expected": "倍率只应用一次，不随重算累乘。"
+        },
+        {
+          "action": "回收战斗无人机后激活岗哨、电子战或后勤无人机。",
+          "expected": "伤害只来自有伤害的无人机；不把无人机后勤虚计为本舰维修。"
+        },
+        {
+          "action": "尝试第6架、超125带宽、超375m³携带量；开关两个控制距离模块和两个DDA。",
+          "expected": "数量/带宽/体积限制有明确处理；控制距离与伤害按当前实例重算。"
+        }
+      ],
+      "fixtures": [
+        "S05-A"
+      ]
+    },
+    {
+      "id": "S06",
+      "title": "技能植入体药剂与环境",
+      "source": "FittingSettingsView.swift; ImplantSettingsView.swift; ImplantPresetView.swift; EnvironmentSettingsView.swift; FittingCharacterSkillsLoader.swift",
+      "coverage": [
+        "全0至全5/角色技能/缺失技能计划",
+        "植入体槽位冲突与预设",
+        "增效剂槽位/副作用",
+        "虫洞环境",
+        "深渊环境",
+        "其他环境",
+        "环境保存清除与缓存",
+        "植入体套装与Omega联动"
+      ],
+      "steps": [
+        {
+          "action": "先使用全5；依次全0/1/2/3/4/5；在有测试角色时切当前/指定角色并生成缺失技能计划。",
+          "expected": "回到同技能模式时结果可复现；角色模式及技能计划属于交互步骤，不在JSON内伪造字段。"
+        },
+        {
+          "action": "移除/恢复EM-803；替换相同槽位植入体；保存/应用/删除测试预设。",
+          "expected": "同槽只有一件有效，船体电容同步改变。"
+        },
+        {
+          "action": "蓝色药丸副作用逐个启用再清除，更换/卸载增效剂。",
+          "expected": "只影响选定副作用的目标属性；当前本地文件不保存副作用选择，重新载入需按实现重新设置。"
+        },
+        {
+          "action": "加载A无环境/B虫洞/C深渊/D其他后，分别清除环境并恢复。",
+          "expected": "三个分类均能选择并保存type_id；清除后回到无环境基准，旧环境不残留。"
+        },
+        {
+          "action": "比较E水晶套装与A，逐一移除Omega、其他单件，再恢复完整套装。",
+          "expected": "套装与单件加成按同槽唯一实例计算；移除后恢复原值，不能当作独立固定百分比简单相加。"
+        }
+      ],
+      "fixtures": [
+        "S06-A无环境",
+        "S06-B虫洞",
+        "S06-C深渊",
+        "S06-D其他",
+        "S06-E水晶套装"
+      ]
+    },
+    {
+      "id": "S07",
+      "title": "T3战略巡洋舰子系统",
+      "source": "SubSysSlotEquipmentSelectorView.swift; ValidateConfiguration.swift; CanFit.swift",
+      "coverage": [
+        "四类子系统安装替换",
+        "动态槽位与挂点",
+        "子系统兼容性与重复限制"
+      ],
+      "steps": [
+        {
+          "action": "逐一替换四类子系统，换回原系统；查看槽位、挂点、资源和船体属性。",
+          "expected": "动态容量来自当前子系统；移除或替换后旧贡献消失。"
+        },
+        {
+          "action": "尝试异船子系统、同类重复子系统，以及超出新挂点的武器。",
+          "expected": "不可兼容项被拒绝/加载时报告；数量和槽位收缩按当前实现提示，不悄悄计入输出。"
+        }
+      ],
+      "fixtures": [
+        "S07-A"
+      ]
+    },
+    {
+      "id": "S08",
+      "title": "T3驱逐舰三模式",
+      "source": "ModeSwitchingUtils.swift; T3DModeSelectorView.swift; FitConvert+LocalSimulation.swift",
+      "coverage": [
+        "防御/推进/狙击模式",
+        "模式唯一性/切换/默认补齐"
+      ],
+      "steps": [
+        {
+          "action": "依次加载三模式预设；在同一装配内再次切换三种模式。",
+          "expected": "三者的船体属性差异与对应模式效果匹配，始终只有一个模式模块，恢复后结果一致。"
+        },
+        {
+          "action": "在测试副本移除模式字段后加载。",
+          "expected": "按ModeSwitchingUtils补齐默认模式，不叠加两个模式。"
+        }
+      ],
+      "fixtures": [
+        "S08-Defense",
+        "S08-Propulsion",
+        "S08-Sharpshooter"
+      ]
+    },
+    {
+      "id": "S09",
+      "title": "裂解炮预热",
+      "source": "ModuleSettingsView.swift; Step4.swift; FittingEditorViewModel+Modules.swift",
+      "coverage": [
+        "裂解炮未预热/完全预热",
+        "预热批量状态与保存"
+      ],
+      "steps": [
+        {
+          "action": "比较A未预热与B完全预热；在UI切换预热并保存重开。",
+          "expected": "伤害倍率按预热状态变化，其他模块不丢字段；只表示端点，不声称模拟预热时间曲线。"
+        },
+        {
+          "action": "换弹为Meson M再换回，超载→在线→启动。",
+          "expected": "预热开关与突变/弹药/状态独立保存，不被模块重建意外复位。"
+        }
+      ],
+      "fixtures": [
+        "S09-A未预热",
+        "S09-B完全预热"
+      ]
+    },
+    {
+      "id": "S10",
+      "title": "三神远程维修与预热",
+      "source": "Step4.swift; ShipRepairStatsView.swift; CanFit.swift",
+      "coverage": [
+        "三神遥修初始/满预热",
+        "后勤船型专用装备限制",
+        "远修属性与本舰维修分离",
+        "远程盾甲结构与传电"
+      ],
+      "steps": [
+        {
+          "action": "比较A/B的重型突变适应远修，切换完全预热开关，再开关普通远程甲修。",
+          "expected": "满预热修量=初始修量×(1+repairMultiplierBonusMax)，当前样例1024→2560；耗电和周期不变；普通远修不受影响，远修不计入本舰主动维修。"
+        },
+        {
+          "action": "尝试再安装第二件突变适应远修或将其装到普通舰船。",
+          "expected": "同组上限1、限定Rodiva/Zarmazd的限制得到处理。"
+        },
+        {
+          "action": "加载C，逐一启停远程盾/甲/结构维修和远程传电。",
+          "expected": "不能计为本舰对应维修或补能；应计算自身启动耗电和模块射程。"
+        }
+      ],
+      "fixtures": [
+        "S10-A未预热",
+        "S10-B完全预热",
+        "S10-C普通远修与传电"
+      ]
+    },
+    {
+      "id": "S11",
+      "title": "掠夺舰堡垒",
+      "source": "Step4.swift; ShipMiscStatsView.swift; ShipRepairStatsView.swift",
+      "coverage": [
+        "堡垒开关",
+        "战术自缠绕与跃迁稳定区分",
+        "掠夺舰船体加成"
+      ],
+      "steps": [
+        {
+          "action": "比较堡垒离线/启动；在线未启动状态在UI手动设置后测试重载。",
+          "expected": "火力周期、维修、抗性和机动按效果变化；正warpScrambleStatus不显示为额外跃迁稳定点数。"
+        }
+      ],
+      "fixtures": [
+        "S11-A关闭",
+        "S11-B开启"
+      ]
+    },
+    {
+      "id": "S12",
+      "title": "无畏舰会战",
+      "source": "Step4.swift; ShipAllCargoView.swift; ShipAttributesView.swift",
+      "coverage": [
+        "旗舰装备/资源",
+        "会战开关",
+        "旗舰维修/燃料/专用舱"
+      ],
+      "steps": [
+        {
+          "action": "比较会战离线/启动；在线未启动状态在UI手动设置后测试重载。",
+          "expected": "舰炮和维修属性按会战及船体加成变化，恢复后无缓存残留。"
+        },
+        {
+          "action": "增减燃料和备用弹药，查看货舱及原始属性。",
+          "expected": "货物数量影响舱容/价格，不虚构燃料消耗导致的自动停机逻辑。"
+        }
+      ],
+      "fixtures": [
+        "S12-A关闭",
+        "S12-B开启"
+      ]
+    },
+    {
+      "id": "S13",
+      "title": "轻型辅助与重型舰载机",
+      "source": "FittingEditorViewModel+Fighters.swift; ShipFittingFightersView.swift; FighterSettingsView.swift; ShipFirepowerStatsView.swift",
+      "coverage": [
+        "轻型/辅助/重型舰载机",
+        "舰载机基础攻击/导弹",
+        "舰载机炸弹查表",
+        "舰载机自爆齐射",
+        "特殊能力切换",
+        "发射管类型/中队数量限制",
+        "舰载机支持模块与传感阵列"
+      ],
+      "steps": [
+        {
+          "action": "航母预设安装轻型与辅助中队；修改数量、替换和删除，保存重开。",
+          "expected": "轻型管ID从0开始，重型从100开始，辅助从200开始；管道类型须与机型一致。"
+        },
+        {
+          "action": "超级航母切特殊能力开关；分别观察Cyclops、Antaeus和Shadow。",
+          "expected": "导弹/炸弹加入对应DPS；Shadow自爆只进入相应齐射口径；炸弹伤害从关联弹种读取。"
+        },
+        {
+          "action": "比较B的五个中队与C的四个中队；B额外安装一队Cyclops I于重型管103。",
+          "expected": "B的数量和火力应包含额外中队；100起的tubeId表示重型发射管，不表示储备。当前模型没有独立储备状态。"
+        },
+        {
+          "action": "尝试过多发射管、超中队最大数量，以及向Nyx添加辅助中队。",
+          "expected": "应受船体和机型限制；Nyx不具备辅助舰载机槽。"
+        }
+      ],
+      "fixtures": [
+        "S13-A航母轻型辅助",
+        "S13-B超级航母五中队",
+        "S13-C超级航母四中队"
+      ]
+    },
+    {
+      "id": "S14",
+      "title": "指挥脉冲波与叠加",
+      "source": "Step4.swift; ModuleGroupManager.swift; FittingEditorViewModel+Modules.swift; ValidateConfiguration.swift",
+      "coverage": [
+        "dbuff条目与来源映射",
+        "相同/不同指挥效果聚合",
+        "指挥弹药切换",
+        "加成处理器提升同组上限",
+        "同组装配/在线/启动限制"
+      ],
+      "steps": [
+        {
+          "action": "A中两个护盾扩张脉冲波分别开启和关闭，再换成B的不同护盾装料。",
+          "expected": "相同dbuff按数据库aggregateMode聚合，不重复叠乘；不同效果各自作用。"
+        },
+        {
+          "action": "卸除再恢复Large Command Processor I；观察第三个脉冲波。",
+          "expected": "计算后的数量上限应更新，不能因加载顺序提前删除本来可装的脉冲波；超限按实现离线。"
+        },
+        {
+          "action": "批量换指挥装料、启停、重新载入。",
+          "expected": "dbuff来源不串到其他模块或旧弹药，缓存随输入变化。"
+        }
+      ],
+      "fixtures": [
+        "S14-A重复效果",
+        "S14-B不同效果"
+      ]
+    },
+    {
+      "id": "S15",
+      "title": "工业核心与采矿",
+      "source": "ShipAllCargoView.swift; ShipFittingDronesView.swift; Step4.swift; ModuleSettingsView.swift",
+      "coverage": [
+        "工业核心/PANIC",
+        "压缩模块与工业专用装备",
+        "采矿无人机属性",
+        "专用货舱枚举",
+        "工业指挥与技能",
+        "采矿器与采矿晶体"
+      ],
+      "steps": [
+        {
+          "action": "工业核心在线→启动→在线；PANIC单独启停；观察压缩及采矿指挥模块属性。",
+          "expected": "按本舰属性与装备状态计算；不把静态模拟说成实际压缩、采矿产量或PANIC实战条件模拟。"
+        },
+        {
+          "action": "挖掘者无人机0→5出战；改变矿石/燃料数量，查看全部货舱。",
+          "expected": "带宽125与数量5受限；非战斗无人机不产生虚假DPS；专用舱只有正值属性显示。"
+        },
+        {
+          "action": "加载B，批量更换/卸除露天采矿器晶体；开关采矿激光提升器。",
+          "expected": "模块采矿量、周期和晶体相关属性随状态变化；不要求没有实现的总采矿收益面板。"
+        }
+      ],
+      "fixtures": [
+        "S15-A",
+        "S15-B采矿晶体"
+      ]
+    },
+    {
+      "id": "S16",
+      "title": "货运与普通物品",
+      "source": "FittingEditorViewModel+Cargo.swift; ShipFittingCargoView.swift; ShipFittingPriceView.swift; ShipAttributesView.swift",
+      "coverage": [
+        "货舱添加/合并/增减/删除",
+        "非战斗装配/零DPS/满电稳定",
+        "货舱容量修饰",
+        "原始全部属性浏览",
+        "价格分类/缺价/网络"
+      ],
+      "steps": [
+        {
+          "action": "添加相同货物两次、合并数量，再减到1、删除；更换货扩。",
+          "expected": "货舱数量与体积正确，CPU/PG/货舱属性随装配变化；无武器时DPS为0、无耗电时满电稳定。"
+        },
+        {
+          "action": "进入价格分项和全部属性，分别在有报价和离线条件检查。",
+          "expected": "船体/装备/弹药/货物价格分类与缺价提示符合实现；不固定外部ISK价格，跳跃等未专设面板属性仅在原始属性页核对。"
+        }
+      ],
+      "fixtures": [
+        "S16-A"
+      ]
+    },
+    {
+      "id": "S17",
+      "title": "隐轰与特殊弹药",
+      "source": "CanFit.swift; ModuleSettingsView.swift; ShipFirepowerStatsView.swift",
+      "coverage": [
+        "隐轰船体与受限装备",
+        "炸弹/鱼雷装弹",
+        "隐形状态与锁定属性",
+        "特殊弹药容量与伤害"
+      ],
+      "steps": [
+        {
+          "action": "鱼雷与炸弹卸弹/装弹；关闭再启动，隐形在线/启动切换。",
+          "expected": "装料分类和容量正确、不同武器贡献隔离；属性页变化符合船体与模块效果。"
+        },
+        {
+          "action": "在普通舰船上尝试安装炸弹发射器；查看拒绝提示。",
+          "expected": "船型限制生效；不模拟弹体飞行、范围命中或目标抗性。"
+        }
+      ],
+      "fixtures": [
+        "S17-A"
+      ]
+    },
+    {
+      "id": "S18",
+      "title": "范围投射器周期",
+      "source": "FittingCapacitorCalculator.swift; Step4.swift",
+      "coverage": [
+        "特殊duration属性分支",
+        "范围投射器船型限制",
+        "moduleReactivationDelay",
+        "投射器自身电容与目标效果边界"
+      ],
+      "steps": [
+        {
+          "action": "逐一加载四种投射器，只启动当前一件；读取其周期和重激活延迟。",
+          "expected": "电容输入采用对应duration属性，不能因为缺少普通speed而漏算；不把目标效果加到自身。"
+        },
+        {
+          "action": "在线→启动→在线，重复加载两种不同投射器。",
+          "expected": "对应耗电事件正确建立和移除，旧周期缓存不残留。"
+        }
+      ],
+      "fixtures": [
+        "S18-27678",
+        "S18-40697",
+        "S18-40698",
+        "S18-40699"
+      ]
+    },
+    {
+      "id": "S19",
+      "title": "建筑与服务槽入口边界",
+      "source": "fittingFileModel.swift; FitConvert+EFTImport.swift; FittingShipSelectorView.swift",
+      "coverage": [
+        "建筑服务槽数据",
+        "在线ESI与本地入口边界",
+        "不支持的EFT船体拒绝"
+      ],
+      "steps": [
+        {
+          "action": "使用native JSON/已有在线建筑装配入口加载，核对三服务槽数据。",
+          "expected": "文件模型应保留服务槽；若界面没有服务槽编辑入口，记录功能缺口，不能把模型支持等同产品已支持。"
+        },
+        {
+          "action": "将Raitaru装配文本输入当前EFT船体入口。",
+          "expected": "当前代码仅接受categoryID=6，应清楚拒绝建筑，不误识别为舰船。"
+        }
+      ],
+      "fixtures": [
+        "S19-A服务槽"
+      ]
+    },
+    {
+      "id": "S20",
+      "title": "异常装配和资源边界",
+      "source": "CanFit.swift; ValidateConfiguration.swift; FitConvert+Persistence.swift; DNAParser.swift; FittingSettingsView.swift; FittingMainView.swift",
+      "coverage": [
+        "不兼容模块剔除提示",
+        "同组数量超限保留离线",
+        "炮台/发射器/资源超限",
+        "缺失字段/旧ID/损坏文件",
+        "保存/重命名/复制/删除",
+        "EFT/DNA/ESI导入导出",
+        "在线本地切换与登录依赖"
+      ],
+      "steps": [
+        {
+          "action": "加载N1船型不兼容与N2双损伤控制。",
+          "expected": "不兼容模块被报告；仅同组数量超限按加载逻辑保留并离线，不能静默产生双重收益。"
+        },
+        {
+          "action": "加载N3资源超限，在副本继续尝试第4门炮/增加校准与无人机数量。",
+          "expected": "资源与挂点越界得到提示/限制，不把这类样本当合法正例。"
+        },
+        {
+          "action": "对S01测试副本复制、改名、保存重开、删除；从EFT和DNA导入。",
+          "expected": "原装配不受影响；JSON支持字段应保留，EFT/DNA不可表达的状态等允许缺省但需明确。"
+        },
+        {
+          "action": "另建临时副本，去掉可选字段、用旧整型fitting_id、截断JSON后加载。",
+          "expected": "兼容字段按默认处理，旧ID迁移为UUID；损坏文件可展示不可读提示而非崩溃。此操作只对测试副本执行。"
+        },
+        {
+          "action": "在已登录测试账号执行在线列表/导入、ESI导出和错误处理；生成缺失技能计划。",
+          "expected": "需要账号/网络的交互由测试人员执行；本套件不主动写入ESI或删除线上装配。"
+        }
+      ],
+      "fixtures": [
+        "S20-N1不兼容",
+        "S20-N2同组超限",
+        "S20-N3资源超限"
+      ]
+    }
+  ],
+  "fixtures": [
+    {
+      "id": "S01-A",
+      "scenario": "S01",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 4147,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 23105,
+            "charge_quantity": 1,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 2889,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 185,
+            "charge_quantity": 120,
+            "flag": "HiSlot3"
+          },
+          {
+            "type_id": 33450,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27441,
+            "charge_quantity": 25,
+            "flag": "HiSlot4"
+          },
+          {
+            "type_id": 1565,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot5"
+          },
+          {
+            "type_id": 22291,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 22291,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot2"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 12820,
+            "quantity": 1
+          },
+          {
+            "type_id": 27435,
+            "quantity": 100
+          },
+          {
+            "type_id": 222,
+            "quantity": 100
+          },
+          {
+            "type_id": 185,
+            "quantity": 100
+          }
+        ],
+        "fitting_id": "BBC94B06-A27F-52CF-8AC4-9F452F9BC616",
+        "name": "S01-A 武器与批量操作",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S01-B状态混合",
+      "scenario": "S01",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 4147,
+            "quantity": 1,
+            "status": 3,
+            "charge_type_id": 23105,
+            "charge_quantity": 1,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 1,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 0,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 2889,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 185,
+            "charge_quantity": 120,
+            "flag": "HiSlot3"
+          },
+          {
+            "type_id": 33450,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27441,
+            "charge_quantity": 25,
+            "flag": "HiSlot4"
+          },
+          {
+            "type_id": 1565,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot5"
+          },
+          {
+            "type_id": 22291,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 22291,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot2"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 12820,
+            "quantity": 1
+          },
+          {
+            "type_id": 27435,
+            "quantity": 100
+          },
+          {
+            "type_id": 222,
+            "quantity": 100
+          },
+          {
+            "type_id": 185,
+            "quantity": 100
+          }
+        ],
+        "fitting_id": "E12CA002-0A9E-5B38-932C-09EC10CF22D7",
+        "name": "S01-B状态混合 武器与批量操作",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S02-A双供能",
+      "scenario": "S02",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 12263,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 12271,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 5051,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 32014,
+            "charge_quantity": 5,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 10858,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 3540,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 25948,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot0"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 32014,
+            "quantity": 20
+          }
+        ],
+        "fitting_id": "204B2A49-A618-53E3-9437-C71DF33ADC38",
+        "name": "S02-A双供能 周期电容与无限注电",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S02-B只吸电",
+      "scenario": "S02",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 12263,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 12271,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 5051,
+            "quantity": 1,
+            "status": 0,
+            "charge_type_id": 32014,
+            "charge_quantity": 5,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 10858,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 3540,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 25948,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot0"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 32014,
+            "quantity": 20
+          }
+        ],
+        "fitting_id": "41EED365-A673-5F59-90FD-B6F9DE7558E8",
+        "name": "S02-B只吸电 周期电容与无限注电",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S02-C只注电",
+      "scenario": "S02",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 12263,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 12271,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 5051,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 32014,
+            "charge_quantity": 5,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 10858,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 3540,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 25948,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot0"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 32014,
+            "quantity": 20
+          }
+        ],
+        "fitting_id": "487C14C6-A74B-5A8D-91DD-A3C19CAC6835",
+        "name": "S02-C只注电 周期电容与无限注电",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S02-D无供能",
+      "scenario": "S02",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 12263,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 12271,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 5051,
+            "quantity": 1,
+            "status": 0,
+            "charge_type_id": 32014,
+            "charge_quantity": 5,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 10858,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 3540,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 25948,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot0"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 32014,
+            "quantity": 20
+          }
+        ],
+        "fitting_id": "D0B9756D-CD81-5615-92CB-6081B9D3DDC4",
+        "name": "S02-D无供能 周期电容与无限注电",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S02-E零备用",
+      "scenario": "S02",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 12263,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 12271,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 5051,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 32014,
+            "charge_quantity": 5,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 10858,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 3540,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 25948,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot0"
+          }
+        ],
+        "cargo": [],
+        "fitting_id": "EC7CA9E1-07CF-53C2-9D0A-F8A6D7BAD346",
+        "name": "S02-E零备用 周期电容与无限注电",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S03-A有装料",
+      "scenario": "S03",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 26912,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 6437,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 32772,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 264,
+            "charge_quantity": 7,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2355,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 2281,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot3"
+          },
+          {
+            "type_id": 8529,
+            "quantity": 1,
+            "status": 1,
+            "muta": [
+              {
+                "mutaplasmid_id": 47805,
+                "attribute_id": 72,
+                "value": 1.1
+              }
+            ],
+            "flag": "MedSlot4"
+          },
+          {
+            "type_id": 3540,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 33101,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 28668,
+            "charge_quantity": 32,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot2"
+          },
+          {
+            "type_id": 11269,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot3"
+          },
+          {
+            "type_id": 20353,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot4"
+          },
+          {
+            "type_id": 4403,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot5"
+          },
+          {
+            "type_id": 25896,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot0"
+          },
+          {
+            "type_id": 26088,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot1"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 264,
+            "quantity": 30
+          },
+          {
+            "type_id": 28668,
+            "quantity": 100
+          }
+        ],
+        "fitting_id": "AE600869-A2C6-5073-A6E4-BCBB919D66A0",
+        "name": "S03-A有装料 抗性与三层维修",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S03-B无装料",
+      "scenario": "S03",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 26912,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 6437,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 32772,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2355,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 2281,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot3"
+          },
+          {
+            "type_id": 8529,
+            "quantity": 1,
+            "status": 1,
+            "muta": [
+              {
+                "mutaplasmid_id": 47805,
+                "attribute_id": 72,
+                "value": 1.1
+              }
+            ],
+            "flag": "MedSlot4"
+          },
+          {
+            "type_id": 3540,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 33101,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot2"
+          },
+          {
+            "type_id": 11269,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot3"
+          },
+          {
+            "type_id": 20353,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot4"
+          },
+          {
+            "type_id": 4403,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot5"
+          },
+          {
+            "type_id": 25896,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot0"
+          },
+          {
+            "type_id": 26088,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot1"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 264,
+            "quantity": 30
+          },
+          {
+            "type_id": 28668,
+            "quantity": 100
+          }
+        ],
+        "fitting_id": "4ABCEDCF-8FAE-5371-AE90-DC22C3717799",
+        "name": "S03-B无装料 抗性与三层维修",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S04-A加力",
+      "scenario": "S04",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 4147,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 23105,
+            "charge_quantity": 1,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 33450,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27441,
+            "charge_quantity": 25,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 17938,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 30013,
+            "charge_quantity": 8,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 11577,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot3"
+          },
+          {
+            "type_id": 35657,
+            "quantity": 1,
+            "status": 2,
+            "muta": [
+              {
+                "mutaplasmid_id": 47754,
+                "attribute_id": 20,
+                "value": 1.1
+              },
+              {
+                "mutaplasmid_id": 47754,
+                "attribute_id": 6,
+                "value": 0.9
+              }
+            ],
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 35661,
+            "quantity": 1,
+            "status": 0,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 4383,
+            "quantity": 1,
+            "status": 0,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 1952,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 29009,
+            "charge_quantity": 1,
+            "flag": "MedSlot3"
+          },
+          {
+            "type_id": 1978,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 28999,
+            "charge_quantity": 1,
+            "flag": "MedSlot4"
+          },
+          {
+            "type_id": 35790,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 35795,
+            "charge_quantity": 1,
+            "flag": "MedSlot5"
+          },
+          {
+            "type_id": 527,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot6"
+          },
+          {
+            "type_id": 11640,
+            "quantity": 1,
+            "status": 0,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 1405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 2605,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot2"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 29011,
+            "quantity": 1
+          },
+          {
+            "type_id": 29001,
+            "quantity": 1
+          },
+          {
+            "type_id": 35794,
+            "quantity": 1
+          }
+        ],
+        "fitting_id": "E49DFC99-AB69-5D00-8C30-E8453AAD7AD0",
+        "name": "S04-A加力 推进电子战与脚本",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S04-B微曲",
+      "scenario": "S04",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 4147,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 23105,
+            "charge_quantity": 1,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 33450,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27441,
+            "charge_quantity": 25,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 17938,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 30013,
+            "charge_quantity": 8,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 11577,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot3"
+          },
+          {
+            "type_id": 35657,
+            "quantity": 1,
+            "status": 0,
+            "muta": [
+              {
+                "mutaplasmid_id": 47754,
+                "attribute_id": 20,
+                "value": 1.1
+              },
+              {
+                "mutaplasmid_id": 47754,
+                "attribute_id": 6,
+                "value": 0.9
+              }
+            ],
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 35661,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 4383,
+            "quantity": 1,
+            "status": 0,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 1952,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 29009,
+            "charge_quantity": 1,
+            "flag": "MedSlot3"
+          },
+          {
+            "type_id": 1978,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 28999,
+            "charge_quantity": 1,
+            "flag": "MedSlot4"
+          },
+          {
+            "type_id": 35790,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 35795,
+            "charge_quantity": 1,
+            "flag": "MedSlot5"
+          },
+          {
+            "type_id": 527,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot6"
+          },
+          {
+            "type_id": 11640,
+            "quantity": 1,
+            "status": 0,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 1405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 2605,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot2"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 29011,
+            "quantity": 1
+          },
+          {
+            "type_id": 29001,
+            "quantity": 1
+          },
+          {
+            "type_id": 35794,
+            "quantity": 1
+          }
+        ],
+        "fitting_id": "BC30DFDB-EBE4-5C8D-9AD3-2B0ADAEDF051",
+        "name": "S04-B微曲 推进电子战与脚本",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S05-A",
+      "scenario": "S05",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 645,
+        "items": [
+          {
+            "type_id": 24427,
+            "quantity": 1,
+            "status": 1,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 24427,
+            "quantity": 1,
+            "status": 1,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 24438,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 28999,
+            "charge_quantity": 1,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 6437,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 4405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 4405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          }
+        ],
+        "drones": [
+          {
+            "type_id": 2446,
+            "quantity": 3,
+            "active_count": 2
+          },
+          {
+            "type_id": 2185,
+            "quantity": 3,
+            "active_count": 2
+          },
+          {
+            "type_id": 2488,
+            "quantity": 5,
+            "active_count": 1,
+            "muta": [
+              {
+                "mutaplasmid_id": 60461,
+                "attribute_id": 64,
+                "value": 1.1
+              }
+            ]
+          },
+          {
+            "type_id": 28211,
+            "quantity": 2,
+            "active_count": 0
+          },
+          {
+            "type_id": 23707,
+            "quantity": 5,
+            "active_count": 0
+          },
+          {
+            "type_id": 28201,
+            "quantity": 5,
+            "active_count": 0
+          }
+        ],
+        "fitting_id": "9AE51C16-2BAF-5A29-A081-4E7B36415C3F",
+        "name": "S05-A 无人机与实例突变",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S06-A无环境",
+      "scenario": "S06",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 17715,
+        "items": [
+          {
+            "type_id": 2410,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27441,
+            "charge_quantity": 40,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 10858,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2281,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 4405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          }
+        ],
+        "implants": [
+          13259,
+          9950
+        ],
+        "drones": [
+          {
+            "type_id": 2185,
+            "quantity": 5,
+            "active_count": 2
+          }
+        ],
+        "fitting_id": "C1CC7F80-9980-577B-8256-BE49539B0B3D",
+        "name": "S06-A无环境 技能植入体药剂与环境",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S06-B虫洞",
+      "scenario": "S06",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 17715,
+        "items": [
+          {
+            "type_id": 2410,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27441,
+            "charge_quantity": 40,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 10858,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2281,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 4405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          }
+        ],
+        "implants": [
+          13259,
+          9950
+        ],
+        "drones": [
+          {
+            "type_id": 2185,
+            "quantity": 5,
+            "active_count": 2
+          }
+        ],
+        "environment_type_id": 30844,
+        "fitting_id": "B83ABBF8-200E-5EA0-A2A2-2A715BE78533",
+        "name": "S06-B虫洞 技能植入体药剂与环境",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S06-C深渊",
+      "scenario": "S06",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 17715,
+        "items": [
+          {
+            "type_id": 2410,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27441,
+            "charge_quantity": 40,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 10858,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2281,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 4405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          }
+        ],
+        "implants": [
+          13259,
+          9950
+        ],
+        "drones": [
+          {
+            "type_id": 2185,
+            "quantity": 5,
+            "active_count": 2
+          }
+        ],
+        "environment_type_id": 47378,
+        "fitting_id": "E78AA10D-2547-5758-AF58-9A8AFA11CBA0",
+        "name": "S06-C深渊 技能植入体药剂与环境",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S06-D其他",
+      "scenario": "S06",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 17715,
+        "items": [
+          {
+            "type_id": 2410,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27441,
+            "charge_quantity": 40,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 10858,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2281,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 4405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          }
+        ],
+        "implants": [
+          13259,
+          9950
+        ],
+        "drones": [
+          {
+            "type_id": 2185,
+            "quantity": 5,
+            "active_count": 2
+          }
+        ],
+        "environment_type_id": 3072,
+        "fitting_id": "6469DBFD-B426-526D-898C-F77EB2E3353F",
+        "name": "S06-D其他 技能植入体药剂与环境",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S07-A",
+      "scenario": "S07",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 29984,
+        "items": [
+          {
+            "type_id": 2410,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27441,
+            "charge_quantity": 40,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 2410,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27441,
+            "charge_quantity": 40,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 35656,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 6437,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 22291,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 31796,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot0"
+          },
+          {
+            "type_id": 45601,
+            "quantity": 1,
+            "status": 1,
+            "flag": "SubSystemSlot0"
+          },
+          {
+            "type_id": 45590,
+            "quantity": 1,
+            "status": 1,
+            "flag": "SubSystemSlot1"
+          },
+          {
+            "type_id": 45614,
+            "quantity": 1,
+            "status": 1,
+            "flag": "SubSystemSlot2"
+          },
+          {
+            "type_id": 45626,
+            "quantity": 1,
+            "status": 1,
+            "flag": "SubSystemSlot3"
+          }
+        ],
+        "fitting_id": "943CCE98-8C29-5394-891B-22F4CF65823A",
+        "name": "S07-A T3战略巡洋舰子系统",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S08-Defense",
+      "scenario": "S08",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 35683,
+        "items": [
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 6001,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 1952,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 29009,
+            "charge_quantity": 1,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 1405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 35686,
+            "quantity": 1,
+            "status": 1,
+            "flag": "T3DModeSlot0"
+          }
+        ],
+        "fitting_id": "B596FCAD-58C6-5014-977E-9509667C6C40",
+        "name": "S08-Defense T3驱逐舰三模式",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S08-Propulsion",
+      "scenario": "S08",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 35683,
+        "items": [
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 6001,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 1952,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 29009,
+            "charge_quantity": 1,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 1405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 35687,
+            "quantity": 1,
+            "status": 1,
+            "flag": "T3DModeSlot0"
+          }
+        ],
+        "fitting_id": "FF798F62-3B0A-540A-9B1D-7C4D618A96B9",
+        "name": "S08-Propulsion T3驱逐舰三模式",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S08-Sharpshooter",
+      "scenario": "S08",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 35683,
+        "items": [
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 10680,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 222,
+            "charge_quantity": 80,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 6001,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 1952,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 29009,
+            "charge_quantity": 1,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 1405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 35688,
+            "quantity": 1,
+            "status": 1,
+            "flag": "T3DModeSlot0"
+          }
+        ],
+        "fitting_id": "51AE6D6E-4DE3-5108-BB61-E12F7BFB2984",
+        "name": "S08-Sharpshooter T3驱逐舰三模式",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S09-A未预热",
+      "scenario": "S09",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47270,
+        "items": [
+          {
+            "type_id": 47918,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 47930,
+            "charge_quantity": 500,
+            "spool_up_full": false,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 13003,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 35656,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 4833,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 11287,
+            "charge_quantity": 2,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 47911,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 33101,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot1"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 47929,
+            "quantity": 200
+          }
+        ],
+        "fitting_id": "E0CFCEEC-486E-584D-B479-C8E143D5047A",
+        "name": "S09-A未预热 裂解炮预热",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S09-B完全预热",
+      "scenario": "S09",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47270,
+        "items": [
+          {
+            "type_id": 47918,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 47930,
+            "charge_quantity": 500,
+            "spool_up_full": true,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 13003,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 35656,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 4833,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 11287,
+            "charge_quantity": 2,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 47911,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 33101,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot1"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 47929,
+            "quantity": 200
+          }
+        ],
+        "fitting_id": "22EE3E2D-4B13-56DD-8AB7-39918A30376B",
+        "name": "S09-B完全预热 裂解炮预热",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S10-A未预热",
+      "scenario": "S10",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 49713,
+        "items": [
+          {
+            "type_id": 49773,
+            "quantity": 1,
+            "status": 2,
+            "spool_up_full": false,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 26912,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 35656,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 33101,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot1"
+          }
+        ],
+        "fitting_id": "76EA4073-5723-5181-BA5F-CF8863736707",
+        "name": "S10-A未预热 远程维修与预热边界",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S10-B完全预热",
+      "scenario": "S10",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 49713,
+        "items": [
+          {
+            "type_id": 49773,
+            "quantity": 1,
+            "status": 2,
+            "spool_up_full": true,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 26912,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 35656,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 33101,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot1"
+          }
+        ],
+        "fitting_id": "05E5B090-B621-50CF-BB2F-E0D826CFA450",
+        "name": "S10-B完全预热 远程维修与预热边界",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S11-A关闭",
+      "scenario": "S11",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 28659,
+        "items": [
+          {
+            "type_id": 33400,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 4147,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 23105,
+            "charge_quantity": 1,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 4147,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 23105,
+            "charge_quantity": 1,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 4383,
+            "quantity": 1,
+            "status": 0,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 5051,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 32014,
+            "charge_quantity": 5,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 3540,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 11269,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot2"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 32014,
+            "quantity": 10
+          }
+        ],
+        "fitting_id": "D00F075B-D5C1-5992-B457-6DD6A0E08563",
+        "name": "S11-A关闭 掠夺舰堡垒",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S11-B开启",
+      "scenario": "S11",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 28659,
+        "items": [
+          {
+            "type_id": 33400,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 4147,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 23105,
+            "charge_quantity": 1,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 4147,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 23105,
+            "charge_quantity": 1,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 4383,
+            "quantity": 1,
+            "status": 0,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 5051,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 32014,
+            "charge_quantity": 5,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 3540,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 11269,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot2"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 32014,
+            "quantity": 10
+          }
+        ],
+        "fitting_id": "B4903FB9-A051-53B3-A621-B8DB082D6B1D",
+        "name": "S11-B开启 掠夺舰堡垒",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S12-A关闭",
+      "scenario": "S12",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 19720,
+        "items": [
+          {
+            "type_id": 4292,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 37298,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 41330,
+            "charge_quantity": 1,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 3578,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 32014,
+            "charge_quantity": 6,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 40351,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 16275,
+            "quantity": 100
+          },
+          {
+            "type_id": 16274,
+            "quantity": 100
+          },
+          {
+            "type_id": 32014,
+            "quantity": 10
+          }
+        ],
+        "fitting_id": "487E0EE4-0A43-5974-9CC0-0469E6F61DC2",
+        "name": "S12-A关闭 无畏舰会战",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S12-B开启",
+      "scenario": "S12",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 19720,
+        "items": [
+          {
+            "type_id": 4292,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 37298,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 41330,
+            "charge_quantity": 1,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 3578,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 32014,
+            "charge_quantity": 6,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 40351,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 16275,
+            "quantity": 100
+          },
+          {
+            "type_id": 16274,
+            "quantity": 100
+          },
+          {
+            "type_id": 32014,
+            "quantity": 10
+          }
+        ],
+        "fitting_id": "560FF1C0-9E11-5622-BBDF-EB916B36630D",
+        "name": "S12-B开启 无畏舰会战",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S13-A航母轻型辅助",
+      "scenario": "S13",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 23911,
+        "items": [
+          {
+            "type_id": 41415,
+            "quantity": 1,
+            "status": 1,
+            "flag": "HiSlot0"
+          }
+        ],
+        "fighters": [
+          {
+            "type_id": 23059,
+            "tubeId": 0,
+            "quantity": 6
+          },
+          {
+            "type_id": 40347,
+            "tubeId": 200,
+            "quantity": 3
+          },
+          {
+            "type_id": 23059,
+            "tubeId": 1,
+            "quantity": 6
+          }
+        ],
+        "fitting_id": "C55DB373-0751-5CD7-B457-2EB78884E56D",
+        "name": "S13-A航母轻型辅助 轻型辅助与重型舰载机",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S13-B超级航母五中队",
+      "scenario": "S13",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 23913,
+        "items": [
+          {
+            "type_id": 41411,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 41415,
+            "quantity": 1,
+            "status": 1,
+            "flag": "HiSlot1"
+          }
+        ],
+        "fighters": [
+          {
+            "type_id": 23059,
+            "tubeId": 0,
+            "quantity": 6
+          },
+          {
+            "type_id": 32325,
+            "tubeId": 100,
+            "quantity": 6
+          },
+          {
+            "type_id": 40364,
+            "tubeId": 101,
+            "quantity": 6
+          },
+          {
+            "type_id": 2948,
+            "tubeId": 102,
+            "quantity": 6
+          },
+          {
+            "type_id": 32325,
+            "tubeId": 103,
+            "quantity": 6
+          }
+        ],
+        "fitting_id": "3DEF0B69-DDF8-5565-B5F6-15A3644D6722",
+        "name": "S13-B超级航母五中队 轻型辅助与重型舰载机",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S13-C超级航母四中队",
+      "scenario": "S13",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 23913,
+        "items": [
+          {
+            "type_id": 41411,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 41415,
+            "quantity": 1,
+            "status": 1,
+            "flag": "HiSlot1"
+          }
+        ],
+        "fighters": [
+          {
+            "type_id": 23059,
+            "tubeId": 0,
+            "quantity": 6
+          },
+          {
+            "type_id": 32325,
+            "tubeId": 100,
+            "quantity": 6
+          },
+          {
+            "type_id": 40364,
+            "tubeId": 101,
+            "quantity": 6
+          },
+          {
+            "type_id": 2948,
+            "tubeId": 102,
+            "quantity": 6
+          }
+        ],
+        "fitting_id": "59E118DD-7F3A-59EE-B5B6-0AAB61EFF810",
+        "name": "S13-C超级航母四中队 轻型辅助与重型舰载机",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S14-A重复效果",
+      "scenario": "S14",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 28606,
+        "items": [
+          {
+            "type_id": 43555,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 42696,
+            "charge_quantity": 300,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 43555,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 42696,
+            "charge_quantity": 300,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 43554,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 42835,
+            "charge_quantity": 300,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 6437,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 43898,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot0"
+          }
+        ],
+        "fitting_id": "AD3C51B9-3A69-5FAE-ACBE-7CC97D9A18F6",
+        "name": "S14-A重复效果 指挥脉冲波与叠加",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S14-B不同效果",
+      "scenario": "S14",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 28606,
+        "items": [
+          {
+            "type_id": 43555,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 42696,
+            "charge_quantity": 300,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 43555,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 42695,
+            "charge_quantity": 300,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 43554,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 42835,
+            "charge_quantity": 300,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 6437,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 43898,
+            "quantity": 1,
+            "status": 1,
+            "flag": "RigSlot0"
+          }
+        ],
+        "fitting_id": "F8210FA7-B42D-5816-A8A2-9681AD34955E",
+        "name": "S14-B不同效果 指挥脉冲波与叠加",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S15-A",
+      "scenario": "S15",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 28352,
+        "items": [
+          {
+            "type_id": 42890,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 42522,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 62632,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 43551,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 42829,
+            "charge_quantity": 300,
+            "flag": "HiSlot3"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          }
+        ],
+        "drones": [
+          {
+            "type_id": 41030,
+            "quantity": 5,
+            "active_count": 5
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 16275,
+            "quantity": 100
+          },
+          {
+            "type_id": 16272,
+            "quantity": 100
+          },
+          {
+            "type_id": 1230,
+            "quantity": 100
+          }
+        ],
+        "fitting_id": "44B051F1-5A3B-5C28-9157-219789E12A2F",
+        "name": "S15-A 工业核心与采矿",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S16-A",
+      "scenario": "S16",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 28844,
+        "items": [
+          {
+            "type_id": 1319,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 1405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          },
+          {
+            "type_id": 2605,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot2"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 17888,
+            "quantity": 1000
+          },
+          {
+            "type_id": 34,
+            "quantity": 10000
+          },
+          {
+            "type_id": 33475,
+            "quantity": 1
+          }
+        ],
+        "fitting_id": "7805CE32-02D7-5C48-A309-A6A65E918899",
+        "name": "S16-A 货运与普通物品",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S17-A",
+      "scenario": "S17",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 12032,
+        "items": [
+          {
+            "type_id": 2420,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 267,
+            "charge_quantity": 40,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 4256,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27916,
+            "charge_quantity": 4,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 11578,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 1952,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 29009,
+            "charge_quantity": 1,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 22291,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 267,
+            "quantity": 50
+          },
+          {
+            "type_id": 27916,
+            "quantity": 1
+          }
+        ],
+        "fitting_id": "F8B2D8BD-A508-5A40-AEA0-8062F5DD5575",
+        "name": "S17-A 隐轰与特殊弹药",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S18-27678",
+      "scenario": "S18",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 23913,
+        "items": [
+          {
+            "type_id": 27678,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          }
+        ],
+        "fitting_id": "D7E9C8B4-97A3-59BB-AF1B-D538EABE1F68",
+        "name": "S18-27678 范围投射器周期",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S18-40697",
+      "scenario": "S18",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 23913,
+        "items": [
+          {
+            "type_id": 40697,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          }
+        ],
+        "fitting_id": "C6AE2941-AB68-5DC6-961F-840BFA7A19A0",
+        "name": "S18-40697 范围投射器周期",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S18-40698",
+      "scenario": "S18",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 23913,
+        "items": [
+          {
+            "type_id": 40698,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          }
+        ],
+        "fitting_id": "3DCAD3A4-C265-5B76-8566-A10F821F871B",
+        "name": "S18-40698 范围投射器周期",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S18-40699",
+      "scenario": "S18",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 23913,
+        "items": [
+          {
+            "type_id": 40699,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          }
+        ],
+        "fitting_id": "987391CC-4746-5C06-863B-7B5E8E04672F",
+        "name": "S18-40699 范围投射器周期",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S19-A服务槽",
+      "scenario": "S19",
+      "kind": "boundary",
+      "note": "产品入口边界样本；不能视为已支持的正常舰船EFT导入",
+      "fitting": {
+        "ship_type_id": 35825,
+        "items": [
+          {
+            "type_id": 35878,
+            "quantity": 1,
+            "status": 1,
+            "flag": "ServiceSlot0"
+          },
+          {
+            "type_id": 35891,
+            "quantity": 1,
+            "status": 1,
+            "flag": "ServiceSlot1"
+          },
+          {
+            "type_id": 35886,
+            "quantity": 1,
+            "status": 1,
+            "flag": "ServiceSlot2"
+          }
+        ],
+        "fitting_id": "B8A70ACD-1556-55FC-8EEF-F193EE1D5CAB",
+        "name": "S19-A服务槽 建筑与服务槽入口边界",
+        "description": "回归测试装配；全5技能；产品入口边界样本；不能视为已支持的正常舰船EFT导入；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S20-N1不兼容",
+      "scenario": "S20",
+      "kind": "negative",
+      "note": "预期拒绝堡垒和突变适应远修",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 33400,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 49773,
+            "quantity": 1,
+            "status": 0,
+            "flag": "HiSlot1"
+          }
+        ],
+        "fitting_id": "D67294C0-3A9F-5F5D-A7C0-15C78683A516",
+        "name": "S20-N1不兼容 异常装配和资源边界",
+        "description": "回归测试装配；全5技能；预期拒绝堡垒和突变适应远修；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S20-N2同组超限",
+      "scenario": "S20",
+      "kind": "negative",
+      "note": "预期多余损伤控制离线",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          },
+          {
+            "type_id": 2048,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot1"
+          }
+        ],
+        "fitting_id": "2EB16B6A-3EF1-5E07-9CD7-9029C829D5AE",
+        "name": "S20-N2同组超限 异常装配和资源边界",
+        "description": "回归测试装配；全5技能；预期多余损伤控制离线；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S20-N3资源超限",
+      "scenario": "S20",
+      "kind": "negative",
+      "note": "刻意超CPU/PG；用于资源提示，不是可用配装",
+      "fitting": {
+        "ship_type_id": 587,
+        "items": [
+          {
+            "type_id": 4147,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 23105,
+            "charge_quantity": 1,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 4147,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 23105,
+            "charge_quantity": 1,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 4147,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 23105,
+            "charge_quantity": 1,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 35661,
+            "quantity": 1,
+            "status": 0,
+            "flag": "MedSlot0"
+          }
+        ],
+        "fitting_id": "072E773C-0339-564F-A19C-4045EF57A88D",
+        "name": "S20-N3资源超限 异常装配和资源边界",
+        "description": "回归测试装配；全5技能；刻意超CPU/PG；用于资源提示，不是可用配装；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S04-C电子战",
+      "scenario": "S04",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 1969,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 29015,
+            "charge_quantity": 1,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 2109,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 29005,
+            "charge_quantity": 1,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 37546,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 40334,
+            "charge_quantity": 1,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 2567,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot3"
+          },
+          {
+            "type_id": 19806,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot4"
+          },
+          {
+            "type_id": 448,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot5"
+          },
+          {
+            "type_id": 1964,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 29011,
+            "charge_quantity": 1,
+            "flag": "MedSlot6"
+          }
+        ],
+        "fitting_id": "6B950A8F-B954-528C-83B4-CF489693F5DB",
+        "name": "S04-C电子战 推进电子战与脚本",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S10-C普通远修与传电",
+      "scenario": "S10",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 47466,
+        "items": [
+          {
+            "type_id": 26912,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 3588,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 4299,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot2"
+          },
+          {
+            "type_id": 1190,
+            "quantity": 1,
+            "status": 2,
+            "flag": "HiSlot3"
+          },
+          {
+            "type_id": 6437,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 3540,
+            "quantity": 1,
+            "status": 2,
+            "flag": "LoSlot0"
+          }
+        ],
+        "fitting_id": "554E2121-416B-50DC-9C0B-F90140801C2B",
+        "name": "S10-C普通远修与传电 远程维修与预热边界",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S06-E水晶套装",
+      "scenario": "S06",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 17715,
+        "items": [
+          {
+            "type_id": 2410,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 27441,
+            "charge_quantity": 40,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 10858,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 3496,
+            "quantity": 1,
+            "status": 1,
+            "flag": "MedSlot1"
+          },
+          {
+            "type_id": 2281,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot2"
+          },
+          {
+            "type_id": 4405,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          }
+        ],
+        "implants": [
+          20121,
+          20157,
+          20158,
+          20159,
+          20160,
+          20161,
+          13259,
+          9950
+        ],
+        "drones": [
+          {
+            "type_id": 2185,
+            "quantity": 5,
+            "active_count": 2
+          }
+        ],
+        "fitting_id": "3E4DC3DA-A719-513B-8ECA-2D66B643C148",
+        "name": "S06-E水晶套装 技能植入体药剂与环境",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    },
+    {
+      "id": "S15-B采矿晶体",
+      "scenario": "S15",
+      "kind": "positive",
+      "note": "",
+      "fitting": {
+        "ship_type_id": 22544,
+        "items": [
+          {
+            "type_id": 17912,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 60276,
+            "charge_quantity": 1,
+            "flag": "HiSlot0"
+          },
+          {
+            "type_id": 17912,
+            "quantity": 1,
+            "status": 2,
+            "charge_type_id": 60276,
+            "charge_quantity": 1,
+            "flag": "HiSlot1"
+          },
+          {
+            "type_id": 6437,
+            "quantity": 1,
+            "status": 2,
+            "flag": "MedSlot0"
+          },
+          {
+            "type_id": 28576,
+            "quantity": 1,
+            "status": 1,
+            "flag": "LoSlot0"
+          }
+        ],
+        "cargo": [
+          {
+            "type_id": 60276,
+            "quantity": 2
+          },
+          {
+            "type_id": 1230,
+            "quantity": 100
+          }
+        ],
+        "fitting_id": "0C9941B0-8627-539B-8E75-839674DCE976",
+        "name": "S15-B采矿晶体 工业核心与采矿",
+        "description": "回归测试装配；全5技能；；详见所属场景步骤。"
+      }
+    }
+  ]
+}

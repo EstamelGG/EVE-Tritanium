@@ -147,6 +147,7 @@ struct MarketQuickbarDetailView: View {
                             let priceInfo = calculateTotalPrice()
                             if priceInfo.total > 0 {
                                 Text("\(FormatUtil.formatISK(priceInfo.total))")
+                                    .fontDesign(.monospaced)
                                     .foregroundColor(
                                         priceInfo.hasInsufficientStock ? .red : .secondary
                                     )
@@ -163,6 +164,7 @@ struct MarketQuickbarDetailView: View {
                         Spacer()
                         let totalVolume = calculateTotalVolume()
                         Text("\(FormatUtil.formatForUI(totalVolume, maxFractionDigits: 2)) m³")
+                            .fontDesign(.monospaced)
                             .foregroundColor(.secondary)
                     }
                 } header: {
@@ -508,10 +510,10 @@ struct MarketQuickbarDetailView: View {
                     NSLocalizedString("Main_Market_Jita_Price_Label", comment: "")
                         + FormatUtil.format(jitaPrice) + " ISK"
                 )
-                .font(.caption)
+                .font(.system(.caption, design: .monospaced))
                 .foregroundColor(.secondary)
                 Text(String(format: "%+.1f%%", diff))
-                    .font(.caption)
+                    .font(.system(.caption, design: .monospaced))
                     .foregroundColor(diff > 0 ? .red : .green)
             }
         }
@@ -528,7 +530,7 @@ struct MarketQuickbarDetailView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.name)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     // 细粒度加载状态：已加载的显示价格，未加载的显示加载指示器
                     if isLoadingOrders && marketOrders[item.id] == nil {
@@ -544,10 +546,10 @@ struct MarketQuickbarDetailView: View {
                         if let price = priceInfo.price {
                             Text(
                                 NSLocalizedString("Main_Market_Avg_Price", comment: "")
-                                    + FormatUtil.format(price)
+                                    + FormatUtil.format(price, maxFractionDigits: 1)
                                     + " ISK"
                             )
-                            .font(.caption)
+                            .font(.system(.caption, design: .monospaced))
                             .foregroundColor(.secondary)
                             HStack(spacing: 4) {
                                 Text(
@@ -557,7 +559,7 @@ struct MarketQuickbarDetailView: View {
                                         )
                                         + " ISK"
                                 )
-                                .font(.caption)
+                                .font(.system(.caption, design: .monospaced))
                                 .foregroundColor(.secondary)
                                 if priceInfo.insufficientStock {
                                     Text(
@@ -623,7 +625,7 @@ struct MarketQuickbarDetailView: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.name)
-                            .lineLimit(1)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         // 细粒度加载状态：已加载的显示价格，未加载的显示加载指示器
                         if isLoadingOrders && marketOrders[item.id] == nil {
@@ -639,10 +641,10 @@ struct MarketQuickbarDetailView: View {
                             if let price = priceInfo.price {
                                 Text(
                                     NSLocalizedString("Main_Market_Avg_Price", comment: "")
-                                        + FormatUtil.format(price)
+                                        + FormatUtil.format(price, maxFractionDigits: 1)
                                         + " ISK"
                                 )
-                                .font(.caption)
+                                .font(.system(.caption, design: .monospaced))
                                 .foregroundColor(.secondary)
                                 Text(
                                     NSLocalizedString("Main_Market_Total_Price", comment: "")
@@ -654,7 +656,7 @@ struct MarketQuickbarDetailView: View {
                                         )
                                         + " ISK"
                                 )
-                                .font(.caption)
+                                .font(.system(.caption, design: .monospaced))
                                 .foregroundColor(.secondary)
                                 if priceInfo.insufficientStock {
                                     Text(
@@ -675,6 +677,7 @@ struct MarketQuickbarDetailView: View {
                     Spacer()
 
                     Text(getItemQuantity(for: item))
+                        .fontDesign(.monospaced)
                         .foregroundColor(.secondary)
                 }
             }

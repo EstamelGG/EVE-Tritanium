@@ -2,6 +2,8 @@ import SwiftUI
 import UserNotifications
 
 struct ScheduledNotificationsView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var notificationManager = NotificationManager.shared
     @Environment(\.dismiss) private var dismiss
 
@@ -60,7 +62,7 @@ struct ScheduledNotificationsView: View {
                 }
             }
         }
-        .task {
+        .task(id: displayTimeZone.identifier) {
             await loadNotifications()
         }
     }
@@ -99,16 +101,13 @@ struct ScheduledNotificationsView: View {
     private static func groupByDate(
         _ notifications: [UNNotificationRequest]
     ) -> [String: [UNNotificationRequest]] {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
         var grouped: [String: [UNNotificationRequest]] = [:]
 
         for notification in notifications {
             if let trigger = notification.trigger as? UNCalendarNotificationTrigger,
                let triggerDate = trigger.nextTriggerDate()
             {
-                let dateKey = formatter.string(from: triggerDate)
+                let dateKey = FormatUtil.displayDateKey(triggerDate)
                 if grouped[dateKey] == nil {
                     grouped[dateKey] = []
                 }
@@ -135,18 +134,11 @@ struct ScheduledNotificationsView: View {
 
     /// 格式化日期段标题
     private func formatSectionDate(_ dateString: String) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        guard let date = formatter.date(from: dateString) else {
+        guard let date = FormatUtil.parseDisplayDateKey(dateString) else {
             return dateString
         }
 
-        let outputFormatter = DateFormatter()
-        outputFormatter.dateStyle = .full
-        outputFormatter.locale = Locale.current
-
-        return outputFormatter.string(from: date)
+        return FormatUtil.formatDate(date, dateStyle: .full, timeStyle: .none)
     }
 }
 

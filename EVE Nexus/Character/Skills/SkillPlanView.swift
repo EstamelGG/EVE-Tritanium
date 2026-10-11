@@ -370,6 +370,8 @@ class SkillPlanFileManager {
 }
 
 struct SkillPlanView: View {
+    @Environment(\.timeZone) private var displayTimeZone
+    @Environment(\.locale) private var displayLocale
     let characterId: Int
     @ObservedObject var databaseManager: DatabaseManager
     @State private var skillPlans: [SkillPlan] = []
@@ -587,9 +589,7 @@ struct SkillPlanView: View {
         if let days = components.day {
             if days > 30 {
                 // 超过30天显示具体日期
-                let formatter = DateFormatter()
-                formatter.dateFormat = NSLocalizedString("Date_Format_Month_Day", comment: "")
-                return formatter.string(from: date)
+                return FormatUtil.formatDate(date, pattern: NSLocalizedString("Date_Format_Month_Day", comment: ""))
             } else if days > 0 {
                 return String.localizedStringWithFormat(NSLocalizedString("Time_Days_Ago", comment: ""), days)
             }

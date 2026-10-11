@@ -167,7 +167,7 @@ struct StorageChangeChartView: View {
                             ForEach(0 ... gridLines, id: \.self) { i in
                                 let isFirstOrLast = i == 0 || i == gridLines // 第一个（max点）或最后一个（0点）
                                 Text(formatYAxisLabel(maxVolume * Double(gridLines - i) / Double(gridLines)))
-                                    .font(isFirstOrLast ? .system(size: 9, weight: .semibold) : .system(size: 9))
+                                    .font(.system(size: 9, weight: isFirstOrLast ? .semibold : .regular, design: .monospaced))
                                     .foregroundColor(.primary)
                                     .frame(height: chartHeight / CGFloat(gridLines))
                             }

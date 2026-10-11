@@ -95,11 +95,9 @@ final class MiningLedgerViewModel: ObservableObject {
 
     // 使用FormatUtil进行日期处理，无需自定义格式化器
 
-    private let calendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.current // 使用本地时区
-        return calendar
-    }()
+    private var calendar: Calendar {
+        FormatUtil.appCalendar
+    }
 
     init(characterId: Int, databaseManager: DatabaseManager) {
         self.characterId = characterId
@@ -464,14 +462,13 @@ final class MiningLedgerViewModel: ObservableObject {
 }
 
 struct MiningLedgerView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var viewModel: MiningLedgerViewModel
     @State private var showSettingsSheet = false
 
-    private let calendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.current
-        return calendar
-    }()
+    private var calendar: Calendar {
+        FormatUtil.appCalendar
+    }
 
     // 使用FormatUtil进行日期处理，无需自定义格式化器
 
@@ -582,6 +579,7 @@ struct MiningLedgerView: View {
 }
 
 struct MiningSettingsSheet: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @ObservedObject var viewModel: MiningLedgerViewModel
     @Environment(\.dismiss) private var dismiss
 
@@ -631,6 +629,7 @@ struct MiningSettingsSheet: View {
 
 /// 每日汇总行视图
 struct DailyMiningSummaryRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let summary: DailyMiningSummary
 
     var body: some View {
@@ -701,6 +700,7 @@ enum MiningChartSortType: String, CaseIterable {
 
 /// 每日详情视图
 struct DailyMiningDetailView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let summary: DailyMiningSummary
     let databaseManager: DatabaseManager
     @State private var itemVolumes: [Int: Double] = [:]
@@ -1056,6 +1056,7 @@ struct DailyMiningDetailView: View {
 
 /// 每日详情页面的矿石行视图（显示数量和体积）
 struct DailyMiningItemRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let entry: MiningItemSummary
     let databaseManager: DatabaseManager
     let volume: Double? // 单位体积（m³）

@@ -3,6 +3,51 @@ import Foundation
 /// Step3实现 - 将修饰器应用到物品属性上
 class Step3 {
     private let databaseManager: DatabaseManager
+    private var groupTargets: [ItemType: [Int: [Int]]] = [:]
+    private var skillTargets: [ItemType: [Int: [Int]]] = [:]
+    private var instanceTargets: [UUID: (type: ItemType, index: Int)] = [:]
+    private typealias SkillAttributes = (attributes: [Int: Double], attributesByName: [String: Double], groupId: Int)
+    private var skillAttributeTemplates: [Int: SkillAttributes] = [:]
+    private var skillTemplateGeneration: UInt64?
+
+    /// 索引只保存位置；模块与弹药共享模块索引，且保留原有数组遍历顺序。
+    private func indexTargets(input: SimulationInput) {
+        groupTargets = [:]
+        skillTargets = [:]
+        instanceTargets = [input.ship.instanceId: (.ship, 0), input.character.instanceId: (.character, 0)]
+        func add(_ type: ItemType, _ index: Int, groups: [Int], skills: [Int]) {
+            for group in Set(groups) {
+                groupTargets[type, default: [:]][group, default: []].append(index)
+            }
+            for skill in Set(skills) {
+                skillTargets[type, default: [:]][skill, default: []].append(index)
+            }
+        }
+        for (i, item) in input.modules.enumerated() {
+            instanceTargets[item.instanceId] = (.module, i)
+            if let charge = item.charge {
+                instanceTargets[charge.instanceId] = (.charge, i)
+            }
+            add(.module, i, groups: [item.groupID] + (item.charge.map { [$0.groupID] } ?? []),
+                skills: item.requiredSkills + (item.charge?.requiredSkills ?? []))
+        }
+        for (i, item) in input.drones.enumerated() {
+            instanceTargets[item.instanceId] = (.drone, i)
+            add(.drone, i, groups: [item.groupID], skills: item.requiredSkills)
+        }
+        for (i, item) in (input.fighters ?? []).enumerated() {
+            instanceTargets[item.instanceId] = (.fighter, i)
+            add(.fighter, i, groups: [item.groupID], skills: item.requiredSkills)
+        }
+        for (i, item) in input.implants.enumerated() {
+            instanceTargets[item.instanceId] = (.implant, i)
+            add(.implant, i, groups: [item.groupID], skills: item.requiredSkills)
+        }
+        for (i, item) in input.skills.enumerated() {
+            instanceTargets[item.instanceId] = (.skill, i)
+            add(.skill, i, groups: [item.groupID], skills: item.requiredSkills)
+        }
+    }
 
     /// 需要被豁免叠加惩罚的物品类别ID
     /// 船体(6)、弹药(8)、技能(16)、植入体(20)和子系统(32)
@@ -28,6 +73,7 @@ class Step3 {
 
         // 初始化技能对象
         initializeSkills(input: &updatedInput)
+        indexTargets(input: updatedInput)
 
         // 跃迁干扰状态(104)的 dogma 默认值为 0，但船体 typeAttributes 通常未显式声明该属性，
         // 导致相关修饰器（跃迁核心稳定器、泰坦船体加成等）在挂载时被守卫丢弃。
@@ -472,29 +518,21 @@ class Step3 {
         // 清空现有的技能对象
         input.skills = []
 
-        // 获取所有技能ID
-        let skillIds = Array(input.characterSkills.keys)
-        if skillIds.isEmpty {
-            return
+        // Only immutable SDE attributes are cached. Levels, overrides, UUIDs and modifiers
+        // remain per calculation, so one fitting/character cannot contaminate another.
+        if skillTemplateGeneration != SDEMemoryStore.generation {
+            skillAttributeTemplates.removeAll()
+            skillTemplateGeneration = SDEMemoryStore.generation
         }
-
-        // 从数据库获取所有技能的属性
-        let skillAttributes = fetchSkillAttributes(skillIds: skillIds)
+        input.skills.reserveCapacity(input.characterSkills.count)
 
         // 遍历所有技能
         for (skillId, skillLevel) in input.characterSkills {
-            // 创建新的SimSkill对象
-            var attributes: [Int: Double] = [:]
-            var attributesByName: [String: Double] = [:]
+            let template = skillAttributes(for: skillId)
+            var attributes = template.attributes
+            var attributesByName = template.attributesByName
+            var groupID = template.groupId
             var effects: [Int] = []
-            var groupID = 0
-
-            // 从数据库获取的属性
-            if let attrs = skillAttributes[skillId] {
-                attributes = attrs.attributes
-                attributesByName = attrs.attributesByName
-                groupID = attrs.groupId
-            }
 
             // 设置技能等级属性 (attribute_id=280)，覆盖数据库中的值（如果有）
             attributes[280] = Double(skillLevel)
@@ -538,28 +576,15 @@ class Step3 {
         Logger.info("初始化了\(input.skills.count)个技能对象")
     }
 
-    /// 从数据库获取技能的所有属性
-    private func fetchSkillAttributes(skillIds: [Int]) -> [Int: (
-        attributes: [Int: Double], attributesByName: [String: Double], groupId: Int
-    )] {
-        var result:
-            [Int: (attributes: [Int: Double], attributesByName: [String: Double], groupId: Int)] =
-            [:]
-
-        if skillIds.isEmpty {
-            return result
+    private func skillAttributes(for typeId: Int) -> SkillAttributes {
+        if let cached = skillAttributeTemplates[typeId] {
+            return cached
         }
-
-        // 批量取技能的基本信息和属性（内存索引）
-        for typeId in skillIds {
-            let (attributes, attributesByName) = SDEMemoryStore.typeAttributesFull(for: typeId)
-            let groupId = SDEMemoryStore.type(for: typeId)?.groupID ?? 0
-            result[typeId] = (
-                attributes: attributes, attributesByName: attributesByName, groupId: groupId
-            )
-        }
-
-        return result
+        let attrs = SDEMemoryStore.typeAttributesFull(for: typeId)
+        let template: SkillAttributes = (attrs.attributes, attrs.attributesByName,
+                                         SDEMemoryStore.type(for: typeId)?.groupID ?? 0)
+        skillAttributeTemplates[typeId] = template
+        return template
     }
 
     /// 应用ItemModifier (作用于特定物品)
@@ -713,7 +738,7 @@ class Step3 {
         }
 
         // 检查模块是否属于指定组
-        for i in 0 ..< input.modules.count {
+        for i in groupTargets[.module]?[groupId] ?? [] {
             if input.modules[i].groupID == groupId {
                 addModifierToModule(
                     module: &input.modules[i],
@@ -741,7 +766,7 @@ class Step3 {
         }
 
         // 检查无人机是否属于指定组
-        for i in 0 ..< input.drones.count {
+        for i in groupTargets[.drone]?[groupId] ?? [] {
             if input.drones[i].groupID == groupId {
                 addModifierToDrone(
                     drone: &input.drones[i],
@@ -753,7 +778,7 @@ class Step3 {
 
         // 检查舰载机是否属于指定组
         if let fighters = input.fighters {
-            for i in 0 ..< fighters.count {
+            for i in groupTargets[.fighter]?[groupId] ?? [] {
                 if fighters[i].groupID == groupId {
                     addModifierToFighter(
                         fighter: &input.fighters![i],
@@ -765,7 +790,7 @@ class Step3 {
         }
 
         // 检查植入体是否属于指定组（如果有groupID属性）
-        for i in 0 ..< input.implants.count {
+        for i in groupTargets[.implant]?[groupId] ?? [] {
             // 植入体可能没有groupID属性，这里假设有
             if let implantGroupId = getImplantGroupId(implant: input.implants[i]),
                implantGroupId == groupId
@@ -779,7 +804,7 @@ class Step3 {
         }
 
         // 检查技能是否属于指定组
-        for i in 0 ..< input.skills.count {
+        for i in groupTargets[.skill]?[groupId] ?? [] {
             if input.skills[i].groupID == groupId {
                 addModifierToSkill(
                     skill: &input.skills[i],
@@ -816,7 +841,7 @@ class Step3 {
         }
 
         // 检查模块是否需要该技能
-        for i in 0 ..< input.modules.count {
+        for i in skillTargets[.module]?[actualSkillTypeId] ?? [] {
             if input.modules[i].requiredSkills.contains(actualSkillTypeId) {
                 addModifierToModule(
                     module: &input.modules[i],
@@ -846,7 +871,7 @@ class Step3 {
         }
 
         // 检查无人机是否需要该技能
-        for i in 0 ..< input.drones.count {
+        for i in skillTargets[.drone]?[actualSkillTypeId] ?? [] {
             if input.drones[i].requiredSkills.contains(actualSkillTypeId) {
                 addModifierToDrone(
                     drone: &input.drones[i],
@@ -858,7 +883,7 @@ class Step3 {
 
         // 检查舰载机是否需要该技能
         if let fighters = input.fighters {
-            for i in 0 ..< fighters.count {
+            for i in skillTargets[.fighter]?[actualSkillTypeId] ?? [] {
                 if fighters[i].requiredSkills.contains(actualSkillTypeId) {
                     addModifierToFighter(
                         fighter: &input.fighters![i],
@@ -870,7 +895,7 @@ class Step3 {
         }
 
         // 检查植入体是否需要该技能
-        for i in 0 ..< input.implants.count {
+        for i in skillTargets[.implant]?[actualSkillTypeId] ?? [] {
             if input.implants[i].requiredSkills.contains(actualSkillTypeId) {
                 addModifierToImplant(
                     implant: &input.implants[i],
@@ -881,7 +906,7 @@ class Step3 {
         }
 
         // 检查技能是否需要该技能（技能可能有前置技能要求）
-        for i in 0 ..< input.skills.count {
+        for i in skillTargets[.skill]?[actualSkillTypeId] ?? [] {
             if input.skills[i].requiredSkills.contains(actualSkillTypeId) {
                 addModifierToSkill(
                     skill: &input.skills[i],
@@ -904,125 +929,41 @@ class Step3 {
             return
         }
 
-        // 检查船体
-        if input.ship.instanceId == sourceId {
-            addModifierToShip(
-                ship: &input.ship,
-                modifier: modifier,
-                sourceInstanceId: sourceInstanceId
-            )
-            return // 找到目标后直接返回
+        guard let target = instanceTargets[sourceId] else {
+            Logger.warning("未找到实例ID为 \(sourceId) 的物品来应用自身修饰器")
+            return
         }
-
-        // 检查角色
-        if input.character.instanceId == sourceId {
-            addModifierToCharacter(
-                character: &input.character,
-                modifier: modifier,
-                sourceInstanceId: sourceInstanceId
-            )
-            return // 找到目标后直接返回
-        }
-
-        // 检查模块和弹药（保持在同一循环中）
-        for i in 0 ..< input.modules.count {
-            // 检查模块
-            if input.modules[i].instanceId == sourceId {
-                addModifierToModule(
-                    module: &input.modules[i],
-                    modifier: modifier,
-                    sourceInstanceId: sourceInstanceId
-                )
-
-                // 同时处理该模块的弹药（如果有）
-                if let charge = input.modules[i].charge {
-                    let modifiedCharge = addModifierToCharge(
-                        charge: charge,
-                        modifier: modifier,
-                        moduleStatus: input.modules[i].status,
-                        sourceInstanceId: sourceInstanceId
-                    )
-
-                    input.modules[i] = createModuleWithUpdatedCharge(
-                        originalModule: input.modules[i],
-                        updatedCharge: modifiedCharge
-                    )
-                }
-
-                return // 处理完模块和其弹药后返回
+        let i = target.index
+        switch target.type {
+        case .ship:
+            addModifierToShip(ship: &input.ship, modifier: modifier, sourceInstanceId: sourceId)
+        case .character:
+            addModifierToCharacter(character: &input.character, modifier: modifier, sourceInstanceId: sourceId)
+        case .module:
+            addModifierToModule(module: &input.modules[i], modifier: modifier, sourceInstanceId: sourceId)
+            // Preserve the existing rule: a module's itemID modifier also visits its charge.
+            if let charge = input.modules[i].charge {
+                let updated = addModifierToCharge(charge: charge, modifier: modifier,
+                                                  moduleStatus: input.modules[i].status, sourceInstanceId: sourceId)
+                input.modules[i] = createModuleWithUpdatedCharge(originalModule: input.modules[i], updatedCharge: updated)
             }
-
-            // 只有当目标是弹药本身时才单独处理弹药
-            if let charge = input.modules[i].charge, charge.instanceId == sourceId {
-                // 创建带有修饰器的新弹药
-                let modifiedCharge = addModifierToCharge(
-                    charge: charge,
-                    modifier: modifier,
-                    moduleStatus: input.modules[i].status,
-                    sourceInstanceId: sourceInstanceId
-                )
-
-                // 创建包含新弹药的新模块
-                input.modules[i] = createModuleWithUpdatedCharge(
-                    originalModule: input.modules[i],
-                    updatedCharge: modifiedCharge
-                )
-                return // 找到目标后直接返回
+        case .charge:
+            if let charge = input.modules[i].charge {
+                let updated = addModifierToCharge(charge: charge, modifier: modifier,
+                                                  moduleStatus: input.modules[i].status, sourceInstanceId: sourceId)
+                input.modules[i] = createModuleWithUpdatedCharge(originalModule: input.modules[i], updatedCharge: updated)
             }
+        case .drone:
+            addModifierToDrone(drone: &input.drones[i], modifier: modifier, sourceInstanceId: sourceId)
+        case .fighter:
+            addModifierToFighter(fighter: &input.fighters![i], modifier: modifier, sourceInstanceId: sourceId)
+        case .implant:
+            addModifierToImplant(implant: &input.implants[i], modifier: modifier, sourceInstanceId: sourceId)
+        case .skill:
+            addModifierToSkill(skill: &input.skills[i], modifier: modifier, sourceInstanceId: sourceId)
+        case .environment:
+            break
         }
-
-        // 检查无人机
-        for i in 0 ..< input.drones.count {
-            if input.drones[i].instanceId == sourceId {
-                addModifierToDrone(
-                    drone: &input.drones[i],
-                    modifier: modifier,
-                    sourceInstanceId: sourceInstanceId
-                )
-                return // 找到目标后直接返回
-            }
-        }
-
-        // 检查舰载机
-        if let fighters = input.fighters {
-            for i in 0 ..< fighters.count {
-                if fighters[i].instanceId == sourceId {
-                    addModifierToFighter(
-                        fighter: &input.fighters![i],
-                        modifier: modifier,
-                        sourceInstanceId: sourceInstanceId
-                    )
-                    return // 找到目标后直接返回
-                }
-            }
-        }
-
-        // 检查植入体
-        for i in 0 ..< input.implants.count {
-            if input.implants[i].instanceId == sourceId {
-                addModifierToImplant(
-                    implant: &input.implants[i],
-                    modifier: modifier,
-                    sourceInstanceId: sourceInstanceId
-                )
-                return // 找到目标后直接返回
-            }
-        }
-
-        // 检查技能
-        for i in 0 ..< input.skills.count {
-            if input.skills[i].instanceId == sourceId {
-                addModifierToSkill(
-                    skill: &input.skills[i],
-                    modifier: modifier,
-                    sourceInstanceId: sourceInstanceId
-                )
-                return // 找到目标后直接返回
-            }
-        }
-
-        // 如果没有找到匹配的物品，记录警告
-        Logger.warning("未找到实例ID为 \(sourceId) 的物品来应用自身修饰器")
     }
 
     /// 将修饰器应用到相关联物品（如模块和弹药）
@@ -1037,9 +978,8 @@ class Step3 {
         // 如果提供了当前模块实例ID，优先进行精确匹配
         if let moduleInstanceId = currentModuleInstanceId {
             // 找到对应的模块
-            if let moduleIndex = input.modules.firstIndex(where: {
-                $0.instanceId == moduleInstanceId
-            }) {
+            if let target = instanceTargets[moduleInstanceId], target.type == .module {
+                let moduleIndex = target.index
                 let module = input.modules[moduleIndex]
 
                 // 如果源是模块，目标是弹药
@@ -1196,42 +1136,19 @@ class Step3 {
         }
         updatedModifiers[attributeId]!.append(simModifier)
 
-        // 创建一个新的SimCharge对象，包含更新后的修饰器
-        return SimCharge(
-            typeId: charge.typeId,
-            attributes: charge.attributes,
-            attributesByName: charge.attributesByName,
-            effects: charge.effects,
-            groupID: charge.groupID,
-            chargeQuantity: charge.chargeQuantity,
-            requiredSkills: charge.requiredSkills,
-            name: charge.name,
-            iconFileName: charge.iconFileName,
-            attributeModifiers: updatedModifiers
-        )
+        // 值类型复制保留 instanceId，已有修饰器仍可定位该弹药。
+        var updatedCharge = charge
+        updatedCharge.attributeModifiers = updatedModifiers
+        return updatedCharge
     }
 
-    /// 创建一个包含更新后弹药的新模块
+    /// 只替换弹药，保留模块 UUID、突变数据、预热状态及后续新增字段。
     private func createModuleWithUpdatedCharge(originalModule: SimModule, updatedCharge: SimCharge)
         -> SimModule
     {
-        return SimModule(
-            instanceId: originalModule.instanceId, // 保留原模块的instanceId
-            typeId: originalModule.typeId,
-            attributes: originalModule.attributes,
-            attributesByName: originalModule.attributesByName,
-            effects: originalModule.effects,
-            groupID: originalModule.groupID,
-            status: originalModule.status,
-            charge: updatedCharge,
-            flag: originalModule.flag,
-            quantity: originalModule.quantity,
-            name: originalModule.name,
-            iconFileName: originalModule.iconFileName,
-            requiredSkills: originalModule.requiredSkills,
-            attributeModifiers: originalModule.attributeModifiers,
-            isSpoolUpFull: originalModule.isSpoolUpFull
-        )
+        var module = originalModule
+        module.charge = updatedCharge
+        return module
     }
 
     /// 添加修饰器到无人机

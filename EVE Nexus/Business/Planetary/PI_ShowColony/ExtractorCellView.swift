@@ -1,79 +1,11 @@
 import Foundation
 import SwiftUI
 
-class ExtractorYieldCalculator {
-    private let quantityPerCycle: Int
-    private let cycleTime: Int
-
-    init(quantityPerCycle: Int, cycleTime: Int) {
-        self.quantityPerCycle = quantityPerCycle
-        self.cycleTime = cycleTime
-    }
-
-    func calculateYield(cycleIndex: Int) -> Int {
-        let results = ExtractionSimulation.getProgramOutputPrediction(
-            baseValue: quantityPerCycle,
-            cycleDuration: TimeInterval(cycleTime),
-            length: cycleIndex + 1
-        )
-        return Int(results.last ?? 0)
-    }
-
-    func calculateRange(startCycle: Int, endCycle: Int) -> [(cycle: Int, yield: Int)] {
-        let results = ExtractionSimulation.getProgramOutputPrediction(
-            baseValue: quantityPerCycle,
-            cycleDuration: TimeInterval(cycleTime),
-            length: endCycle + 1
-        )
-
-        return (startCycle ... endCycle).map { cycle in
-            (cycle: cycle + 1, yield: Int(results[cycle]))
-        }
-    }
-
-    static func calculateTotalCycles(installTime: String, expiryTime: String, cycleTime: Int) -> Int {
-        let dateFormatter = ISO8601DateFormatter()
-        dateFormatter.formatOptions = [.withInternetDateTime]
-
-        guard let installDate = dateFormatter.date(from: installTime),
-              let expiryDate = dateFormatter.date(from: expiryTime)
-        else {
-            return 0
-        }
-
-        let totalSeconds = expiryDate.timeIntervalSince(installDate)
-        return Int(totalSeconds / Double(cycleTime)) - 1
-    }
-
-    static func getCurrentCycle(installTime: String, expiryTime: String, cycleTime: Int, currentTime: Date = Date()) -> Int {
-        let dateFormatter = ISO8601DateFormatter()
-        dateFormatter.formatOptions = [.withInternetDateTime]
-
-        guard let installDate = dateFormatter.date(from: installTime),
-              let expiryDate = dateFormatter.date(from: expiryTime)
-        else {
-            return 0
-        }
-
-        let elapsedSeconds = currentTime.timeIntervalSince(installDate)
-        let currentCycle = Int(elapsedSeconds / Double(cycleTime))
-
-        // 计算总周期数
-        let totalSeconds = expiryDate.timeIntervalSince(installDate)
-        let totalCycles = Int(totalSeconds / Double(cycleTime)) - 1
-
-        // 如果超过了总周期数，返回-1表示已结束
-        if currentCycle > totalCycles {
-            return -1
-        }
-
-        return currentCycle
-    }
-}
-
 // MARK: - 图表视图
 
 struct ExtractorYieldChartView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let yields: [(cycle: Int, yield: Int)]
     let currentCycle: Int
     let maxYield: Int
@@ -81,6 +13,7 @@ struct ExtractorYieldChartView: View {
     let cycleTime: Int
     let installTime: String
     let expiryTime: String
+    let isLive: Bool
     let currentTime: Date
 
     // 图表常量
@@ -88,7 +21,8 @@ struct ExtractorYieldChartView: View {
     private let yAxisWidth: CGFloat = 40
     private let gridLines: Int = 5
 
-    init(extractor: PlanetaryExtractor, installTime: String, expiryTime: String?, currentTime: Date) {
+    init(extractor: PlanetaryExtractor, installTime: String, expiryTime: String?, currentTime: Date, isLive: Bool = true) {
+        self.isLive = isLive
         guard let qtyPerCycle = extractor.qtyPerCycle,
               let cycleTime = extractor.cycleTime,
               let expiryTime = expiryTime
@@ -119,9 +53,9 @@ struct ExtractorYieldChartView: View {
         self.currentTime = currentTime
 
         // 计算所有周期的数据
-        yields = calculator.calculateRange(startCycle: 0, endCycle: totalCycles)
-        let actualMaxYield = yields.map { $0.yield }.max() ?? 0
-        maxYield = Int(Double(actualMaxYield) * 1.1)
+        let curve = calculator.curve(startCycle: 0, endCycle: totalCycles)
+        yields = curve.yields
+        maxYield = Int(Double(curve.maximumYield) * 1.1)
     }
 
     private func formatYAxisLabel(_ value: Int) -> String {
@@ -134,7 +68,7 @@ struct ExtractorYieldChartView: View {
     }
 
     private func formatElapsedTime(installTime: String) -> String {
-        guard let installDate = ISO8601DateFormatter().date(from: installTime) else {
+        guard let installDate = ExtractorYieldCalculator.parsedDate(installTime) else {
             return FormatUtil.formatClockDuration(0)
         }
 
@@ -158,7 +92,7 @@ struct ExtractorYieldChartView: View {
                     VStack(spacing: 0) {
                         ForEach(0 ... gridLines, id: \.self) { i in
                             Text(formatYAxisLabel(maxYield * (gridLines - i) / gridLines))
-                                .font(.system(size: 9))
+                                .font(.system(size: 9, design: .monospaced))
                                 .foregroundColor(.primary)
                                 .frame(height: chartHeight / CGFloat(gridLines))
                         }
@@ -230,6 +164,7 @@ struct ExtractorYieldChartView: View {
                 installTime: installTime,
                 expiryTime: expiryTime,
                 currentTime: currentTime,
+                isLive: isLive,
                 formatElapsedTime: formatElapsedTime
             )
         }
@@ -241,12 +176,15 @@ struct ExtractorYieldChartView: View {
 // MARK: - 统计信息视图
 
 struct ExtractorStatsView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let yields: [(cycle: Int, yield: Int)]
     let currentCycle: Int
     let cycleTime: Int
     let installTime: String
     let expiryTime: String
     let currentTime: Date
+    var isLive: Bool = true
     let formatElapsedTime: (String) -> String
 
     var body: some View {
@@ -273,13 +211,17 @@ struct ExtractorStatsView: View {
                     Text("0")
                         .foregroundColor(.teal)
                 }
-                Text(formatElapsedTime(installTime))
+                let elapsedText = formatElapsedTime(installTime)
+                Text(elapsedText)
+                    .modifier(NumericTimeTransition(text: elapsedText, countsDown: false, isEnabled: isLive))
                     .foregroundColor(.secondary)
                 Text(FormatUtil.formatClockDuration(TimeInterval(cycleTime)))
                     .foregroundColor(.secondary)
-                if let expiryDate = ISO8601DateFormatter().date(from: expiryTime) {
+                if let expiryDate = ExtractorYieldCalculator.parsedDate(expiryTime) {
                     let timeRemaining = expiryDate.timeIntervalSince(currentTime)
-                    Text(FormatUtil.formatClockDuration(timeRemaining))
+                    let remainingText = FormatUtil.formatClockDuration(max(0, timeRemaining))
+                    Text(remainingText)
+                        .modifier(NumericTimeTransition(text: remainingText, countsDown: true, isEnabled: isLive && timeRemaining > 0))
                         .foregroundColor(timeRemaining > 24 * 3600 ? .secondary : .red)
                 } else {
                     Text(FormatUtil.formatClockDuration(0))

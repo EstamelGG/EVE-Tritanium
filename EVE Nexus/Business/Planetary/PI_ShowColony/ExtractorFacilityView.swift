@@ -2,6 +2,8 @@ import SwiftUI
 
 /// 提取器设施视图
 struct ExtractorFacilityView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let pin: PlanetaryPin
     let extractor: PlanetaryExtractor
     let typeNames: [Int: String]
@@ -9,11 +11,12 @@ struct ExtractorFacilityView: View {
     let typeGroupIds: [Int: Int]
     let typeEnNames: [Int: String]
     let currentTime: Date
+    var isLive: Bool = true
 
     /// 计算属性：判断采集器是否过期
     private var isExpired: Bool {
         guard let expiryTime = pin.expiryTime,
-              let expiryDate = ISO8601DateFormatter().date(from: expiryTime)
+              let expiryDate = ExtractorYieldCalculator.parsedDate(expiryTime)
         else {
             return false
         }
@@ -64,10 +67,11 @@ struct ExtractorFacilityView: View {
                             )
 
                     VStack(alignment: .leading, spacing: 2) {
-                        ProgressView(value: progress)
-                            .progressViewStyle(.linear)
-                            .frame(height: 6)
-                            .tint(isExpired ? PlanetaryFacilityColors.extractorProgressExpired : PlanetaryFacilityColors.extractorProgressActive)
+                        PulsingProgressBar(
+                            progress: progress,
+                            color: isExpired ? PlanetaryFacilityColors.extractorProgressExpired : PlanetaryFacilityColors.extractorProgressActive,
+                            showPulse: isLive && !isExpired
+                        )
 
                         // 显示当前周期时间
                         let elapsedTime =
@@ -76,11 +80,11 @@ struct ExtractorFacilityView: View {
                                 : calculateElapsedTimeInCurrentCycle(
                                     installTime: installTime, cycleTime: cycleTime
                                 )
-                        Text(
-                            "\(FormatUtil.formatElapsedClock(elapsedTime)) / \(FormatUtil.formatElapsedClock(TimeInterval(cycleTime)))"
-                        )
-                        .foregroundColor(isExpired ? .gray : .secondary)
-                        .font(.system(.footnote, design: .monospaced))
+                        let cycleText = "\(FormatUtil.formatElapsedClock(elapsedTime)) / \(FormatUtil.formatElapsedClock(TimeInterval(cycleTime)))"
+                        Text(cycleText)
+                            .modifier(NumericTimeTransition(text: cycleText, countsDown: false, isEnabled: isLive && !isExpired))
+                            .foregroundColor(isExpired ? .gray : .secondary)
+                            .font(.system(.footnote, design: .monospaced))
                     }
                 }
             }
@@ -92,9 +96,9 @@ struct ExtractorFacilityView: View {
                 extractor: extractor,
                 installTime: installTime,
                 expiryTime: pin.expiryTime,
-                currentTime: currentTime
+                currentTime: currentTime,
+                isLive: isLive
             )
-            .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
         }
 
         // 产出资源信息
@@ -133,13 +137,12 @@ struct ExtractorFacilityView: View {
                             )
                             Spacer()
                             Text("× \(currentYield)")
-                                .font(.subheadline)
+                                .font(.system(.subheadline, design: .monospaced))
                                 .foregroundColor(.secondary)
                         }
                     }
                 }
             }
-            .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
         }
     }
 
@@ -149,7 +152,7 @@ struct ExtractorFacilityView: View {
     ///   - cycleTime: 周期时间（秒）
     /// - Returns: 进度值（0-1）
     private func calculateExtractorProgress(installTime: String, cycleTime: Int) -> Double {
-        guard let installDate = ISO8601DateFormatter().date(from: installTime) else {
+        guard let installDate = ExtractorYieldCalculator.parsedDate(installTime) else {
             return 0
         }
 
@@ -173,7 +176,7 @@ struct ExtractorFacilityView: View {
     private func calculateElapsedTimeInCurrentCycle(installTime: String, cycleTime: Int)
         -> TimeInterval
     {
-        guard let installDate = ISO8601DateFormatter().date(from: installTime) else {
+        guard let installDate = ExtractorYieldCalculator.parsedDate(installTime) else {
             return 0
         }
 

@@ -262,11 +262,15 @@ struct MarketOrdersView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(FormatUtil.formatMarketPrice(order.price))
-                            .font(.headline)
+                        Text(
+                            order.price < 1_000_000
+                                ? "\(FormatUtil.format(order.price, maxFractionDigits: 2)) ISK"
+                                : FormatUtil.formatISK(order.price)
+                        )
+                        .font(.system(.headline, design: .monospaced))
                         Spacer()
                         Text("Qty: \(order.volumeRemain)")
-                            .font(.caption)
+                            .font(.system(.caption, design: .monospaced))
                             .foregroundColor(.secondary)
                     }
 

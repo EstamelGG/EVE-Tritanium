@@ -54,7 +54,7 @@ extension FeatureID {
         case .characterMastery:
             ShipMasteryBrowserView(databaseManager: databaseManager)
         case .database:
-            DatabaseBrowserView(databaseManager: databaseManager, level: .categories)
+            DatabaseBrowserView(databaseManager: databaseManager, level: .categories, showFittingButton: true)
         case .market:
             MarketBrowserView(databaseManager: databaseManager)
         case .vipMarketItem:

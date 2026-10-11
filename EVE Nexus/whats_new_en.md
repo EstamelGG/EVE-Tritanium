@@ -517,3 +517,11 @@ Fixes & Improvements:
 1. New "SDE Information" page: view the current version and package date, and check or install updates
 2. New "View SDE Changes": review added and modified items/blueprints with field-by-field differences
 3. Updated built-in SDE database and icons
+
+# v1.14.8 October 11, 2026
+
+1. Improved the SDE update and Incursions pages
+2. Fixed date and time text not immediately following app language changes
+3. Improved market history charts
+4. Added a time zone setting to choose between the current system time zone and UTC+0 (EVE time); server time on the home page remains in UTC+0
+5. Fitting simulation: press a changed attribute on the item info page to view its influences, including skills, modules, implants, boosters, environmental effects, and mutations, with before-and-after values and numeric differences

@@ -185,6 +185,9 @@ struct CharacterSkillsSelectorView: View {
     /// 数据库管理器
     let databaseManager: DatabaseManager
 
+    var selectedSkillsMode: String? = nil
+    var selectedCharacterId: Int? = nil
+
     /// 回调函数，用于返回所选角色的技能列表
     var onSelectSkills: ([Int: Int], String, Int) -> Void
 
@@ -219,7 +222,8 @@ struct CharacterSkillsSelectorView: View {
                             characterName: currentCharacterName.isEmpty
                                 ? NSLocalizedString("Fitting_Current_Character", comment: "当前角色")
                                 : currentCharacterName,
-                            isSelected: false,
+                            isSelected: selectedSkillsMode == "current_char"
+                                || (selectedSkillsMode == "character" && selectedCharacterId == currentCharacterId),
                             isLoading: loadingCharacterId == currentCharacterId
                         )
                     }
@@ -240,7 +244,7 @@ struct CharacterSkillsSelectorView: View {
                             CharacterSelectionRow(
                                 characterId: character.id,
                                 characterName: character.name,
-                                isSelected: false,
+                                isSelected: selectedSkillsMode == "character" && selectedCharacterId == character.id,
                                 isLoading: loadingCharacterId == character.id
                             )
                         }
@@ -303,6 +307,13 @@ struct CharacterSkillsSelectorView: View {
                             .font(.body)
 
                             Spacer()
+
+                            if selectedSkillsMode == "all\(level)"
+                                || (selectedSkillsMode == "current_char" && currentCharacterId == 0 && level == 5)
+                            {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.accentColor)
+                            }
                         }
                     }
                     .foregroundColor(.primary)

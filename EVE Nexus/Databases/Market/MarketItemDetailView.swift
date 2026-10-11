@@ -256,7 +256,7 @@ struct MarketItemDetailView: View {
                                 }
                             } else if let price = lowestPrice {
                                 Text(FormatUtil.formatMarketPrice(price))
-                                    .font(.caption)
+                                    .font(.system(.caption, design: .monospaced))
                                     .foregroundColor(.secondary)
                             } else {
                                 Text("-")
@@ -329,6 +329,8 @@ struct MarketItemDetailView: View {
                         .frame(maxWidth: 200)
                     }
 
+                    Divider()
+
                     // 使用 ZStack 来保持固定高度
                     ZStack {
                         if isLoadingHistory {
@@ -336,7 +338,8 @@ struct MarketItemDetailView: View {
                         } else if let history = marketHistory, !history.isEmpty {
                             MarketHistoryChartView(
                                 history: filteredHistory(for: history, timeRange: selectedTimeRange),
-                                orders: marketOrders ?? []
+                                orders: marketOrders ?? [],
+                                fullHistory: history
                             )
                         } else {
                             Text("-")

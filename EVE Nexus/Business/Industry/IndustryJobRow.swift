@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct IndustryJobRow: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let job: IndustryJob
     let blueprintName: String
     let blueprintIcon: String?
@@ -135,11 +137,7 @@ struct IndustryJobRow: View {
 
     /// 格式化日期
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        formatter.timeZone = TimeZone.current
-        return formatter.string(from: date)
+        return FormatUtil.formatDate(date, dateStyle: .short, timeStyle: .short)
     }
 
     /// 获取活动类型文本（军团挂接任务会附加后缀）

@@ -566,6 +566,8 @@ struct AllianceHistoryView: View {
 
 /// 联盟历史行视图
 struct AllianceHistoryRowView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let allianceId: Int
     let startDate: Date
     let endDate: Date?

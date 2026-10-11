@@ -3,6 +3,8 @@ import Foundation
 /// Step2实现 - 效果修饰器解析
 class Step2 {
     private let databaseManager: DatabaseManager
+    /// 以 JSON 内容为键：SDE 内容变化会自然失效，不缓存来源实例和动态值。
+    private var parsedModifierCache: [String: [ModifierInfo]] = [:]
 
     init(databaseManager: DatabaseManager) {
         self.databaseManager = databaseManager
@@ -10,13 +12,9 @@ class Step2 {
 
     /// 执行Step2处理 - 解析效果修饰器
     /// - Parameters:
-    ///   - itemAttributes: 物品属性字典 [物品ID: [属性ID: 值]]
-    ///   - itemAttributesByName: 物品属性名称字典 [物品ID: [属性名: 值]]
     ///   - itemEffects: 物品效果字典 [物品ID: [效果详情]]
     /// - Returns: 解析后的修饰器信息
     func process(
-        itemAttributes: [Int: [Int: Double]],
-        itemAttributesByName _: [Int: [String: Double]],
         itemEffects: [Int: [EffectDetail]]
     ) -> AttributeModifiers {
         Logger.info("执行Step2 - 效果修饰器解析阶段")
@@ -30,8 +28,7 @@ class Step2 {
                 // 解析修饰器信息
                 let parsedModifiers = parseModifierInfo(
                     effect: effect,
-                    typeId: typeId,
-                    itemAttributes: itemAttributes
+                    typeId: typeId
                 )
 
                 // 将解析的修饰器添加到结果中
@@ -50,12 +47,10 @@ class Step2 {
     /// - Parameters:
     ///   - effect: 效果详情
     ///   - typeId: 物品类型ID
-    ///   - itemAttributes: 物品属性字典
     /// - Returns: 解析后的修饰器数组
     private func parseModifierInfo(
         effect: EffectDetail,
-        typeId: Int,
-        itemAttributes _: [Int: [Int: Double]]
+        typeId: Int
     ) -> [AttributeModifier] {
         var modifiers: [AttributeModifier] = []
 
@@ -64,12 +59,18 @@ class Step2 {
             return []
         }
 
-        // 解析修饰器JSON
-        guard let modifierData = modifierInfo.data(using: .utf8),
-              let parsedModifiers = try? JSONDecoder().decode([ModifierInfo].self, from: modifierData)
-        else {
-            Logger.warning("无法解析修饰器信息: \(effect.effectId) - \(effect.effectName)")
-            return []
+        let parsedModifiers: [ModifierInfo]
+        if let cached = parsedModifierCache[modifierInfo] {
+            parsedModifiers = cached
+        } else {
+            guard let data = modifierInfo.data(using: .utf8),
+                  let decoded = try? JSONDecoder().decode([ModifierInfo].self, from: data)
+            else {
+                Logger.warning("无法解析修饰器信息: \(effect.effectId) - \(effect.effectName)")
+                return []
+            }
+            parsedModifierCache[modifierInfo] = decoded
+            parsedModifiers = decoded
         }
 
         // 解析每个修饰器

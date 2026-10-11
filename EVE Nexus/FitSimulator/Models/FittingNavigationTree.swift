@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - 预构造导航树（VM 加载时构建：排序、单装配拍平一次完成，视图纯渲染）
+// MARK: - 预构造导航树（VM 加载时构建：分组、排序一次完成，视图纯渲染）
 
 /// 装配行节点：与装配 ref 关联
 struct FittingItemNode: Hashable, Identifiable {
@@ -40,34 +40,13 @@ struct FittingShipNode: Hashable, Identifiable {
     }
 }
 
-/// 组节点子项：多装配飞船进装配页；单装配飞船构建时拍平为装配行直达详情
-enum FittingGroupChild: Hashable, Identifiable {
-    case ship(FittingShipNode)
-    case fitting(FittingItemNode)
-
-    var id: String {
-        switch self {
-        case let .ship(node): return "ship-\(node.typeId)"
-        case let .fitting(node): return "fitting-\(node.ref.debugDescription)"
-        }
-    }
-
-    static func == (lhs: FittingGroupChild, rhs: FittingGroupChild) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-}
-
 /// 组节点
 struct FittingGroupNode: Hashable, Identifiable {
     let groupID: Int
     let groupName: String
     let firstIconFileName: String? // 组行图标：组内第一个装配的飞船图标
     let fittingCount: Int // 组内装配总数
-    let children: [FittingGroupChild]
+    let children: [FittingShipNode]
 
     var id: Int {
         groupID
@@ -145,14 +124,7 @@ enum FittingTreeBuilder {
         let query = query.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return [] }
 
-        let all: [FittingItemNode] = tree.flatMap { node in
-            node.children.flatMap { child in
-                switch child {
-                case let .ship(ship): return ship.fittings
-                case let .fitting(fitting): return [fitting]
-                }
-            }
-        }
+        let all = tree.flatMap(\.children).flatMap(\.fittings)
 
         return all.filter { fitting in
             guard let info = shipInfo[fitting.shipTypeId] else { return false }
@@ -170,14 +142,14 @@ enum FittingTreeBuilder {
         }
     }
 
-    /// 由扁平装配行构建三级树：装配按名排序、单装配飞船拍平、子项按飞船名排序、组按组名排序
+    /// 由扁平装配行构建分组树：保留全部飞船节点，装配、飞船和组分别按名称排序
     static func build(
         items: [FittingItemNode],
         shipInfo: [Int: FittingShipInfo],
         groupByType: [Int: (groupID: Int, groupName: String)]
     ) -> [FittingGroupNode] {
         // 按飞船归类并生成子节点
-        var groups: [Int: (name: String, children: [FittingGroupChild], count: Int)] = [:]
+        var groups: [Int: (name: String, children: [FittingShipNode], count: Int)] = [:]
 
         for (typeId, fittings) in Dictionary(grouping: items, by: \.shipTypeId) {
             guard let info = shipInfo[typeId],
@@ -188,10 +160,7 @@ enum FittingTreeBuilder {
                 $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
             }
 
-            let child: FittingGroupChild =
-                sorted.count == 1
-                    ? .fitting(sorted[0])
-                    : .ship(FittingShipNode(typeId: typeId, shipInfo: info, fittings: sorted))
+            let child = FittingShipNode(typeId: typeId, shipInfo: info, fittings: sorted)
 
             groups[group.groupID, default: (group.groupName, [], 0)].children.append(child)
             groups[group.groupID]!.count += sorted.count
@@ -200,11 +169,11 @@ enum FittingTreeBuilder {
         // 组装组节点：子项按显示的飞船名排序
         return groups.map { groupID, value in
             let children = value.children.sorted { a, b in
-                displayShipName(a, shipInfo: shipInfo)
-                    .localizedCaseInsensitiveCompare(displayShipName(b, shipInfo: shipInfo))
+                a.shipInfo.name
+                    .localizedCaseInsensitiveCompare(b.shipInfo.name)
                     == .orderedAscending
             }
-            let firstIcon = children.first.flatMap { iconName($0, shipInfo: shipInfo) }
+            let firstIcon = children.first?.shipInfo.iconFileName
 
             return FittingGroupNode(
                 groupID: groupID,
@@ -216,26 +185,6 @@ enum FittingTreeBuilder {
         }
         .sorted {
             $0.groupName.localizedCaseInsensitiveCompare($1.groupName) == .orderedAscending
-        }
-    }
-
-    /// 子项用于排序/图标的飞船名
-    private static func displayShipName(
-        _ child: FittingGroupChild, shipInfo: [Int: FittingShipInfo]
-    ) -> String {
-        switch child {
-        case let .ship(node): return node.shipInfo.name
-        case let .fitting(node): return shipInfo[node.shipTypeId]?.name ?? ""
-        }
-    }
-
-    /// 子项图标
-    private static func iconName(
-        _ child: FittingGroupChild, shipInfo: [Int: FittingShipInfo]
-    ) -> String? {
-        switch child {
-        case let .ship(node): return node.shipInfo.iconFileName
-        case let .fitting(node): return shipInfo[node.shipTypeId]?.iconFileName
         }
     }
 }

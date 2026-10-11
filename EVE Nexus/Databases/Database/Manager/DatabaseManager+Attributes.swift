@@ -12,7 +12,7 @@ extension DatabaseManager {
     }
 
     /// 加载物品的所有属性组
-    func loadAttributeGroups(for typeID: Int, modifiedAttributes: [Int: Double]? = nil)
+    func loadAttributeGroups(for typeID: Int, modifiedAttributes: [Int: Double]? = nil, baseAttributes: [Int: Double]? = nil)
         -> [AttributeGroup]
     {
         // 1. 首先加载所有属性分类
@@ -47,41 +47,35 @@ extension DatabaseManager {
         """
 
         let attributeResult = executeQuery(attributeQuery, parameters: [typeID])
-        var attributesByCategory: [Int: [DogmaAttribute]] = [:]
-
+        var baseValues: [Int: Double] = [:]
         if case let .success(rows) = attributeResult {
             for row in rows {
-                guard let attributeId = row["attribute_id"] as? Int,
-                      let value = row["value"] as? Double,
-                      let attr = SDEMemoryStore.dogmaAttribute(for: attributeId),
-                      let categoryId = attr.categoryID
-                else {
-                    continue
+                if let id = row["attribute_id"] as? Int, let value = row["value"] as? Double {
+                    baseValues[id] = value
                 }
-
-                // 检查是否有修改后的属性值
-                let modifiedValue = modifiedAttributes?[attributeId]
-
-                let attribute = DogmaAttribute(
-                    id: attributeId,
-                    categoryID: categoryId,
-                    name: attr.name,
-                    displayName: attr.displayName,
-                    iconID: attr.iconID,
-                    iconFileName: attr.iconFilename.isEmpty
-                        ? IconManager.defaultIcon : attr.iconFilename,
-                    value: value,
-                    unitID: attr.unitID,
-                    highIsGood: attr.highIsGood,
-                    modifiedValue: modifiedValue
-                )
-
-                if attribute.shouldDisplay {
-                    if attributesByCategory[categoryId] == nil {
-                        attributesByCategory[categoryId] = []
-                    }
-                    attributesByCategory[categoryId]?.append(attribute)
-                }
+            }
+        }
+        // Include attributes introduced by the simulation, and use its actual starting values.
+        baseValues.merge(baseAttributes ?? [:]) { _, simulationBase in simulationBase }
+        let attributeIDs = Set(baseValues.keys).union(modifiedAttributes?.keys.map { $0 } ?? [])
+        var attributesByCategory: [Int: [DogmaAttribute]] = [:]
+        for attributeID in attributeIDs {
+            guard let attr = SDEMemoryStore.dogmaAttribute(for: attributeID) else { continue }
+            let categoryID = attr.categoryID.flatMap { categories[$0] == nil ? nil : $0 } ?? 0
+            let attribute = DogmaAttribute(
+                id: attributeID,
+                categoryID: categoryID,
+                name: attr.name,
+                displayName: attr.displayName,
+                iconID: attr.iconID,
+                iconFileName: attr.iconFilename.isEmpty ? IconManager.defaultIcon : attr.iconFilename,
+                value: baseValues[attributeID] ?? 0,
+                unitID: attr.unitID,
+                highIsGood: attr.highIsGood,
+                modifiedValue: modifiedAttributes?[attributeID]
+            )
+            if attribute.shouldDisplay {
+                attributesByCategory[categoryID, default: []].append(attribute)
             }
         }
 
@@ -89,7 +83,7 @@ extension DatabaseManager {
         var resultGroups: [AttributeGroup] = []
 
         // 先添加所有有分类的属性组
-        for (categoryId, category) in categories.sorted(by: { $0.key < $1.key }) {
+        for (categoryId, category) in categories.sorted(by: { $0.key < $1.key }) where categoryId != 0 {
             if let attributes = attributesByCategory[categoryId], !attributes.isEmpty {
                 resultGroups.append(AttributeGroup(
                     id: categoryId,

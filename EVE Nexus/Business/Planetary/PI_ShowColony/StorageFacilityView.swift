@@ -76,7 +76,7 @@ struct StorageFacilityView: View {
                                 level
                             )
                         )
-                        .font(.subheadline)
+                        .font(.system(.subheadline, design: .monospaced))
                         .fontWeight(.regular)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -98,13 +98,14 @@ struct StorageFacilityView: View {
                     }
                 }()
                 VStack(alignment: .leading, spacing: 2) {
-                    ProgressView(value: total, total: capacity)
-                        .progressViewStyle(.linear)
-                        .frame(height: 6)
-                        .tint(progressColor)
+                    PulsingProgressBar(
+                        progress: capacityRatio,
+                        color: progressColor,
+                        showPulse: false
+                    )
 
                     Text("\(Int(total.rounded()))m³ / \(Int(capacity))m³")
-                        .font(.caption)
+                        .font(.system(.caption, design: .monospaced))
                         .foregroundColor(.secondary)
                 }
             }
@@ -135,7 +136,6 @@ struct StorageFacilityView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(isColonyStopped)
-                .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
             } else {
                 // 快照未完成时，显示加载指示器
                 HStack(alignment: .center, spacing: 12) {
@@ -148,7 +148,6 @@ struct StorageFacilityView: View {
                         .foregroundColor(.gray)
                     Spacer()
                 }
-                .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
             }
         }
 
@@ -160,7 +159,6 @@ struct StorageFacilityView: View {
                 capacity: capacity,
                 storageVolumeCache: storageVolumeCache
             )
-            .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
         }
 
         // 存储的内容物，每个内容物单独一行
@@ -196,7 +194,7 @@ struct StorageFacilityView: View {
                                     .font(.subheadline)
                                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                                     Text("\(amount)")
-                                        .font(.caption)
+                                        .font(.system(.caption, design: .monospaced))
                                         .foregroundColor(.secondary)
                                     let volume = typeVolumes[type.id] ?? type.volume
                                     let volumePart = "(\(Int(Double(amount) * volume))m³)"
@@ -214,11 +212,11 @@ struct StorageFacilityView: View {
                                     if unitForEstimate > 0 {
                                         let estimate = unitForEstimate * Double(amount)
                                         Text("\(volumePart) (\(FormatUtil.formatISK(estimate)))")
-                                            .font(.caption)
+                                            .font(.system(.caption, design: .monospaced))
                                             .foregroundColor(.secondary)
                                     } else {
                                         Text("\(volumePart) (—)")
-                                            .font(.caption)
+                                            .font(.system(.caption, design: .monospaced))
                                             .foregroundColor(.secondary)
                                     }
                                 }
@@ -228,7 +226,6 @@ struct StorageFacilityView: View {
                     }
                 }
             }
-            .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
         }
     }
 

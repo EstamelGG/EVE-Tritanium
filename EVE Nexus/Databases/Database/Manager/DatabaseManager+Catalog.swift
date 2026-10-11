@@ -47,7 +47,7 @@ extension DatabaseManager {
     }
 
     /// 加载物品（按 metaGroupID、名称排序）
-    func loadItems(for groupID: Int, groupName: String) -> ([DatabaseListItem], [Int: String]) {
+    func loadItems(for groupID: Int, groupName: String, showFittingButton: Bool = false) -> ([DatabaseListItem], [Int: String]) {
         let metaGroupNames = SDEMemoryStore.localizedMetaGroupNames
 
         let query = """
@@ -111,7 +111,8 @@ extension DatabaseManager {
                         metaGroupID: metaGroupId,
                         navigationDestination: ItemInfoMap.getItemInfoView(
                             itemID: typeId,
-                            databaseManager: self
+                            databaseManager: self,
+                            showFittingButton: showFittingButton
                         )
                     )
                 )
@@ -197,12 +198,14 @@ extension DatabaseManager {
     func searchItemsMemory(
         filter: (Int, SDEMemoryStore.TypeInfo) -> Bool,
         eligibleMarketGroupIDs: Set<Int>? = nil,
-        exactMatchText: String? = nil
+        exactMatchText: String? = nil,
+        showFittingButton: Bool = false
     ) -> [DatabaseListItem] {
         var matches: [(item: DatabaseListItem, exact: Bool)] = []
         for (typeID, info) in SDEMemoryStore.types where filter(typeID, info) {
             guard let item = DatabaseListItem(
-                typeID: typeID, databaseManager: self, eligibleMarketGroupIDs: eligibleMarketGroupIDs
+                typeID: typeID, databaseManager: self, eligibleMarketGroupIDs: eligibleMarketGroupIDs,
+                showFittingButton: showFittingButton
             ) else { continue }
             let exact = exactMatchText.map { info.names.matchesExact($0) } ?? false
             matches.append((item, exact))

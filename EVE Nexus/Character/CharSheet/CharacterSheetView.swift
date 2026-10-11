@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CharacterSheetView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var viewModel: CharacterSheetViewModel
 
     init(

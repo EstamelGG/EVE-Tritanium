@@ -4,6 +4,10 @@
 
 [中文](Readme.md) | [English](Readme.en.md)
 
+# 装配计算测试
+
+测试运行、基准维护和 SDE 升级流程见[装配回归测试维护说明](EVE%20NexusTests/FittingRegression/README.txt)。
+
 # SDE 更新
 
 1. 如果 Tritanium 某版本开始不再兼容旧版本 app 的 sde，则需要修改 `EVE Nexus/Info.plist` 中的 `SDEMinimumAppVersion` 为当前 app 版本，以确保此版本 app 不会检查低版本的 sde 更新

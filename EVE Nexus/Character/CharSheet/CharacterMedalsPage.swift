@@ -2,6 +2,7 @@ import SwiftUI
 
 /// 人物表单子页面：奖章（懒加载；空数据显示占位）
 struct CharacterMedalsPage: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let character: EVECharacterInfo
 
     @State private var medals: [CharacterMedal]?

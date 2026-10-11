@@ -2,6 +2,8 @@ import Combine
 import SwiftUI
 
 struct PlanetDetailView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     let planetId: Int
     let planetName: String
@@ -16,6 +18,7 @@ struct PlanetDetailView: View {
     @State private var typeEnNames: [Int: String] = [:] // 存储type_id到en_name的映射（用于识别工厂类型）
     @State private var storageContentMarketPrices: [Int: MarketPriceData] = [:] // 仓储物品 EIV 估价（整页一次拉取）
     @State private var schematicDetails: [Int: SchematicInfo] = [:]
+    @State private var colonyRevision = UUID() // 刷新后丢弃旧模拟及快照结果
     @State private var simulatedColony: Colony? // 添加模拟结果状态
     @State private var hourlySnapshots: [Int: Colony] = [:] // 快照 [分钟数: 殖民地状态]，使用分钟数作为key以保留精度
     @State private var selectedMinutes: Int = 0 // 当前选中的分钟数（0 = 当前时间）
@@ -192,17 +195,17 @@ struct PlanetDetailView: View {
                                                     Text(
                                                         "\(NSLocalizedString("Planet_Detail_Last_Update", comment: "")): \(FormatUtil.formatRelativeAgo(since: lastUpdateTime, now: currentTime))"
                                                     )
-                                                    .font(.caption)
+                                                    .font(.system(.caption, design: .monospaced))
                                                     .foregroundColor(.secondary)
                                                 }
 
                                                 if isSimulatingInitial {
                                                     VStack(alignment: .leading, spacing: 4) {
                                                         HStack {
-                                                            ProgressView(value: simulationProgress)
-                                                                .progressViewStyle(.linear)
-                                                                .frame(height: 4)
+                                                            PulsingProgressBar(progress: simulationProgress)
                                                             Text("\(Int(simulationProgress * 100))%")
+                                                                .fontDesign(.monospaced)
+                                                                .fontDesign(.monospaced)
                                                                 .font(.caption2)
                                                                 .foregroundColor(.secondary)
                                                                 .frame(width: 40)
@@ -227,7 +230,6 @@ struct PlanetDetailView: View {
                                             .foregroundColor(.secondary)
                                     }
                                 }
-                                .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                             } else if groupId == 1028 {
                                 // 加工设施
                                 Section {
@@ -242,7 +244,8 @@ struct PlanetDetailView: View {
                                         typeEnNames: typeEnNames,
                                         schematic: pin.schematicId != nil
                                             ? schematicDetails[pin.schematicId!] : nil,
-                                        currentTime: selectedMinutes == 0 ? currentTime : (displayColony?.currentSimTime ?? currentTime)
+                                        currentTime: selectedMinutes == 0 ? currentTime : (displayColony?.currentSimTime ?? currentTime),
+                                        isLive: selectedMinutes == 0
                                     )
                                 } footer: {
                                     HStack {
@@ -252,7 +255,6 @@ struct PlanetDetailView: View {
                                             .foregroundColor(.secondary)
                                     }
                                 }
-                                .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                             } else if let extractor = pin.extractorDetails {
                                 // 提取器设施
                                 Section {
@@ -263,7 +265,8 @@ struct PlanetDetailView: View {
                                         typeIcons: typeIcons,
                                         typeGroupIds: typeGroupIds,
                                         typeEnNames: typeEnNames,
-                                        currentTime: selectedMinutes == 0 ? currentTime : (displayColony?.currentSimTime ?? currentTime)
+                                        currentTime: selectedMinutes == 0 ? currentTime : (displayColony?.currentSimTime ?? currentTime),
+                                        isLive: selectedMinutes == 0
                                     )
                                 } footer: {
                                     HStack {
@@ -273,7 +276,6 @@ struct PlanetDetailView: View {
                                             .foregroundColor(.secondary)
                                     }
                                 }
-                                .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                             }
                         }
                     }
@@ -285,12 +287,11 @@ struct PlanetDetailView: View {
                 VStack(spacing: 16) {
                     if isSimulatingInitial && simulationProgress > 0 {
                         VStack(spacing: 12) {
-                            ProgressView(value: simulationProgress)
-                                .progressViewStyle(.linear)
-                                .frame(height: 8)
+                            PulsingProgressBar(progress: simulationProgress)
 
                             HStack {
                                 Text("\(Int(simulationProgress * 100))%")
+                                    .fontDesign(.monospaced)
                                     .font(.headline)
                                     .foregroundColor(.primary)
 
@@ -299,6 +300,7 @@ struct PlanetDetailView: View {
                                     let timeDiff = targetTime.timeIntervalSince(checkpoint)
                                     let currentSimTime = checkpoint.addingTimeInterval(timeDiff * simulationProgress)
                                     Text(formatDate(currentSimTime))
+                                        .fontDesign(.monospaced)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -561,9 +563,11 @@ struct PlanetDetailView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Text(formatDate(colony.currentSimTime))
+                            .fontDesign(.monospaced)
                             .font(.caption)
                             .fontWeight(.medium)
                         Text("(+\(FormatUtil.formatCompactDuration(timeDiff)))")
+                            .fontDesign(.monospaced)
                             .font(.caption)
                             .foregroundColor(.blue)
                     }
@@ -613,10 +617,7 @@ struct PlanetDetailView: View {
 
     /// 格式化日期
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        formatter.locale = Locale(identifier: "en_US_POSIX") // 使用POSIX locale确保24小时制
-        return formatter.string(from: date)
+        return FormatUtil.formatDate(date, pattern: "yyyy-MM-dd HH:mm:ss", locale: Locale(identifier: "en_US_POSIX"))
     }
 
     private func shouldUpdateView(newTime: Date) -> Bool {
@@ -742,6 +743,8 @@ struct PlanetDetailView: View {
     private func loadPlanetDetail(forceRefresh: Bool = false) async -> Bool {
         var didInitialSimulation = false // 跟踪是否执行了初始模拟
         let task = Task { @MainActor in
+            let revision = UUID()
+            colonyRevision = revision
             isLoading = true
             error = nil
             storageContentMarketPrices = [:]
@@ -751,14 +754,17 @@ struct PlanetDetailView: View {
                 let planetaryInfo = try await CharacterPlanetaryAPI.fetchCharacterPlanetary(
                     characterId: characterId, forceRefresh: forceRefresh
                 )
+                guard colonyRevision == revision else { return }
                 let currentPlanetInfo = planetaryInfo.first { $0.planetId == planetId }
 
                 // 获取行星详情
-                planetDetail = try await CharacterPlanetaryAPI.fetchPlanetaryDetail(
+                let fetchedDetail = try await CharacterPlanetaryAPI.fetchPlanetaryDetail(
                     characterId: characterId,
                     planetId: planetId,
                     forceRefresh: forceRefresh
                 )
+                guard colonyRevision == revision else { return }
+                planetDetail = fetchedDetail
 
                 // 进行殖民地模拟并保存结果
                 if let detail = planetDetail, let info = currentPlanetInfo {
@@ -791,16 +797,19 @@ struct PlanetDetailView: View {
                         ) { progress in
                             // 在主线程更新进度
                             Task { @MainActor in
+                                guard self.colonyRevision == revision else { return }
                                 self.simulationProgress = progress
                             }
                         }
                     }.value
                     await MainActor.run {
+                        guard self.colonyRevision == revision else { return }
                         self.simulatedColony = simulatedColonyResult
                         // 保持 isSimulatingInitial = true，让进度条继续显示100%
                         // 延迟后会在 .task 中设置为 false
                         self.simulationProgress = 1.0
                     }
+                    guard colonyRevision == revision else { return }
                     didInitialSimulation = true
 
                     // 生成每小时快照（在后台执行）
@@ -821,6 +830,7 @@ struct PlanetDetailView: View {
                             let snapshots = ColonySimulationManager.shared.generateHourlySnapshots(colony: currentColony)
 
                             await MainActor.run {
+                                guard self.colonyRevision == revision else { return }
                                 self.hourlySnapshots = snapshots
                                 self.isGeneratingSnapshots = false
                                 // 设置初始选中小时为0（当前时间）
@@ -944,6 +954,7 @@ struct PlanetDetailView: View {
                 currentTime = Date()
 
             } catch {
+                guard colonyRevision == revision else { return }
                 if (error as? CancellationError) == nil {
                     self.error = error
                 }
@@ -952,6 +963,7 @@ struct PlanetDetailView: View {
 
             // 如果没有执行初始模拟，立即设置 isLoading = false
             // 如果执行了初始模拟，由调用者控制延迟后设置
+            guard colonyRevision == revision else { return }
             if !didInitialSimulation {
                 isLoading = false
             }
@@ -966,7 +978,7 @@ struct PlanetDetailView: View {
         // 检查并设置模拟中标志（在主线程上执行，避免竞态条件）
         let shouldProceed = await MainActor.run {
             // 如果正在模拟中，跳过
-            if isSimulating {
+            if isSimulating || isLoading || isSimulatingInitial {
                 return false
             }
             // 设置模拟中标志
@@ -975,6 +987,7 @@ struct PlanetDetailView: View {
         }
 
         guard shouldProceed else { return }
+        let revision = colonyRevision
         guard let colony = simulatedColony else {
             await MainActor.run {
                 isSimulating = false
@@ -1008,8 +1021,9 @@ struct PlanetDetailView: View {
 
         // 更新模拟结果和防抖状态
         await MainActor.run {
-            self.simulatedColony = newSimulatedColony
             self.isSimulating = false
+            guard self.colonyRevision == revision else { return }
+            self.simulatedColony = newSimulatedColony
             self.lastSimulationTime = now
             if let detail = self.planetDetail {
                 Task {

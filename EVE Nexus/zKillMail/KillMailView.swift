@@ -626,6 +626,7 @@ class KillMailViewModel: ObservableObject {
 }
 
 struct BRKillMailView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     @StateObject private var viewModel: KillMailViewModel
     @State private var selectedFilter: KillMailFilter = .all
@@ -823,6 +824,7 @@ private func formatKillMailTime(_ timestamp: Int) -> String {
 }
 
 struct BRKillMailCell: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let entity: KillMailListEntity
     let shipInfo: (name: String, iconFileName: String)
     let allianceIcon: UIImage?

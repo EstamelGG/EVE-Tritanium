@@ -79,8 +79,24 @@ enum AppIconConfig {
 
     /// 组合图标：将角标叠加在review图左上角
     /// - Returns: 组合后的图标图片
-    static func composeAppIcon() -> UIImage? {
-        let (iconName, badgeName) = getCurrentIconAndBadge()
+    static func composeAppIcon(icon: String? = nil, badge: String? = nil) -> UIImage? {
+        let current = getCurrentIconAndBadge()
+        let iconName = icon ?? current.icon
+        let badgeName = badge ?? current.badge
+
+        // Prefer the fully rendered alternate icon used by the app itself.
+        if let iconID = getIconId(icon: iconName, badge: badgeName),
+           let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
+           let alternates = icons["CFBundleAlternateIcons"] as? [String: Any],
+           let entry = alternates[iconID] as? [String: Any],
+           let files = entry["CFBundleIconFiles"] as? [String]
+        {
+            for file in files.reversed() {
+                if let image = UIImage(named: file) {
+                    return image
+                }
+            }
+        }
 
         // 加载review图（不带角标的母图）
         guard let baseImage = UIImage(named: iconName) else {

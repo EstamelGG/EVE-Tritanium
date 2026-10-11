@@ -16,16 +16,24 @@ extension FitConvert {
 
         // 创建可变的modules数组副本
         var moduleItems = localFitting.items
+        // Add the default mode before collecting types, attributes and effects.
+        // Otherwise a missing mode can never be found in the original fitting's type map.
+        if !moduleItems.contains(where: { $0.flag == .t3dModeSlot0 }),
+           let modeId = ModeSwitchingUtils.getDefaultModeId(for: shipTypeId, databaseManager: databaseManager)
+        {
+            moduleItems.append(LocalFittingItem(flag: .t3dModeSlot0, quantity: 1, type_id: modeId))
+        }
 
         // 收集所有需要查询的typeId（飞船、装备、无人机和弹药）
         var allTypeIds =
-            [shipTypeId] + localFitting.items.map { $0.type_id }
+            [shipTypeId] + moduleItems.map { $0.type_id }
                 + (localFitting.drones?.map { $0.type_id } ?? [])
                 + (localFitting.fighters?.map { $0.type_id } ?? [])
 
         // 添加所有弹药的typeId
-        let chargeTypeIds = localFitting.items.compactMap { $0.charge_type_id }
+        let chargeTypeIds = moduleItems.compactMap { $0.charge_type_id }
         allTypeIds.append(contentsOf: chargeTypeIds)
+        allTypeIds = Array(Set(allTypeIds)).sorted()
 
         // 批量取属性（内存索引）
         var attrMap: [Int: ([Int: Double], [String: Double])] = [:]
@@ -82,54 +90,6 @@ extension FitConvert {
         // 体积 (volume) - 属性ID 161
         shipBaseAttributes[161] = shipInfo.volume
         shipBaseAttributesByName["volume"] = shipInfo.volume
-
-        // 模式切换处理 - 检查是否是模式切换飞船
-        // 查找当前模块列表中是否有模式模块
-        let modeModule = localFitting.items.first { item in
-            item.flag == .t3dModeSlot0
-        }
-
-        // 获取模式ID（如果有）- 仅用于日志记录
-        if let modeModule = modeModule {
-            if AppConfiguration.Fitting.showDebug {
-                Logger.info("从现有配置中检测到模式模块: \(modeModule.type_id)")
-            }
-        } else if ModeSwitchingUtils.isModeSwitchingShip(
-            shipTypeId: shipTypeId,
-            databaseManager: databaseManager
-        ) {
-            // 是模式切换飞船但没有模式模块，尝试自动选择默认模式
-            if AppConfiguration.Fitting.showDebug {
-                Logger.info("检测到模式切换飞船(ID: \(shipTypeId))但未设置模式，尝试自动选择默认模式")
-            }
-
-            // 获取默认模式ID
-            if let defaultModeId = ModeSwitchingUtils.getDefaultModeId(
-                for: shipTypeId,
-                databaseManager: databaseManager
-            ) {
-                if AppConfiguration.Fitting.showDebug {
-                    Logger.info("为模式切换飞船自动选择默认模式: \(defaultModeId)")
-                }
-
-                // 添加模式模块到modules列表
-                if let modeInfo = typeInfoMap[defaultModeId] {
-                    // 创建模式模块项并添加到moduleItems数组
-                    let modeItem = LocalFittingItem(
-                        flag: .t3dModeSlot0,
-                        quantity: 1,
-                        type_id: defaultModeId,
-                        status: 1
-                    )
-                    moduleItems.append(modeItem)
-                    if AppConfiguration.Fitting.showDebug {
-                        Logger.info("已添加模式模块到配置项中: \(modeInfo.name)")
-                    }
-                }
-            } else {
-                Logger.error("无法为模式切换飞船找到默认模式")
-            }
-        }
 
         let simShip = SimShip(
             typeId: shipTypeId,
@@ -246,19 +206,17 @@ extension FitConvert {
                     effects: effects,
                     groupID: moduleInfo.groupID,
                     status: {
-                        // 乐观安装：非离线(1/缺失)的可激活模块默认提升为激活(2)，与游戏内装船即激活的行为一致；
-                        // 同组在线/激活上限在计算管线跑完后统一校验降级，避免"逐个安装用裸值检查"的死锁
+                        // Explicit saved states must round-trip, including online but inactive (1).
+                        // Only missing/invalid states use the optimistic installation default.
+                        if let status = item.status, (0 ... 3).contains(status) {
+                            return status
+                        }
                         let maxStatus = getMaxStatus(
                             itemEffects: effects,
                             itemAttributes: updatedAttr,
                             databaseManager: databaseManager
                         )
-                        let optimistic = maxStatus >= 2 ? 2 : (maxStatus == 1 ? 1 : 0)
-
-                        if let status = item.status, (0 ... 3).contains(status) {
-                            return status == 1 ? optimistic : status
-                        }
-                        return optimistic
+                        return maxStatus >= 2 ? 2 : (maxStatus == 1 ? 1 : 0)
                     }(),
                     charge: charge,
                     flag: item.flag,

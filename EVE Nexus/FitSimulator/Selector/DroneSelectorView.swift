@@ -32,5 +32,6 @@ struct DroneSelectorView: View {
                 clearsSavedKeywordWhenDismissedWithoutSearch: true
             )
         )
+        .environment(\.showDroneBaseDamage, true)
     }
 }

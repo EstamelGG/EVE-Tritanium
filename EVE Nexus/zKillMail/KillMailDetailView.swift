@@ -13,6 +13,7 @@ private struct KMFittingSheetItem: Identifiable {
 }
 
 struct BRKillMailDetailView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let listEntity: KillMailListEntity
     let character: EVECharacterInfo?
     @ObservedObject private var killMailFavorites = KillMailFavoritesStore.shared
@@ -1163,11 +1164,7 @@ struct BRKillMailDetailView: View {
 
     private func formatLocalTime(_ timestamp: Int) -> String {
         let date = Date(timeIntervalSince1970: TimeInterval(timestamp))
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone.current
-        return formatter.string(from: date)
+        return FormatUtil.formatDate(date, pattern: "yyyy-MM-dd HH:mm:ss", locale: Locale(identifier: "en_US_POSIX"))
     }
 
     private func zkillboardKillPageURLString(killId: Int) -> String {
@@ -1207,6 +1204,7 @@ struct BRKillMailDetailView: View {
 }
 
 struct ItemRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let typeId: Int
     let quantity: Int
     let isDropped: Bool // 是否为掉落物品
@@ -1360,6 +1358,7 @@ struct ItemRow: View {
 // MARK: - 仅 kill ID 时的加载器（用于 killreport 链接等场景）
 
 struct KillMailDetailLoaderView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let killmailId: Int
     let character: EVECharacterInfo?
     @State private var listEntity: KillMailListEntity?
@@ -1424,6 +1423,7 @@ private struct AttackerRowItem: Identifiable {
 }
 
 struct KillMailAttackersView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let detailData: KillMailDetailData
     let character: EVECharacterInfo?
     @State private var searchText = ""
@@ -1633,6 +1633,7 @@ struct KillMailAttackersView: View {
 // MARK: - 参与者行视图
 
 private struct AttackerRowView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let attacker: ESIAttacker
     // 角色/军团/联盟 id → 名称（含详情预取 + 参与者页补充）
     let entityNameMap: [Int: String]

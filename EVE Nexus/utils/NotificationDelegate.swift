@@ -27,7 +27,7 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        Logger.info("用户点击了通知: \(response.notification.request.identifier)")
+        // Logger.info("用户点击了通知: \(response.notification.request.identifier)")
 
         let notification = response.notification
         let userInfo = notification.request.content.userInfo

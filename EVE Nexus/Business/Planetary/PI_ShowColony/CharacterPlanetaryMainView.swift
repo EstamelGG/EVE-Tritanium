@@ -1122,11 +1122,11 @@ struct CharacterPlanetaryView: View {
                 Section(header: Text(NSLocalizedString("Main_Planetary_of_Mine", comment: ""))) {
                     if let progress = viewModel.loadingProgress, progress.total > 1 {
                         Text(String.localizedStringWithFormat(NSLocalizedString("Planetary_Loading_Progress", comment: "已加载人物 %d/%d"), progress.current, progress.total))
+                            .fontDesign(.monospaced)
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
-                .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
             } else {
                 if characterId != nil || viewModel.multiCharacterMode {
                     if viewModel.planets.isEmpty {
@@ -1135,7 +1135,6 @@ struct CharacterPlanetaryView: View {
                         ) {
                             NoDataSection()
                         }
-                        .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                     } else {
                         // 多人物聚合模式：按人物分组显示
                         if viewModel.multiCharacterMode, viewModel.selectedCharacterIds.count > 1 {
@@ -1146,7 +1145,6 @@ struct CharacterPlanetaryView: View {
                                 ) {
                                     NoDataSection()
                                 }
-                                .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                             } else {
                                 if !viewModel.aggregatedPlanetTypeSummariesForMultiSelect.isEmpty {
                                     Section(
@@ -1163,13 +1161,13 @@ struct CharacterPlanetaryView: View {
                                                     .foregroundColor(.primary)
                                                 Spacer()
                                                 Text("\(summary.count)")
+                                                    .fontDesign(.monospaced)
                                                     .font(.headline)
                                                     .fontWeight(.medium)
                                                     .foregroundColor(.secondary)
                                             }
                                         }
                                     }
-                                    .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                                 }
                                 ForEach(groupedPlanets, id: \.characterId) { group in
                                     let isCollapsed = collapsedCharacterIdsInMultiMode.contains(
@@ -1227,7 +1225,6 @@ struct CharacterPlanetaryView: View {
                                                 }
                                             }
                                         }
-                                        .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                                     } else {
                                         Section(
                                             header: HStack(spacing: 16) {
@@ -1260,7 +1257,6 @@ struct CharacterPlanetaryView: View {
                                                 )
                                             }
                                         }
-                                        .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                                     }
                                 }
                             }
@@ -1304,7 +1300,6 @@ struct CharacterPlanetaryView: View {
                                         }
                                     )
                                 }
-                                .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
                             }
                         }
                     }
@@ -1369,7 +1364,7 @@ struct CharacterPlanetaryView: View {
             Text("/\(max)")
                 .foregroundColor(.secondary)
         }
-        .font(.caption)
+        .font(.system(.caption, design: .monospaced))
     }
 
     private func toggleMultiCharacterSectionExpansion(characterId: Int) {
@@ -1552,24 +1547,26 @@ struct PlanetRow: View {
             let planetName = viewModel.getPlanetName(for: planet.planetId)
             onPlanetSelected(planet.planetId, planetName)
         } label: {
-            HStack {
+            HStack(alignment: .center, spacing: 12) {
                 if let typeInfo = viewModel.getPlanetTypeInfo(for: planet.planetType) {
                     Image(uiImage: IconManager.shared.loadUIImage(for: typeInfo.icon))
                         .resizable()
-                        .frame(width: 32, height: 32)
+                        .scaledToFit()
+                        .frame(width: 40, height: 40)
                         .cornerRadius(6)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
                         // 显示星系安等（如果有）
                         if let security = viewModel.getSystemSecurity(for: planet.solarSystemId) {
                             Text(formatSystemSecurity(security))
                                 .foregroundColor(getSecurityColor(security))
-                                .font(.system(.headline, design: .monospaced))
+                                .font(.system(.body, design: .monospaced).weight(.medium))
                         }
                         Text(viewModel.getPlanetName(for: planet.planetId))
-                            .font(.headline)
+                            .font(.body.weight(.medium))
+                            .fixedSize(horizontal: false, vertical: true)
                             .foregroundColor(.primary)
                     }
                     .contextMenu {
@@ -1596,20 +1593,23 @@ struct PlanetRow: View {
                                 planet.upgradeLevel
                             )
                         )
+                        .fontDesign(.monospaced)
                     }
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                     // 显示采集器停工状态
                     if let status = viewModel.getExtractorStatus(for: planet.planetId, characterId: characterId), status.totalCount > 0 {
                         if status.expiredCount > 0 {
                             // 显示已停工的采集器数量
                             Text(String.localizedStringWithFormat(NSLocalizedString("Planet_Extractor_Expired_Count", comment: "%d/%d个采集器已停工"), status.expiredCount, status.totalCount))
+                                .fontDesign(.monospaced)
                                 .font(.caption2)
                                 .foregroundColor(.red)
                         } else if status.expiringSoonCount > 0 {
                             // 显示即将停工的采集器数量
                             Text(String.localizedStringWithFormat(NSLocalizedString("Planet_Extractor_Expiring_Soon_Count", comment: "%d/%d个采集器即将停工"), status.expiringSoonCount, status.totalCount))
+                                .fontDesign(.monospaced)
                                 .font(.caption2)
                                 .foregroundColor(.red)
                         } else if let expiryDate = viewModel.getEarliestExtractorExpiry(for: planet.planetId, characterId: characterId) {
@@ -1617,6 +1617,8 @@ struct PlanetRow: View {
                             let timeRemaining = expiryDate.timeIntervalSince(Date())
                             if timeRemaining > 0 {
                                 Text("\(NSLocalizedString("Planet_Detail_Extractor_Expiry_Time", comment: "")): \(FormatUtil.formatRemainingDuration(timeRemaining))")
+                                    .fontDesign(.monospaced)
+                                    .fontDesign(.monospaced)
                                     .font(.caption2)
                                     .foregroundColor(
                                         viewModel.planetNeedsExtractorAttention(
@@ -1635,6 +1637,7 @@ struct PlanetRow: View {
                         let timeRemaining = expiryDate.timeIntervalSince(Date())
                         if timeRemaining > 0 {
                             Text("\(NSLocalizedString("Planet_Detail_Extractor_Expiry_Time", comment: "")): \(FormatUtil.formatRemainingDuration(timeRemaining))")
+                                .fontDesign(.monospaced)
                                 .font(.caption2)
                                 .foregroundColor(
                                     viewModel.planetNeedsExtractorAttention(
@@ -1650,7 +1653,7 @@ struct PlanetRow: View {
                     }
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
 
                 // 显示加载指示器或最终产品图标
                 if viewModel.isLoadingPlanetDetail(for: planet.planetId, characterId: characterId) {

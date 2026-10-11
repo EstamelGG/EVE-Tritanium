@@ -25,6 +25,7 @@ struct DatabaseBrowserView: View {
 
     @ObservedObject var databaseManager: DatabaseManager
     let level: BrowserLevel
+    var showFittingButton: Bool = false
 
     private var groupingType: GroupingType {
         switch level {
@@ -45,22 +46,20 @@ struct DatabaseBrowserView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            DatabaseListView(
-                databaseManager: databaseManager,
-                title: title,
-                groupingType: groupingType,
-                loadData: { dbManager in
-                    let data = loadDataForLevel(dbManager)
-                    return (data.0, data.1)
-                },
-                searchData: { dbManager, searchText in
-                    let (items, metaGroupNames, _) = searchItems(dbManager, searchText)
-                    return (Self.sortedByMetaThenName(items), metaGroupNames, [:])
-                },
-                searchTreeContent: directoryContentProvider
-            )
-        }
+        DatabaseListView(
+            databaseManager: databaseManager,
+            title: title,
+            groupingType: groupingType,
+            loadData: { dbManager in
+                let data = loadDataForLevel(dbManager)
+                return (data.0, data.1)
+            },
+            searchData: { dbManager, searchText in
+                let (items, metaGroupNames, _) = searchItems(dbManager, searchText)
+                return (Self.sortedByMetaThenName(items), metaGroupNames, [:])
+            },
+            searchTreeContent: directoryContentProvider
+        )
     }
 
     /// 目录模式内容（结果数超阈值时）：类目/分组层提供层级目录，物品层无更深层级故平铺
@@ -104,7 +103,8 @@ struct DatabaseBrowserView: View {
             filter: { typeID, info in
                 info.names.matchesSearch(searchText) || Int(searchText) == typeID
             },
-            exactMatchText: searchText
+            exactMatchText: searchText,
+            showFittingButton: showFittingButton
         )
         let metaGroupIDs = Set(items.compactMap { $0.metaGroupID })
         let metaGroupNames = dbManager.loadMetaGroupNames(for: Array(metaGroupIDs))
@@ -128,7 +128,8 @@ struct DatabaseBrowserView: View {
                             level: .groups(
                                 categoryID: category.id,
                                 categoryName: category.name
-                            )
+                            ),
+                            showFittingButton: showFittingButton
                         )
                     )
                 )
@@ -150,7 +151,8 @@ struct DatabaseBrowserView: View {
                     navigationDestination: AnyView(
                         DatabaseBrowserView(
                             databaseManager: databaseManager,
-                            level: .items(groupID: group.id, groupName: group.name)
+                            level: .items(groupID: group.id, groupName: group.name),
+                            showFittingButton: showFittingButton
                         )
                     )
                 )
@@ -158,7 +160,7 @@ struct DatabaseBrowserView: View {
             return (items, [:], [:])
 
         case let .items(groupID, groupName):
-            let (items, metaGroupNames) = dbManager.loadItems(for: groupID, groupName: groupName)
+            let (items, metaGroupNames) = dbManager.loadItems(for: groupID, groupName: groupName, showFittingButton: showFittingButton)
             return (items, metaGroupNames, [:])
         }
     }
@@ -396,7 +398,19 @@ private struct DatabaseSearchItemsView: View {
 
 // MARK: - List Item Row
 
+private struct ShowDroneBaseDamageKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var showDroneBaseDamage: Bool {
+        get { self[ShowDroneBaseDamageKey.self] }
+        set { self[ShowDroneBaseDamageKey.self] = newValue }
+    }
+}
+
 struct DatabaseListItemView: View {
+    @Environment(\.showDroneBaseDamage) private var showDroneBaseDamage
     private enum CategoryID {
         static let ship = 6
         static let module = 7
@@ -408,6 +422,7 @@ struct DatabaseListItemView: View {
     let item: DatabaseListItem
     let showDetails: Bool
     var showCargoIndicator: Bool = false
+    var showBaseDamage: Bool = false
     var onAttributeQuickCompare: ((Int) -> Void)? = nil
 
     private var showsAttributeQuickCompareMenuItem: Bool {
@@ -427,6 +442,22 @@ struct DatabaseListItemView: View {
                         .resizable()
                         .frame(width: 24, height: 24)
                         .foregroundColor(.secondary)
+                }
+                if showBaseDamage || (showDroneBaseDamage && item.categoryID == CategoryID.drone) {
+                    let isDrone = (item.categoryID ?? SDEMemoryStore.type(for: item.id)?.categoryID) == CategoryID.drone
+                    let values = isDrone
+                        ? [114, 118, 117, 116].map { SDEMemoryStore.typeAttributeValue(for: item.id, attributeID: $0) ?? 0 }
+                        : damageValues.map { $0 ?? 0 }
+                    let multiplier = isDrone ? (SDEMemoryStore.typeAttributeValue(for: item.id, attributeID: 64) ?? 1) : 1
+                    let total = values.reduce(0, +) * multiplier
+                    if total > 0 {
+                        Spacer(minLength: 8)
+                        Text("\(FormatUtil.formatForUI(total, maxFractionDigits: 2)) HP")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .fixedSize()
+                    }
                 }
             }
 

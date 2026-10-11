@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 
 struct CorpStarbaseView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     @StateObject private var viewModel: CorpStarbaseViewModel
     @State private var showFilterSheet = false
@@ -177,6 +178,7 @@ struct CorpStarbaseView: View {
 }
 
 struct StarbaseCell: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let starbase: [String: Any]
     let iconName: String?
     let displayName: String
@@ -341,6 +343,7 @@ struct StarbaseCell: View {
 
 /// 过滤Sheet视图
 struct FilterSheetView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @ObservedObject var viewModel: CorpStarbaseViewModel
     @Environment(\.dismiss) private var dismiss
 

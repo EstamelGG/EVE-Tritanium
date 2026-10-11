@@ -5,6 +5,8 @@ import UserNotifications
 /// 显示应用所有类别的待发送通知（EVE 事件、技能队列到期等），支持单条取消
 /// 通过设置页 NavigationLink push 进入，标题显示在导航栏中
 struct NotificationsManagerView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var notificationManager = NotificationManager.shared
 
     /// 按类别分组后的通知
@@ -192,6 +194,8 @@ struct NotificationsManagerView: View {
 /// 统一通知行视图：根据类别自适应渲染（EVE 事件 / 技能队列等）
 /// 同时供 ScheduledNotificationsView（日历 sheet）和 NotificationsManagerView（设置 push）使用
 struct NotificationRow: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let notification: UNNotificationRequest
     let category: NotificationManager.NotificationCategory
     let onCancel: () -> Void
@@ -293,11 +297,7 @@ struct NotificationRow: View {
     }
 
     private func formatDate(_ date: Date, dateStyle: DateFormatter.Style) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = dateStyle
-        formatter.timeStyle = .short
-        formatter.locale = Locale.current
-        return formatter.string(from: date)
+        return FormatUtil.formatDate(date, dateStyle: dateStyle, timeStyle: .short)
     }
 
     private func formatDateTime(_ date: Date) -> String {
@@ -338,6 +338,8 @@ struct NotificationRow: View {
 
 /// 通知空状态视图（供 NotificationsManagerView 和 ScheduledNotificationsView 共享）
 struct NotificationEmptyStateView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "bell.slash")

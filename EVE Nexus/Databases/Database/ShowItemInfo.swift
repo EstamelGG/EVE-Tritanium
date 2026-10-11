@@ -8,6 +8,8 @@ struct ShowItemInfo: View {
 
     var itemID: Int
     var modifiedAttributes: [Int: Double]?
+    var fittingContext: FittingAttributeContext? = nil
+    var showFittingButton: Bool = false
 
     @State private var itemDetails: ItemDetails?
     @State private var attributeGroups: [AttributeGroup] = []
@@ -78,6 +80,7 @@ struct ShowItemInfo: View {
                     databaseManager: databaseManager,
                     modifiedAttributes: modifiedAttributes
                 )
+                .environment(\.fittingAttributeContext, fittingContext)
 
                 if visibleSections.contains(.variations) {
                     VariationsSection(typeID: itemID, databaseManager: databaseManager)
@@ -90,6 +93,7 @@ struct ShowItemInfo: View {
                         typeID: itemID,
                         databaseManager: databaseManager
                     )
+                    .environment(\.fittingAttributeContext, fittingContext)
                     .transition(.opacity)
                 }
 
@@ -133,7 +137,7 @@ struct ShowItemInfo: View {
         .navigationBarBackButtonHidden(false)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                if let details = itemDetails, SDEMemoryStore.isSimulatableShip(itemID) {
+                if showFittingButton, let details = itemDetails, SDEMemoryStore.isSimulatableShip(itemID) {
                     NavigationLink {
                         ShipFittingView(
                             shipTypeId: itemID,
@@ -207,7 +211,8 @@ struct ShowItemInfo: View {
     private func loadAttributes(for itemID: Int) {
         attributeGroups = databaseManager.loadAttributeGroups(
             for: itemID,
-            modifiedAttributes: modifiedAttributes
+            modifiedAttributes: modifiedAttributes,
+            baseAttributes: fittingContext?.baseAttributes
         )
 
         if itemDetails?.categoryID == 16,

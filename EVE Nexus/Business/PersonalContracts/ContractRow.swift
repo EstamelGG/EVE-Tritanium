@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContractRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let contract: ContractInfo
     let contractType: PersonalContractsViewModel.ContractType
     let databaseManager: DatabaseManager

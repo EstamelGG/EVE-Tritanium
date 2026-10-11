@@ -197,7 +197,7 @@ class DNAParser {
                         flag: currentFlag,
                         quantity: 1, // 每个槽位只能装一个装备
                         type_id: module.typeId,
-                        status: module.isOffline ? 0 : 1
+                        status: module.isOffline ? 0 : nil // 未指定启动状态，保留加载器默认行为
                     )
                 )
 

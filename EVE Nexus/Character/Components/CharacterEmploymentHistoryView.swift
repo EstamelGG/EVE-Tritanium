@@ -66,6 +66,8 @@ struct CharacterEmploymentHistoryView: View {
 }
 
 struct EmploymentHistoryRowView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let recordId: Int
     let corporationId: Int
     let startDate: Date

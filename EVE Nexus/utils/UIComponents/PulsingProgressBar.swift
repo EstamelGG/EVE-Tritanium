@@ -1,19 +1,12 @@
 import SwiftUI
 
-/// 脉动进度条组件 - 带有从左到右的闪烁效果
+/// 分段底条上的轻扫光，条长表示进度，扫光表示正在进行。
 struct PulsingProgressBar: View {
-    /// 当前进度 (0.0 - 1.0)
     let progress: Double
-    /// 进度条颜色
     let color: Color
-    /// 进度条高度
     let height: CGFloat
-    /// 圆角半径
     let cornerRadius: CGFloat
-    /// 是否显示脉动效果（当进度在0-1之间时）
     let showPulse: Bool
-
-    @State private var shimmerPhase: Double = 0 // 0到1的动画相位
 
     init(
         progress: Double,
@@ -22,7 +15,7 @@ struct PulsingProgressBar: View {
         cornerRadius: CGFloat = 2,
         showPulse: Bool = true
     ) {
-        self.progress = max(0, min(1, progress)) // 确保在0-1范围内
+        self.progress = progress.isFinite ? max(0, min(1, progress)) : 0
         self.color = color
         self.height = height
         self.cornerRadius = cornerRadius
@@ -30,69 +23,17 @@ struct PulsingProgressBar: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                // 背景
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(height: height)
-
-                // 进度条主体
-                let progressWidth = geometry.size.width * progress
-
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(color)
-                    .frame(width: progressWidth, height: height)
-                    .overlay(alignment: .leading) {
-                        // 闪烁遮罩效果
-                        if showPulse && progress > 0 && progress < 1.0 {
-                            RoundedRectangle(cornerRadius: cornerRadius)
-                                .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.white.opacity(0),
-                                            Color.white.opacity(0.6),
-                                            Color.white.opacity(0),
-                                        ]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: progressWidth * 0.4, height: height)
-                                .offset(x: calculateShimmerOffset(progressWidth: progressWidth, phase: shimmerPhase))
-                        }
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-            }
-        }
-        .frame(height: height)
-        .onAppear {
-            startShimmerAnimation()
-        }
-    }
-
-    /// 计算光斑偏移量（基于动画相位）
-    private func calculateShimmerOffset(progressWidth: CGFloat, phase: Double) -> CGFloat {
-        let shimmerWidth = progressWidth * 0.4
-        let startOffset = -shimmerWidth
-        let endOffset = progressWidth
-        return startOffset + (endOffset - startOffset) * CGFloat(phase)
-    }
-
-    /// 开始闪烁动画循环
-    private func startShimmerAnimation() {
-        // 重置到起始位置（相位为0）
-        shimmerPhase = 0
-
-        // 1. 从0移动到1（3秒）
-        withAnimation(.linear(duration: 3.0)) {
-            shimmerPhase = 1.0
-        }
-
-        // 2. 在终点停留0.8秒后，重新开始循环
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.8) {
-            startShimmerAnimation()
-        }
+        SegmentedProgressBar(
+            segments: [
+                .init(value: progress, color: color,
+                      showsShimmer: showPulse && progress > 0 && progress < 1),
+                .init(value: 1 - progress, color: .secondary.opacity(0.16)),
+            ],
+            height: height,
+            cornerRadius: cornerRadius
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityValue(Text(verbatim: "\(FormatUtil.format(progress * 100, maxFractionDigits: 1))%"))
     }
 }
 

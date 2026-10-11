@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct CalendarEventDetailView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
     let eventId: Int
     let databaseManager: DatabaseManager
@@ -232,11 +234,7 @@ struct CalendarEventDetailView: View {
             return NSLocalizedString("Calendar_Unknown_Time", comment: "Unknown time")
         }
 
-        let formatter = DateFormatter()
-        formatter.dateStyle = .full
-        formatter.timeStyle = .short
-        formatter.locale = Locale.current
-        return formatter.string(from: date)
+        return FormatUtil.formatDate(date, dateStyle: .full, timeStyle: .short)
     }
 
     private func formatDuration(_ minutes: Int) -> String {
@@ -316,6 +314,8 @@ class CalendarEventDetailViewModel: ObservableObject {
 }
 
 struct NotificationTimePickerView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let eventTime: Date
     let onTimeSelected: (NotificationTime) -> Void
 
@@ -395,15 +395,13 @@ struct NotificationTimePickerView: View {
     }
 
     private func formatEventTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .full
-        formatter.timeStyle = .short
-        formatter.locale = Locale.current
-        return formatter.string(from: date)
+        return FormatUtil.formatDate(date, dateStyle: .full, timeStyle: .short)
     }
 }
 
 struct NotificationTimeRow: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     let timeOption: NotificationTime
     let eventTime: Date
     let isSelected: Bool
@@ -441,18 +439,16 @@ struct NotificationTimeRow: View {
 
     private var notificationTimeDescription: String {
         let triggerTime = eventTime.addingTimeInterval(timeOption.timeInterval)
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        formatter.locale = Locale.current
+        let triggerTimeText = FormatUtil.formatDate(triggerTime, dateStyle: .none, timeStyle: .short)
 
         if timeOption == .atEventTime {
             return NSLocalizedString(
                 "Calendar_Notification_At_Event_Start", comment: "At event start"
             )
-                + " (\(formatter.string(from: triggerTime)))"
+                + " (\(triggerTimeText))"
         } else {
             return NSLocalizedString("Calendar_Notification_At", comment: "At")
-                + " \(formatter.string(from: triggerTime))"
+                + " \(triggerTimeText)"
         }
     }
 }

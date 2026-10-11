@@ -42,28 +42,7 @@ struct IndustryFilterSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                // 第一个section：隐藏已交付和已取消的项目
-                Section {
-                    Toggle(isOn: $viewModel.hideCompletedAndCancelled) {
-                        VStack(alignment: .leading) {
-                            Text(
-                                NSLocalizedString(
-                                    "Industry_Filter_Hide_Completed", comment: "隐藏已交付和已取消的项目"
-                                )
-                            )
-                            Text(
-                                NSLocalizedString(
-                                    "Industry_Filter_Hide_Completed_Description",
-                                    comment: "隐藏已完成、已取消、已撤销等状态的项目"
-                                )
-                            )
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        }
-                    }
-                }
-
-                // 第二个section：按项目类型过滤
+                // 按项目类型过滤
                 Section {
                     ForEach(viewModel.availableActivityTypes, id: \.self) { activityId in
                         Button(action: {

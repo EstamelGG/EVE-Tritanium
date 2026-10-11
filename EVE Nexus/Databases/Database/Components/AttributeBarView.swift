@@ -155,7 +155,17 @@ struct AttributeItemView: View {
 
     var body: some View {
         if AttributeDisplayConfig.shouldShowAttribute(attribute.id, attribute: attribute) {
-            defaultAttributeView
+            if isNavigable, let id = resolvedID {
+                NavigationLink {
+                    navigableDestination(id: id)
+                } label: {
+                    defaultAttributeView
+                        .foregroundStyle(.primary)
+                }
+            } else {
+                defaultAttributeView
+                    .attributeInfluences([attribute.id])
+            }
         }
     }
 
@@ -183,20 +193,11 @@ struct AttributeItemView: View {
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.trailing)
-        } else if isNavigable, let id = resolvedID {
-            NavigationLink {
-                navigableDestination(id: id)
-            } label: {
-                HStack {
-                    Spacer()
-                    Text(displayName)
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.trailing)
-                }
-                .frame(minWidth: 100)
-            }
-            .buttonStyle(.plain)
+        } else if isNavigable {
+            Text(displayName)
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.trailing)
         } else if let modified = formattedModifiedValue {
             Text(modified)
                 .font(.body)
@@ -228,7 +229,7 @@ struct AttributeItemView: View {
 
     private func formatTransformedValue(using attrs: [Int: Double]) -> String? {
         let result = AttributeDisplayConfig.transformValue(
-            attribute.id, allAttributes: attrs, unitID: attribute.unitID
+            attribute.id, allAttributes: attrs, unitID: attribute.unitID, applyCalculations: false
         )
         switch result {
         case let .number(value, unit):
@@ -264,7 +265,6 @@ struct AttributeGroupView: View {
 
     private var filteredAttributes: [DogmaAttribute] {
         group.attributes
-            .filter { !Self.damageAttributeIDs.contains($0.id) }
             .filter { AttributeDisplayConfig.shouldShowAttribute($0.id, attribute: $0) }
             .sorted { lhs, rhs in
                 let order1 = AttributeDisplayConfig.getAttributeOrder(attributeID: lhs.id, in: group.id)
@@ -307,6 +307,16 @@ struct AttributeGroupView: View {
                         databaseManager: databaseManager
                     )
                     .listRowInsets(attributeRowInsets)
+                }
+
+                // Keep the combined warp-speed presentation alongside its individual inputs.
+                if group.attributes.contains(where: { $0.id == 1281 }),
+                   let baseWarpSpeed = allAttributes[1281], let multiplier = allAttributes[600]
+                {
+                    AttributeMetricRow(icon: "warp_speed",
+                                       title: NSLocalizedString("Fitting_warp_speed", comment: "跃迁速度"),
+                                       value: "\(FormatUtil.format(baseWarpSpeed * multiplier)) AU/s")
+                        .listRowInsets(attributeRowInsets)
                 }
 
                 if hasMissileAttribute {
@@ -508,14 +518,13 @@ struct AttributesView: View {
                     SkillRequirementsView(
                         typeID: typeID, groupName: group.name, databaseManager: databaseManager
                     )
-                } else {
-                    AttributeGroupView(
-                        group: group,
-                        allAttributes: allAttributes,
-                        typeID: typeID,
-                        databaseManager: databaseManager
-                    )
                 }
+                AttributeGroupView(
+                    group: group,
+                    allAttributes: allAttributes,
+                    typeID: typeID,
+                    databaseManager: databaseManager
+                )
                 // 紧跟在 id==34 的属性分组之后展示舰载机能力概览
                 if group.id == Self.fighterAbilitiesGroupID && !fighterAbilities.isEmpty {
                     FighterAbilitiesSection(abilities: fighterAbilities)

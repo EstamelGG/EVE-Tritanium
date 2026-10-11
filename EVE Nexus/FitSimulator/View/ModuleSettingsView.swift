@@ -170,7 +170,7 @@ struct ModuleSettingsView: View {
 
     /// 计算属性：是否已应用突变（即是否有突变属性值）
     private var hasAppliedMutation: Bool {
-        return !module.mutatedAttributes.isEmpty
+        return !(viewModel.simulationInput.modules.first { $0.flag == slotFlag }?.mutatedAttributes.isEmpty ?? true)
     }
 
     /// 计算属性：是否有临时选择的突变质体（但未设置属性值）
@@ -262,7 +262,8 @@ struct ModuleSettingsView: View {
                             NavigationLink(
                                 destination: ShowItemInfo(
                                     databaseManager: databaseManager, itemID: currentModuleID,
-                                    modifiedAttributes: currentModule?.attributes
+                                    modifiedAttributes: currentModule?.attributes,
+                                    fittingContext: viewModel.simulationOutput?.attributeContext(for: currentModule?.instanceId)
                                 )
                             ) {
                                 Text(NSLocalizedString("View_Details", comment: ""))
@@ -469,8 +470,7 @@ struct ModuleSettingsView: View {
                        let actualForSpool = viewModel.simulationInput.modules.first(where: {
                            $0.flag == slotFlag
                        }),
-                       actualForSpool.attributes[2734] != nil
-                       || actualForSpool.attributesByName["damageMultiplierBonusMax"] != nil
+                       actualForSpool.supportsSpoolUp
                     {
                         Section {
                             Toggle(
@@ -514,7 +514,8 @@ struct ModuleSettingsView: View {
                                     destination: ShowItemInfo(
                                         databaseManager: databaseManager, itemID: charge.typeId,
                                         modifiedAttributes: currentOutputModule?.charge?
-                                            .attributes
+                                            .attributes,
+                                        fittingContext: viewModel.simulationOutput?.attributeContext(for: currentOutputModule?.charge?.instanceId)
                                     )
                                 ) {
                                     Text(NSLocalizedString("View_Details", comment: ""))
@@ -712,6 +713,23 @@ struct ModuleSettingsView: View {
                     let newState = availableModuleStates.max() ?? 0
                     selectedModuleState = newState
                     viewModel.updateModuleStatus(flag: slotFlag, newStatus: newState)
+                }
+            }
+        }
+        .onChange(of: currentModuleID) { _, _ in
+            // A variant replacement must not retain the previous module's mutation editor state.
+            showingMutationEditor = false
+            selectedMutaplasmidID = nil
+            selectedMutaplasmidInfo = nil
+            mutaplasmidAttributes = []
+            if let currentModule = viewModel.simulationInput.modules.first(where: { $0.flag == slotFlag }),
+               !currentModule.mutatedAttributes.isEmpty,
+               let mutaplasmidID = currentModule.selectedMutaplasmidID
+            {
+                selectedMutaplasmidID = mutaplasmidID
+                loadMutaplasmidInfo(mutaplasmidID: mutaplasmidID)
+                for index in mutaplasmidAttributes.indices {
+                    mutaplasmidAttributes[index].currentValue = currentModule.mutatedAttributes[mutaplasmidAttributes[index].attributeID]
                 }
             }
         }
@@ -1052,7 +1070,7 @@ struct ChargeSelectionView: View {
                 Section(header: Text(NSLocalizedString("Fitting_Cargo_Ammo", comment: "货舱中的弹药"))) {
                     ForEach(cargoAmmoDbItems, id: \.id) { item in
                         HStack {
-                            DatabaseListItemView(item: item, showDetails: true)
+                            DatabaseListItemView(item: item, showDetails: true, showBaseDamage: true)
                             Spacer()
                         }
                         .contentShape(Rectangle())
@@ -1081,7 +1099,8 @@ struct ChargeSelectionView: View {
                                 DatabaseListItemView(
                                     item: item,
                                     showDetails: true,
-                                    showCargoIndicator: cargoTypeIds.contains(item.id)
+                                    showCargoIndicator: cargoTypeIds.contains(item.id),
+                                    showBaseDamage: true
                                 )
                                 Spacer()
                             }

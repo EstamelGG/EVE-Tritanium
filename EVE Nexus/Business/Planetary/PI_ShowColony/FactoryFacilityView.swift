@@ -2,6 +2,7 @@ import SwiftUI
 
 /// 工厂设施视图
 struct FactoryFacilityView: View {
+    @Environment(\.locale) private var displayLocale
     let pin: PlanetaryPin
     let simulatedPin: Pin.Factory?
     let typeNames: [Int: String]
@@ -10,6 +11,7 @@ struct FactoryFacilityView: View {
     let typeEnNames: [Int: String]
     let schematic: SchematicInfo?
     let currentTime: Date
+    var isLive: Bool = true
 
     /// 获取工厂类型对应的进度条颜色
     private var factoryProgressColor: Color {
@@ -65,10 +67,11 @@ struct FactoryFacilityView: View {
                                 factory: simPin, currentTime: currentTime
                             )
 
-                            ProgressView(value: progress)
-                                .progressViewStyle(.linear)
-                                .frame(height: 6)
-                                .tint(factoryProgressColor)
+                            PulsingProgressBar(
+                                progress: progress,
+                                color: factoryProgressColor,
+                                showPulse: isLive && simPin.isActive
+                            )
 
                             if simPin.isActive, let lastCycleStartTime = simPin.lastCycleStartTime {
                                 let cycleEndTime = lastCycleStartTime.addingTimeInterval(
@@ -85,8 +88,10 @@ struct FactoryFacilityView: View {
                                         .font(.caption)
                                         .fontWeight(.semibold)
                                         .foregroundColor(.secondary)
-                                    Text(FormatUtil.formatSimulatedDuration(timeRemaining))
-                                        .font(.caption)
+                                    let remainingText = FormatUtil.formatSimulatedDuration(max(0, timeRemaining))
+                                    Text(remainingText)
+                                        .modifier(NumericTimeTransition(text: remainingText, countsDown: true, isEnabled: isLive))
+                                        .font(.system(.caption, design: .monospaced))
                                         .foregroundColor(.secondary)
                                 }
                             } else if simPin.hasEnoughInputs() {
@@ -101,10 +106,7 @@ struct FactoryFacilityView: View {
                                     .foregroundColor(.blue)
                             }
                         } else {
-                            ProgressView(value: 0)
-                                .progressViewStyle(.linear)
-                                .frame(height: 6)
-                                .tint(.gray)
+                            PulsingProgressBar(progress: 0, color: .gray, showPulse: false)
                             Text(NSLocalizedString("Factory_No_Recipe", comment: ""))
                                 .font(.caption)
                                 .fontWeight(.semibold)
@@ -113,10 +115,7 @@ struct FactoryFacilityView: View {
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 2) {
-                        ProgressView(value: 0)
-                            .progressViewStyle(.linear)
-                            .frame(height: 6)
-                            .tint(.gray)
+                        PulsingProgressBar(progress: 0, color: .gray, showPulse: false)
                         Text(NSLocalizedString("Factory_No_Recipe", comment: ""))
                             .font(.caption)
                             .fontWeight(.semibold)
@@ -197,7 +196,7 @@ struct FactoryFacilityView: View {
                                     NSLocalizedString("Factory_Inventory", comment: "")
                                         + " \(currentAmount)/\(input.value)"
                                 )
-                                .font(.caption)
+                                .font(.system(.caption, design: .monospaced))
                                 .foregroundColor(
                                     currentAmount >= input.value
                                         ? .secondary : currentAmount > 0 ? .blue : .red
@@ -210,7 +209,7 @@ struct FactoryFacilityView: View {
                                     NSLocalizedString("Factory_Inventory", comment: "")
                                         + " \(currentAmount)/\(input.value)"
                                 )
-                                .font(.caption)
+                                .font(.system(.caption, design: .monospaced))
                                 .foregroundColor(
                                     currentAmount >= input.value
                                         ? .secondary : currentAmount > 0 ? .blue : .red
@@ -220,7 +219,6 @@ struct FactoryFacilityView: View {
                     }
                 }
             }
-            .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
 
             // 输出物品
             NavigationLink(
@@ -250,13 +248,12 @@ struct FactoryFacilityView: View {
                             )
                             Spacer()
                             Text("× \(schematic.outputValue)")
-                                .font(.subheadline)
+                                .font(.system(.subheadline, design: .monospaced))
                                 .foregroundColor(.secondary)
                         }
                     }
                 }
             }
-            .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
         }
     }
 

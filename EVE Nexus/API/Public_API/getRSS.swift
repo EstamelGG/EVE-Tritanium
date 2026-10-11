@@ -22,11 +22,7 @@ struct RSSItem: Identifiable, Codable {
     /// 格式化的发布日期
     var formattedDate: String {
         guard let date = pubDate else { return "未知时间" }
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        formatter.locale = Locale.current
-        return formatter.string(from: date)
+        return FormatUtil.formatDate(date, dateStyle: .medium, timeStyle: .short)
     }
 
     /// 清理HTML标签的描述文本

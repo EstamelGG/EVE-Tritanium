@@ -191,7 +191,8 @@ class CharacterPlanetaryAPI {
         // 使用fetchWithToken发起请求
         let data = try await NetworkManager.shared.fetchDataWithToken(
             from: url,
-            characterId: characterId
+            characterId: characterId,
+            forceRefresh: forceRefresh
         )
         Logger.debug("Fetched from Network.")
         // 解析数据
@@ -223,7 +224,8 @@ class CharacterPlanetaryAPI {
         // 使用fetchWithToken发起请求
         let data = try await NetworkManager.shared.fetchDataWithToken(
             from: url,
-            characterId: characterId
+            characterId: characterId,
+            forceRefresh: forceRefresh
         )
         Logger.debug("Fetched from Network.")
         // 解析数据
@@ -259,7 +261,8 @@ class CharacterPlanetaryAPI {
         // 使用fetchWithToken发起请求
         let data = try await NetworkManager.shared.fetchDataWithToken(
             from: url,
-            characterId: characterId
+            characterId: characterId,
+            forceRefresh: forceRefresh
         )
         Logger.debug("Fetched from Network.")
         // 解析数据

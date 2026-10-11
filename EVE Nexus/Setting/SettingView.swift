@@ -244,6 +244,8 @@ struct SettingView: View {
 
     // MARK: - 属性定义
 
+    @AppStorage("selectedTimeZone") private var selectedTimeZone = "local"
+    @State private var showingTimeZoneView = false
     @AppStorage("selectedTheme") private var selectedTheme: String = "system"
     @AppStorage("enableLogging") private var enableLogging: Bool = false
     @State private var showingCleanCacheAlert = false
@@ -251,6 +253,8 @@ struct SettingView: View {
     @State private var showingLanguageView = false
     @State private var cacheSize: String = NSLocalizedString("Misc_Calculating", comment: "")
     @ObservedObject var databaseManager: DatabaseManager
+    var isLaboratory = false
+    @State private var showingLaboratory = false
     @State private var isCleaningCache = false
     @State private var isCleaningCharacterDatabase = false
     @State private var isResettingSDE = false
@@ -373,16 +377,37 @@ struct SettingView: View {
     }
 
     private func updateSettingGroups() {
-        settingGroups = [
-            createAppearanceGroup(),
-            createCorporationAffairsGroup(),
-            createMarketStructureGroup(),
-            createFittingSimulationGroup(),
-            createOthersGroup(),
-            createLogsGroup(),
-            createCacheGroup(),
-            createSDEResetGroup(),
-        ]
+        if isLaboratory {
+            settingGroups = [
+                createDiagnosticsGroup(),
+                createLogsGroup(),
+                createDataRepairGroup(),
+            ]
+        } else {
+            settingGroups = [
+                createAppearanceGroup(),
+                createCorporationAffairsGroup(),
+                createMarketStructureGroup(),
+                createFittingSimulationGroup(),
+                createOthersGroup(),
+                createCacheGroup(),
+                createLaboratoryGroup(),
+            ]
+        }
+    }
+
+    private func createLaboratoryGroup() -> SettingGroup {
+        SettingGroup(
+            header: NSLocalizedString("Main_Setting_Laboratory", comment: "实验室"),
+            items: [
+                SettingItem(
+                    title: NSLocalizedString("Main_Setting_Laboratory_Settings", comment: "实验室设置"),
+                    detail: NSLocalizedString("Main_Setting_Laboratory_Detail", comment: "诊断、调试与数据修复"),
+                    icon: "chevron.right",
+                    action: { showingLaboratory = true }
+                ),
+            ]
+        )
     }
 
     // MARK: - 设置组创建函数
@@ -403,6 +428,14 @@ struct SettingView: View {
                     detail: NSLocalizedString("Main_Setting_Select_your_language", comment: ""),
                     icon: "translate",
                     action: { showingLanguageView = true }
+                ),
+                SettingItem(
+                    title: NSLocalizedString("Main_Setting_TimeZone", comment: ""),
+                    detail: selectedTimeZone == "utc"
+                        ? NSLocalizedString("Main_Setting_TimeZone_EVE", comment: "")
+                        : TimeZoneSettingsView.currentTimeZoneDescription,
+                    icon: "globe",
+                    action: { showingTimeZoneView = true }
                 ),
             ]
         )
@@ -524,7 +557,7 @@ struct SettingView: View {
     #endif
 
     private func createOthersGroup() -> SettingGroup {
-        var items = [
+        let items = [
             SettingItem(
                 title: NSLocalizedString("Main_Setting_Notification_Manage", comment: ""),
                 detail: NSLocalizedString("Main_Setting_Notification_Manage_Detail", comment: ""),
@@ -532,6 +565,24 @@ struct SettingView: View {
                 iconColor: .blue,
                 action: { showingNotificationsManagerView = true }
             ),
+            SettingItem(
+                title: NSLocalizedString("Main_Database_Attribute_Settings", comment: "属性显示设置"),
+                detail: nil,
+                iconColor: .blue,
+                action: {}
+            ) { _ in
+                AnyView(ShowImportantAttributesToggle())
+            },
+        ]
+
+        return SettingGroup(
+            header: NSLocalizedString("Main_Setting_Others", comment: ""),
+            items: items
+        )
+    }
+
+    private func createDiagnosticsGroup() -> SettingGroup {
+        var items = [
             SettingItem(
                 title: NSLocalizedString("Main_Setting_ESI_Status", comment: ""),
                 detail: NSLocalizedString("Main_Setting_ESI_Status_Detail", comment: ""),
@@ -553,14 +604,6 @@ struct SettingView: View {
                 iconColor: .orange,
                 action: { showingEVEStatusIncidentsView = true }
             ),
-            SettingItem(
-                title: NSLocalizedString("Main_Database_Attribute_Settings", comment: "属性显示设置"),
-                detail: nil,
-                iconColor: .blue,
-                action: {}
-            ) { _ in
-                AnyView(ShowImportantAttributesToggle())
-            },
         ]
 
         #if DEBUG
@@ -577,9 +620,21 @@ struct SettingView: View {
         #endif
 
         return SettingGroup(
-            header: NSLocalizedString("Main_Setting_Others", comment: ""),
+            header: NSLocalizedString("Main_Setting_Diagnostics", comment: "诊断与实验"),
             items: items
         )
+    }
+
+    private struct FittingCollapseModulesToggle: View {
+        @AppStorage(AppConfiguration.Fitting.collapseIdenticalModulesKey) private var isEnabled = false
+
+        var body: some View {
+            Toggle(isOn: $isEnabled) {
+                Text(NSLocalizedString("Fitting_Default_Collapse_Modules", comment: "默认折叠相同装备"))
+                    .font(.system(size: 16))
+                    .foregroundColor(.primary)
+            }
+        }
     }
 
     private func createFittingSimulationGroup() -> SettingGroup {
@@ -593,6 +648,12 @@ struct SettingView: View {
                     iconColor: .blue,
                     action: { showingFittingDefaultSkillView = true }
                 ),
+                SettingItem(
+                    title: NSLocalizedString("Fitting_Default_Collapse_Modules", comment: "默认折叠相同装备"),
+                    action: {}
+                ) { _ in
+                    FittingCollapseModulesToggle()
+                },
             ]
         )
     }
@@ -683,7 +744,7 @@ struct SettingView: View {
     }
 
     private func createCacheGroup() -> SettingGroup {
-        var items: [SettingItem] = [
+        let items: [SettingItem] = [
             SettingItem(
                 title: NSLocalizedString("Main_Setting_Clean_Cache", comment: ""),
                 detail: cacheSize,
@@ -697,6 +758,14 @@ struct SettingView: View {
             ),
         ]
 
+        return SettingGroup(
+            header: NSLocalizedString("Main_Setting_Cache", comment: ""),
+            items: items
+        )
+    }
+
+    private func createDataRepairGroup() -> SettingGroup {
+        var items: [SettingItem] = []
         // 只有在启用调试模式（日志）时才显示清理人物数据按钮
         if enableLogging {
             items.append(
@@ -714,8 +783,9 @@ struct SettingView: View {
             )
         }
 
+        items.append(contentsOf: createSDEResetGroup().items)
         return SettingGroup(
-            header: NSLocalizedString("Main_Setting_Cache", comment: ""),
+            header: NSLocalizedString("Main_Setting_Data_Repair", comment: "数据修复"),
             items: items
         )
     }
@@ -823,6 +893,13 @@ struct SettingView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .navigationDestination(isPresented: $showingLaboratory) {
+            // 类型擦除避免共享页面容器的递归泛型展开。
+            AnyView(SettingView(databaseManager: databaseManager, isLaboratory: true))
+        }
+        .navigationDestination(isPresented: $showingTimeZoneView) {
+            TimeZoneSettingsView()
+        }
         .navigationDestination(isPresented: $showingLanguageView) {
             SelectLanguageView(databaseManager: databaseManager)
         }
@@ -898,12 +975,19 @@ struct SettingView: View {
             // 立即显示骨架界面（此时 cacheSize 是 "计算中..."）
             updateSettingGroups()
             // 在后台异步计算缓存大小
-            updateAllData()
+            if !isLaboratory {
+                updateAllData()
+            }
         }
         .onReceive(
             NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
         ) { _ in
-            updateAllData() // 从后台返回时更新
+            if !isLaboratory {
+                updateAllData()
+            } // 从后台返回时更新
+        }
+        .onChange(of: selectedTimeZone) { _, _ in
+            updateSettingGroups()
         }
         .onChange(of: selectedTheme) { _, _ in
             updateSettingGroups() // 主题改变时更新
@@ -911,7 +995,9 @@ struct SettingView: View {
         .onChange(of: enableLogging) { _, _ in
             updateSettingGroups() // 日志开关改变时更新
         }
-        .navigationTitle(NSLocalizedString("Main_Setting_Title", comment: ""))
+        .navigationTitle(isLaboratory
+            ? NSLocalizedString("Main_Setting_Laboratory_Settings", comment: "实验室设置")
+            : NSLocalizedString("Main_Setting_Title", comment: ""))
         .fullScreenCover(isPresented: $showingLoadingView) {
             FullScreenCover(progress: unzipProgress)
         }
@@ -1646,5 +1732,55 @@ private struct TokenViewerRow: View {
         let prefix = token.prefix(8)
         let suffix = token.suffix(8)
         return "\(prefix)********\(suffix)"
+    }
+}
+
+private struct TimeZoneSettingsView: View {
+    @AppStorage("selectedTimeZone") private var selectedTimeZone = "local"
+    @Environment(\.locale) private var locale
+
+    static var currentTimeZoneDescription: String {
+        let zone = TimeZone.autoupdatingCurrent
+        let name = zone.localizedName(for: zone.isDaylightSavingTime(for: Date()) ? .daylightSaving : .standard, locale: FormatUtil.appLocale) ?? zone.identifier
+        let seconds = zone.secondsFromGMT(for: Date())
+        let offset = String(format: "UTC%@%02d:%02d", seconds >= 0 ? "+" : "−", abs(seconds) / 3600, abs(seconds) % 3600 / 60)
+        return "\(name) · \(offset)"
+    }
+
+    var body: some View {
+        List {
+            Section {
+                option("local", title: NSLocalizedString("Main_Setting_TimeZone_Current", comment: ""), detail: Self.currentTimeZoneDescription)
+                option("utc", title: NSLocalizedString("Main_Setting_TimeZone_EVE", comment: ""), detail: nil)
+            } footer: {
+                Text(NSLocalizedString("Main_Setting_TimeZone_Footer", comment: ""))
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle(NSLocalizedString("Main_Setting_TimeZone", comment: ""))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func option(_ value: String, title: String, detail: String?) -> some View {
+        Button {
+            selectedTimeZone = value
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).foregroundStyle(.primary)
+                    if let detail {
+                        Text(detail).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                if selectedTimeZone == value {
+                    Image(systemName: "checkmark").foregroundStyle(.blue).fontWeight(.semibold)
+                }
+            }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selectedTimeZone == value ? .isSelected : [])
     }
 }

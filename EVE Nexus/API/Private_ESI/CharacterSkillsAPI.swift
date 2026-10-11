@@ -50,7 +50,7 @@ public struct CharacterSkillsResponse: Codable {
 }
 
 /// 技能队列项目
-public struct SkillQueueItem: Codable, Identifiable {
+public struct SkillQueueItem: Codable, Identifiable, Equatable {
     public let queue_position: Int
     public let skill_id: Int
     public let finished_level: Int
@@ -89,6 +89,10 @@ public struct SkillQueueItem: Codable, Identifiable {
 
     /// 计算训练进度
     public var progress: Double {
+        progress(at: Date())
+    }
+
+    public func progress(at now: Date) -> Double {
         guard let startDate = start_date,
               let finishDate = finish_date,
               let trainingStartSp = training_start_sp,
@@ -97,8 +101,6 @@ public struct SkillQueueItem: Codable, Identifiable {
         else {
             return 0
         }
-
-        let now = Date()
 
         // 如果还没开始训练，进度为0
         if now < startDate {
@@ -112,6 +114,7 @@ public struct SkillQueueItem: Codable, Identifiable {
 
         // 正在训练中：使用基于时间的进度计算
         let totalTrainingTime = finishDate.timeIntervalSince(startDate)
+        guard totalTrainingTime > 0, levelEndSp > levelStartSp else { return 0 }
         let trainedTime = now.timeIntervalSince(startDate)
         let timeProgress = trainedTime / totalTrainingTime
 
@@ -126,7 +129,7 @@ public struct SkillQueueItem: Codable, Identifiable {
         let levelCurrentSP = currentSP - Double(levelStartSp) // 在该等级已获得的技能点
         let levelTotalSP = Double(levelEndSp - levelStartSp) // 该等级需要的总技能点
 
-        return levelCurrentSP / levelTotalSP
+        return min(max(levelCurrentSP / levelTotalSP, 0), 1)
     }
 }
 
@@ -200,10 +203,10 @@ public class CharacterSkillsAPI {
         return decoder
     }
 
-    private func loadDiskBundle(characterId: Int) -> CharacterSkillsDiskBundle? {
+    private func loadDiskBundle(characterId: Int, allowExpired: Bool = false) -> CharacterSkillsDiskBundle? {
         let bundlePath = getSkillsBundleCacheFilePath(characterId: characterId)
         if FileManager.default.fileExists(atPath: bundlePath.path) {
-            if isCacheFileValid(at: bundlePath) {
+            if allowExpired || isCacheFileValid(at: bundlePath) {
                 do {
                     let jsonData = try Data(contentsOf: bundlePath)
                     let bundle = try makeJSONDecoderForBundle().decode(CharacterSkillsDiskBundle.self, from: jsonData)
@@ -258,8 +261,8 @@ public class CharacterSkillsAPI {
         loadSkillsFromCache(characterId: characterId)
     }
 
-    public func loadSkillsAndQueueFromCacheIfAvailable(characterId: Int) -> (skills: CharacterSkillsResponse, queue: [SkillQueueItem])? {
-        guard let bundle = loadDiskBundle(characterId: characterId),
+    public func loadSkillsAndQueueFromCacheIfAvailable(characterId: Int, allowExpired: Bool = false) -> (skills: CharacterSkillsResponse, queue: [SkillQueueItem])? {
+        guard let bundle = loadDiskBundle(characterId: characterId, allowExpired: allowExpired),
               let skills = bundle.skills,
               let queue = bundle.queue
         else {

@@ -230,7 +230,7 @@ struct ShipFittingDronesView: View {
                     .onTapGesture {
                         selectedDrone.droneTypeId = drone.typeId
                         showingDroneSettings = true
-                        Logger.info("点击了无人机: \(drone.name), ID: \(drone.typeId)")
+                        // Logger.info("点击了无人机: \(drone.name), ID: \(drone.typeId)")
                     }
                 }
                 .onDelete { indexSet in

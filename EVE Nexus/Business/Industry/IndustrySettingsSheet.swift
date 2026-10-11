@@ -7,6 +7,27 @@ struct IndustrySettingsSheet: View {
     var body: some View {
         NavigationView {
             Form {
+                // 项目显示设置
+                Section {
+                    Toggle(isOn: $viewModel.hideCompletedAndCancelled) {
+                        VStack(alignment: .leading) {
+                            Text(
+                                NSLocalizedString(
+                                    "Industry_Filter_Hide_Completed", comment: "隐藏已交付和已取消的项目"
+                                )
+                            )
+                            Text(
+                                NSLocalizedString(
+                                    "Industry_Filter_Hide_Completed_Description",
+                                    comment: "隐藏已完成、已取消、已撤销等状态的项目"
+                                )
+                            )
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
                 Section {
                     Toggle(isOn: $viewModel.multiCharacterMode) {
                         VStack(alignment: .leading) {

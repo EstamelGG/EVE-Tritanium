@@ -95,11 +95,9 @@ final class CorpWalletTransactionsViewModel: ObservableObject {
         return formatter
     }()
 
-    private let calendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.current // 使用本地时区
-        return calendar
-    }()
+    private var calendar: Calendar {
+        FormatUtil.appCalendar
+    }
 
     init(characterId: Int, division: Int, databaseManager: DatabaseManager) {
         self.characterId = characterId
@@ -158,7 +156,7 @@ final class CorpWalletTransactionsViewModel: ObservableObject {
         for entry in entries {
             // 创建唯一键：时间（精确到分钟）+ 物品ID + 买卖类型 + 地点ID
             let dateComponents = dateFormatter.date(from: entry.date) ?? Date()
-            let calendar = Calendar.current
+            let calendar = FormatUtil.appCalendar
             let minuteComponents = calendar.dateComponents(
                 [.year, .month, .day, .hour, .minute], from: dateComponents
             )
@@ -177,6 +175,22 @@ final class CorpWalletTransactionsViewModel: ObservableObject {
                 let maxId2 = $1.originalEntries.map { $0.transaction_id }.max() ?? 0
                 return maxId1 > maxId2
             }
+    }
+
+    /// Rebuild display groups from loaded entries without fetching or changing timestamps.
+    func regroupForTimeZone() {
+        let entries = transactionGroups.flatMap { $0.entries }
+        let grouped = Dictionary(grouping: entries) { entry in
+            calendar.startOfDay(for: FormatUtil.parseUTCDate(entry.date) ?? .distantPast)
+        }
+        transactionGroups = grouped.map { date, entries in
+            let sortedEntries = entries.sorted { $0.transaction_id > $1.transaction_id }
+            return CorpWalletTransactionGroup(
+                date: date,
+                entries: sortedEntries,
+                mergedEntries: mergeSimilarTransactions(sortedEntries)
+            )
+        }.sorted { $0.date > $1.date }
     }
 
     func loadTransactionData(forceRefresh: Bool = false) async {
@@ -296,6 +310,7 @@ final class CorpWalletTransactionsViewModel: ObservableObject {
 
 /// 军团交易记录设置视图
 struct CorpWalletTransactionSettingsView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @ObservedObject var viewModel: CorpWalletTransactionsViewModel
     @Environment(\.dismiss) private var dismiss
 
@@ -333,17 +348,10 @@ struct CorpWalletTransactionSettingsView: View {
 
 /// 特定日期的交易记录详情视图
 struct CorpWalletTransactionDayDetailView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let group: CorpWalletTransactionGroup
     let viewModel: CorpWalletTransactionsViewModel
     let currentCharacter: EVECharacterInfo?
-
-    private let displayDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone(identifier: "UTC")!
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter
-    }()
 
     var body: some View {
         List {
@@ -358,11 +366,12 @@ struct CorpWalletTransactionDayDetailView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle(displayDateFormatter.string(from: group.date))
+        .navigationTitle(FormatUtil.displayDateKey(group.date))
     }
 }
 
 struct CorpWalletTransactionsView: View {
+    @Environment(\.timeZone) private var displayTimeZone
     @ObservedObject var viewModel: CorpWalletTransactionsViewModel
     @Binding var selectedTab: WalletTab
     @State private var currentCharacter: EVECharacterInfo?
@@ -467,7 +476,7 @@ struct CorpWalletTransactionsView: View {
                                         Text(
                                             "\(netProfit >= 0 ? "+" : "")\(FormatUtil.formatISK(netProfit))"
                                         )
-                                        .font(.caption)
+                                        .font(.system(.caption, design: .monospaced))
                                         .foregroundColor(
                                             netProfit > 0 ? .green : netProfit < 0 ? .red : .secondary
                                         )
@@ -481,7 +490,7 @@ struct CorpWalletTransactionsView: View {
                                         Text(
                                             "\(netProfit >= 0 ? "+" : "")\(FormatUtil.formatISK(netProfit))"
                                         )
-                                        .font(.caption)
+                                        .font(.system(.caption, design: .monospaced))
                                         .foregroundColor(
                                             netProfit > 0 ? .green : netProfit < 0 ? .red : .secondary
                                         )
@@ -494,6 +503,9 @@ struct CorpWalletTransactionsView: View {
                     }
                 }
             }
+        }
+        .onChange(of: displayTimeZone.identifier) { _, _ in
+            viewModel.regroupForTimeZone()
         }
         .listStyle(.insetGrouped)
         .refreshable {
@@ -512,6 +524,7 @@ struct CorpWalletTransactionsView: View {
 }
 
 struct CorpWalletTransactionEntryRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let entry: CorpWalletTransactionEntry
     let viewModel: CorpWalletTransactionsViewModel
     let currentCharacter: EVECharacterInfo?
@@ -520,14 +533,6 @@ struct CorpWalletTransactionEntryRow: View {
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
-        formatter.timeZone = TimeZone(identifier: "UTC")!
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter
-    }()
-
-    private let timeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss"
         formatter.timeZone = TimeZone(identifier: "UTC")!
         formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter
@@ -596,7 +601,7 @@ struct CorpWalletTransactionEntryRow: View {
                         Spacer()
                         if let date = dateFormatter.date(from: entry.date) {
                             Text(
-                                "\(timeFormatter.string(from: date))"
+                                "\(FormatUtil.formatTime(date))"
                             )
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -657,6 +662,7 @@ struct CorpWalletTransactionEntryRow: View {
 
 /// 合并军团交易记录行视图
 struct CorpMergedTransactionEntryRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let entry: CorpMergedTransactionEntry
     let viewModel: CorpWalletTransactionsViewModel
     let currentCharacter: EVECharacterInfo?
@@ -666,14 +672,6 @@ struct CorpMergedTransactionEntryRow: View {
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
-        formatter.timeZone = TimeZone(identifier: "UTC")!
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter
-    }()
-
-    private let timeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss"
         formatter.timeZone = TimeZone(identifier: "UTC")!
         formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter
@@ -742,7 +740,7 @@ struct CorpMergedTransactionEntryRow: View {
                         Spacer()
                         if let date = dateFormatter.date(from: entry.date) {
                             Text(
-                                "\(timeFormatter.string(from: date))"
+                                "\(FormatUtil.formatTime(date))"
                             )
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -839,6 +837,7 @@ struct CorpMergedTransactionEntryRow: View {
 
 /// 军团交易对象列表 Sheet
 struct CorpTransactionClientListSheet: View {
+    @Environment(\.timeZone) private var displayTimeZone
     let entry: CorpMergedTransactionEntry
     let currentCharacter: EVECharacterInfo?
     @Environment(\.dismiss) private var dismiss

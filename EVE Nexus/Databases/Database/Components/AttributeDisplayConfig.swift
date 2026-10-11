@@ -87,6 +87,10 @@ enum AttributeDisplayConfig {
         resistanceGroups.flatMap(\.allIDs)
     )
 
+    static func isResistanceAttribute(_ id: Int) -> Bool {
+        resistanceAttributeIDs.contains(id)
+    }
+
     /// 运算符类型
     enum Operation: String {
         case add = "+"
@@ -204,9 +208,6 @@ enum AttributeDisplayConfig {
 
     /// 判断具体属性是否应该显示
     static func shouldShowAttribute(_ attributeID: Int, attribute: DogmaAttribute) -> Bool {
-        if resistanceAttributeIDs.contains(attributeID) {
-            return false
-        }
         if activeHiddenAttributes.contains(attributeID) && showImportantOnly {
             return false
         }
@@ -249,7 +250,7 @@ enum AttributeDisplayConfig {
         }
     }
 
-    private static func findResistanceAttributes(groupID: Int, in allAttributes: [Int: Double])
+    static func findResistanceAttributes(groupID: Int, in allAttributes: [Int: Double])
         -> ResistanceHits?
     {
         guard let group = findResistanceGroup(for: groupID) else { return nil }
@@ -274,10 +275,16 @@ enum AttributeDisplayConfig {
     }
 
     /// 转换属性值，将数值与单位拼接
-    static func transformValue(_ attributeID: Int, allAttributes: [Int: Double], unitID: Int?)
+    static func transformValue(_ attributeID: Int, allAttributes: [Int: Double], unitID: Int?, applyCalculations: Bool = true)
         -> TransformResult
     {
-        let value = calculateValue(for: attributeID, in: allAttributes)
+        let value = applyCalculations
+            ? calculateValue(for: attributeID, in: allAttributes)
+            : (allAttributes[attributeID] ?? 0)
+
+        if !applyCalculations, isResistanceAttribute(attributeID) {
+            return .number((1 - value) * 100, "%")
+        }
 
         if let specialType = specialValueMappings[attributeID] {
             return .text(specialType.transform(value))

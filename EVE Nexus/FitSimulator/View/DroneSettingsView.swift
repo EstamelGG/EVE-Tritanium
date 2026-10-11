@@ -64,12 +64,13 @@ struct DroneSettingsView: View {
                         Spacer()
                         // 获取计算后的无人机属性
                         let currentOutputDrone = viewModel.simulationOutput?.drones.first(
-                            where: { $0.typeId == currentDroneID }
-                        )
+                            where: { $0.instanceId == drone.instanceId }
+                        ) ?? viewModel.simulationOutput?.drones.first(where: { $0.typeId == currentDroneID })
                         NavigationLink(
                             destination: ShowItemInfo(
                                 databaseManager: databaseManager, itemID: currentDroneID,
-                                modifiedAttributes: currentOutputDrone?.attributes
+                                modifiedAttributes: currentOutputDrone?.attributes,
+                                fittingContext: viewModel.simulationOutput?.attributeContext(for: currentOutputDrone?.instanceId)
                             )
                         ) {
                             Text(NSLocalizedString("View_Details", comment: ""))
@@ -463,7 +464,7 @@ struct DroneVariationSelectionView: View {
                     ) {
                         ForEach(groupedItems[metaGroupID] ?? [], id: \.id) { item in
                             HStack {
-                                DatabaseListItemView(item: item, showDetails: true)
+                                DatabaseListItemView(item: item, showDetails: true, showBaseDamage: true)
                                 Spacer()
                             }
                             .contentShape(Rectangle())

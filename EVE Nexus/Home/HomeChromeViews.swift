@@ -220,6 +220,7 @@ struct LoginButtonView: View {
 // MARK: - 克隆倒计时组件
 
 struct CloneCountdownView: View {
+    @Environment(\.locale) private var displayLocale
     let targetDate: Date?
 
     var body: some View {
@@ -229,75 +230,26 @@ struct CloneCountdownView: View {
                 let remainingTime = date.timeIntervalSince(now)
 
                 if remainingTime <= 0 {
-                    Text(NSLocalizedString("Main_Jump_Clones_Ready", comment: ""))
+                    Text("Main_Jump_Clones_Ready")
                         .font(.system(size: 12))
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
                         .lineLimit(1)
                 } else {
-                    // 转换为小时、分钟和秒
-                    let hours = Int(remainingTime) / 3600
-                    let minutes = (Int(remainingTime) % 3600) / 60
-                    let seconds = Int(remainingTime) % 60
-
-                    if hours > 0 {
-                        if minutes > 0 {
-                            Text(
-                                String(
-                                    format: NSLocalizedString(
-                                        "Main_Jump_Clones_Cooldown_Hours_Minutes_Seconds",
-                                        comment: "下次跳跃: %dh %dm %ds"
-                                    ), hours, minutes, seconds
-                                )
-                            )
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .lineLimit(1)
-                        } else {
-                            Text(
-                                String(
-                                    format: NSLocalizedString(
-                                        "Main_Jump_Clones_Cooldown_Hours_Seconds",
-                                        comment: "下次跳跃: %dh %ds"
-                                    ), hours, seconds
-                                )
-                            )
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .lineLimit(1)
-                        }
-                    } else if minutes > 0 {
-                        Text(
-                            String(
-                                format: NSLocalizedString(
-                                    "Main_Jump_Clones_Cooldown_Minutes_Seconds",
-                                    comment: "下次跳跃: %dm %ds"
-                                ), minutes, seconds
-                            )
+                    Text(
+                        String(
+                            format: NSLocalizedString("Main_Jump_Clones_Cooldown_Compact", comment: "Countdown with compact duration"),
+                            FormatUtil.formatCompactDuration(remainingTime, rounding: .ceil)
                         )
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .lineLimit(1)
-                    } else {
-                        Text(
-                            String(
-                                format: NSLocalizedString(
-                                    "Main_Jump_Clones_Cooldown_Seconds", comment: "下次跳跃: %ds"
-                                ), seconds
-                            )
-                        )
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .lineLimit(1)
-                    }
+                    )
+                    .font(.system(size: 12))
+                    .foregroundColor(.gray)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
                 }
             }
         } else {
-            Text(NSLocalizedString("Main_Jump_Clones_Ready", comment: ""))
+            Text("Main_Jump_Clones_Ready")
                 .font(.system(size: 12))
                 .foregroundColor(.gray)
                 .fixedSize(horizontal: false, vertical: true)
@@ -326,52 +278,16 @@ struct SkillQueueCountdownView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .lineLimit(1)
                 } else {
-                    // 转换为天、小时、分钟和秒
-                    let days = Int(remainingTime) / 86400
-                    let hours = (Int(remainingTime) % 86400) / 3600
-                    let minutes = (Int(remainingTime) % 3600) / 60
-                    let seconds = Int(remainingTime) % 60
-
-                    if days > 0 {
-                        Text(
-                            String(
-                                format: NSLocalizedString(
-                                    "Main_Skills_Queue_Training_Days",
-                                    comment: "训练中 - %d个技能 - %dd %dh %dm"
-                                ), skillCount, days, hours, minutes
-                            )
+                    Text(
+                        String(
+                            format: NSLocalizedString("Main_Skills_Queue_Training_Compact", comment: "Countdown with compact duration"),
+                            skillCount, FormatUtil.formatCompactDuration(remainingTime, rounding: .ceil)
                         )
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .lineLimit(1)
-                    } else if hours > 0 {
-                        Text(
-                            String(
-                                format: NSLocalizedString(
-                                    "Main_Skills_Queue_Training_Hours",
-                                    comment: "训练中 - %d个技能 - %dh %dm %ds"
-                                ), skillCount, hours, minutes, seconds
-                            )
-                        )
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .lineLimit(1)
-                    } else {
-                        Text(
-                            String(
-                                format: NSLocalizedString(
-                                    "Main_Skills_Queue_Training_Minutes",
-                                    comment: "训练中 - %d个技能 - %dm %ds"
-                                ), skillCount, minutes, seconds
-                            )
-                        )
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .lineLimit(1)
-                    }
+                    )
+                    .font(.system(size: 12))
+                    .foregroundColor(.gray)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
                 }
             }
         } else if skillCount > 0 {

@@ -412,21 +412,14 @@ struct ContractDetailSheetItem: Identifiable {
 }
 
 struct ContractDetailView: View {
+    @Environment(\.timeZone) private var displayTimeZone
+    @Environment(\.locale) private var displayLocale
     let contract: ContractInfo
     @StateObject private var viewModel: ContractDetailViewModel
     @State private var isRefreshing = false
     @State private var hasLoadedInitialData = false
     @State private var currentCharacter: EVECharacterInfo?
     @State private var detailSheetItem: ContractDetailSheetItem?
-
-    /// 添加日期格式化器作为实例属性
-    private let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        formatter.timeZone = TimeZone.current
-        formatter.locale = Locale.current
-        return formatter
-    }()
 
     init(
         characterId: Int, contract: ContractInfo, databaseManager: DatabaseManager,
@@ -702,7 +695,7 @@ struct ContractDetailView: View {
                         // 合同发布日期
                         VStack(alignment: .leading, spacing: 2) {
                             Text(NSLocalizedString("Contract_Date_Issued", comment: "发布日期"))
-                            Text("\(dateFormatter.string(from: contract.date_issued))")
+                            Text("\(FormatUtil.formatDate(contract.date_issued, pattern: "yyyy-MM-dd HH:mm:ss"))")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -714,7 +707,7 @@ struct ContractDetailView: View {
                                 Text(NSLocalizedString("Contract_Date_Expired", comment: "过期日期"))
 
                                 let expiredText =
-                                    "\(dateFormatter.string(from: contract.date_expired))"
+                                    "\(FormatUtil.formatDate(contract.date_expired, pattern: "yyyy-MM-dd HH:mm:ss"))"
 
                                 // 计算剩余天数
                                 let remainingDays =
@@ -756,7 +749,7 @@ struct ContractDetailView: View {
                                             "Contract_Date_Completed", comment: "完成日期"
                                         )
                                     )
-                                    Text("\(dateFormatter.string(from: dateCompleted))")
+                                    Text("\(FormatUtil.formatDate(dateCompleted, pattern: "yyyy-MM-dd HH:mm:ss"))")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -890,6 +883,8 @@ struct ContractDetailView: View {
 }
 
 struct ContractItemRow: View {
+    @Environment(\.timeZone) private var displayTimeZone
+    @Environment(\.locale) private var displayLocale
     let item: ContractItemInfo
     let itemDetails: (name: String, description: String, iconFileName: String)
     let databaseManager: DatabaseManager

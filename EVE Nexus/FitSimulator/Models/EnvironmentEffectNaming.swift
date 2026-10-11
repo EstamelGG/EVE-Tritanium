@@ -44,6 +44,16 @@ struct EnvironmentEffectSection: Identifiable {
 }
 
 enum EnvironmentEffectNaming {
+    static func item(for typeId: Int) -> EnvironmentEffectItem? {
+        guard let info = SDEMemoryStore.type(for: typeId),
+              let category = EnvironmentOptions.Category.allCases.first(where: {
+                  $0.typeIds(from: EnvironmentOptions.shared).contains(typeId)
+              })
+        else { return nil }
+        return makeItem(typeId: typeId, enName: info.enName, localName: info.name,
+                        iconFileName: info.iconFilename, category: category)
+    }
+
     enum AbyssalWeatherType: String, CaseIterable {
         case darkness
         case electricStorm = "electric_storm"

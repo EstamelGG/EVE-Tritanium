@@ -1,9 +1,17 @@
 import SwiftUI
 
 struct FittingSettingsView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @State private var fittingName: String = ""
+    @State private var draftFittingName = ""
+    @State private var showingRenameAlert = false
+    @State private var showingShipInfo = false
+    @State private var showingLocalSaveAlert = false
+    @State private var showingLocalSaveConfirmation = false
+    @State private var localSaveSucceeded = false
     let databaseManager: DatabaseManager
     let shipTypeID: Int
     @State private var shipItem: DatabaseListItem?
@@ -77,9 +85,6 @@ struct FittingSettingsView: View {
     private var environmentModeText: String {
         if let item = pendingEnvironmentItem {
             return item.name
-        }
-        if let effect = viewModel.simulationInput.environmentEffects.first {
-            return effect.name
         }
         return NSLocalizedString("Environment_None", comment: "无")
     }
@@ -286,31 +291,42 @@ struct FittingSettingsView: View {
 
     var body: some View {
         List {
-            Section(header: Text(NSLocalizedString("Fitting_Setting_Ship", comment: ""))) {
-                TextField(NSLocalizedString("Fitting_Name", comment: ""), text: $fittingName)
-                    .textFieldStyle(.plain)
-                    .onChange(of: fittingName) { _, newValue in
-                        var updatedData = fittingData
-                        updatedData["name"] = newValue
-                        fittingData = updatedData
-                        onNameChanged(updatedData)
+            Section(header: Text(NSLocalizedString("Fitting_Settings_Header", comment: "装配设置"))) {
+                Button {
+                    draftFittingName = fittingName
+                    showingRenameAlert = true
+                } label: {
+                    HStack {
+                        Text(fittingName.isEmpty ? NSLocalizedString("Fitting_Unnamed_Fitting", comment: "") : fittingName)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Text(NSLocalizedString("Fitting_Settings_Edit", comment: "编辑"))
+                            Image(systemName: "square.and.pencil")
+                        }
+                        .foregroundStyle(.blue)
                     }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
 
-                if let shipItem = shipItem {
-                    NavigationLink {
-                        // 获取计算后的飞船属性
-                        let shipOutputAttributes = viewModel.simulationOutput?.ship.attributes
-                        ShowItemInfo(
-                            databaseManager: databaseManager,
-                            itemID: shipTypeID,
-                            modifiedAttributes: shipOutputAttributes
-                        )
+                if let shipItem {
+                    Button {
+                        showingShipInfo = true
                     } label: {
-                        DatabaseListItemView(
-                            item: shipItem,
-                            showDetails: true
-                        )
+                        HStack {
+                            DatabaseListItemView(item: shipItem, showDetails: true)
+                            Spacer(minLength: 8)
+                            HStack(spacing: 4) {
+                                Text(NSLocalizedString("Fitting_Settings_About", comment: "关于"))
+                                Image(systemName: "info.circle")
+                            }
+                            .foregroundStyle(.blue)
+                            .fixedSize()
+                        }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
             }.listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
 
@@ -318,6 +334,8 @@ struct FittingSettingsView: View {
                 NavigationLink {
                     CharacterSkillsSelectorView(
                         databaseManager: databaseManager,
+                        selectedSkillsMode: skillsMode,
+                        selectedCharacterId: selectedCharacterId,
                         onSelectSkills: { skills, skillModeName, characterId in
                             // 更新技能模式
                             if characterId == 0 {
@@ -376,18 +394,24 @@ struct FittingSettingsView: View {
                         }
                     )
                 } label: {
-                    HStack {
+                    HStack(spacing: 12) {
                         Image("skill")
                             .resizable()
                             .frame(width: 32, height: 32)
                             .clipShape(Circle())
-                        Text(NSLocalizedString("Fitting_Skills_Mode", comment: "技能模式"))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(NSLocalizedString("Fitting_Skills_Mode", comment: "技能模式"))
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                            Text(skillModeText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
                         Spacer()
-                        Text(skillModeText)
-                            .foregroundColor(.secondary)
                     }
                 }
-            }.listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
+            }.listRowInsets(EdgeInsets(top: 8, leading: 18, bottom: 8, trailing: 18))
 
             Section(header: Text(NSLocalizedString("Fitting_Setting_Environment", comment: "环境设置"))) {
                 NavigationLink {
@@ -399,18 +423,24 @@ struct FittingSettingsView: View {
                         onCommit: commitPendingEnvironmentSelection
                     )
                 } label: {
-                    HStack {
+                    HStack(spacing: 12) {
                         Image("location")
                             .resizable()
                             .frame(width: 32, height: 32)
                             .clipShape(Circle())
-                        Text(NSLocalizedString("Fitting_Environment_Mode", comment: "天文环境"))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(NSLocalizedString("Fitting_Environment_Mode", comment: "天文环境"))
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                            Text(environmentModeText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
                         Spacer()
-                        Text(environmentModeText)
-                            .foregroundColor(.secondary)
                     }
                 }
-            }.listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
+            }.listRowInsets(EdgeInsets(top: 8, leading: 18, bottom: 8, trailing: 18))
 
             // 缺失技能（仅在使用角色技能时显示）
             if isUsingCharacterSkills {
@@ -505,25 +535,74 @@ struct FittingSettingsView: View {
                 .contentShape(Rectangle())
                 .listRowSeparator(.hidden)
             }
+
+            if onDelete != nil {
+                Section {
+                    Button(role: .destructive) {
+                        showingDeleteConfirmAlert = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isDeletingFitting {
+                                ProgressView()
+                                    .tint(.red)
+                            } else {
+                                Label(NSLocalizedString("Misc_Delete", comment: "删除"), systemImage: "trash")
+                            }
+                            Spacer()
+                        }
+                        .foregroundStyle(.red)
+                        .contentShape(Rectangle())
+                    }
+                    .listRowBackground(Color.red.opacity(0.12))
+                    .disabled(isDeletingFitting)
+                }
+            }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(NSLocalizedString("Main_Setting_Title", comment: ""))
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(isPresented: $showingShipInfo) {
+            ShowItemInfo(
+                databaseManager: databaseManager,
+                itemID: shipTypeID,
+                modifiedAttributes: viewModel.simulationOutput?.ship.attributes,
+                fittingContext: viewModel.simulationOutput?.attributeContext(for: viewModel.simulationOutput?.originalInput.ship.instanceId)
+            )
+        }
+        .background {
+            FittingNameAlert(isPresented: $showingRenameAlert, initialName: draftFittingName) { name in
+                guard name != fittingName else { return }
+                fittingName = name
+                fittingData["name"] = name
+                onNameChanged(fittingData)
+            }
+        }
+        .alert(NSLocalizedString("Fitting_Save_To_Local", comment: ""), isPresented: $showingLocalSaveConfirmation) {
+            Button(NSLocalizedString("Misc_Cancel", comment: ""), role: .cancel) {}
+            Button(NSLocalizedString("Misc_Save", comment: "")) {
+                commitPendingEnvironmentSelection()
+                localSaveSucceeded = viewModel.saveConfiguration()
+                showingLocalSaveAlert = true
+            }
+        } message: {
+            Text(NSLocalizedString("Fitting_Save_To_Local_Confirm", comment: "是否将当前装配保存到本地？"))
+        }
+        .alert(NSLocalizedString("Fitting_Save_To_Local", comment: ""), isPresented: $showingLocalSaveAlert) {
+            Button(NSLocalizedString("Common_OK", comment: "")) {}
+        } message: {
+            Text(NSLocalizedString(localSaveSucceeded ? "Fitting_Local_Save_Success" : "Fitting_Local_Save_Failed", comment: ""))
+        }
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                if onDelete != nil {
+                if case .online = viewModel.simulationInput.fittingId {
                     Button {
-                        showingDeleteConfirmAlert = true
+                        showingLocalSaveConfirmation = true
                     } label: {
-                        if isDeletingFitting {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        } else {
-                            Image(systemName: "trash")
-                                .foregroundColor(.red)
-                        }
+                        Image(systemName: "square.and.arrow.down")
+                            .foregroundStyle(.blue)
                     }
-                    .disabled(isDeletingFitting)
+                    .accessibilityLabel(NSLocalizedString("Fitting_Save_To_Local", comment: "保存到本地"))
                 }
             }
 
@@ -728,70 +807,81 @@ struct FittingSettingsView: View {
                     .padding()
                     .background(Color(.systemGroupedBackground))
 
-                    // 装备模块区域
-                    ModulesExportSection(viewModel: viewModel)
+                    // 双栏采用独立高度，按顶部对齐，避免左右互相拉伸。
+                    HStack(alignment: .top, spacing: 16) {
+                        VStack(spacing: 0) {
+                            // 装备模块区域
+                            ModulesExportSection(viewModel: viewModel)
 
-                    // 植入体区域
-                    if !viewModel.simulationInput.implants.isEmpty {
-                        Divider()
-                            .padding(.vertical, 8)
-                        ImplantsExportSection(viewModel: viewModel)
+                            // 植入体区域
+                            if !viewModel.simulationInput.implants.isEmpty {
+                                Divider()
+                                    .padding(.vertical, 4)
+                                ImplantsExportSection(viewModel: viewModel)
+                            }
+
+                            // 无人机区域
+                            if !(viewModel.simulationOutput?.drones.isEmpty ?? true) {
+                                Divider()
+                                    .padding(.vertical, 4)
+                                DronesExportSection(viewModel: viewModel)
+                            }
+
+                            // 货舱区域
+                            if !viewModel.simulationInput.cargo.items.isEmpty {
+                                Divider()
+                                    .padding(.vertical, 4)
+                                CargoExportSection(viewModel: viewModel)
+                            }
+
+                            // 舰载机区域
+                            if let fighters = viewModel.simulationOutput?.fighters, !fighters.isEmpty {
+                                Divider()
+                                    .padding(.vertical, 4)
+                                FightersExportSection(viewModel: viewModel)
+                            }
+                        }
+                        .frame(width: 440)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .overlay(alignment: .trailing) {
+                            Rectangle()
+                                .fill(Color.secondary.opacity(0.2))
+                                .frame(width: 1)
+                        }
+
+                        // 状态信息区域 - 使用原有的状态组件
+                        VStack(alignment: .leading, spacing: 12) {
+                            // 资源统计
+                            ShipResourcesStatsView(viewModel: viewModel)
+
+                            // 抗性统计
+                            ShipResistancesStatsView(viewModel: viewModel)
+
+                            // 电容统计
+                            ShipCapacitorStatsView(viewModel: viewModel)
+
+                            // 火力统计
+                            ShipFirepowerStatsView(viewModel: viewModel)
+
+                            // 维修统计
+                            ShipRepairStatsView(viewModel: viewModel)
+
+                            // 其他属性
+                            ShipMiscStatsView(viewModel: viewModel)
+
+                            // 货仓属性
+                            ShipAllCargoView(viewModel: viewModel)
+                        }
+                        .frame(width: 412)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 8)
                     }
-
-                    // 无人机区域
-                    if !(viewModel.simulationOutput?.drones.isEmpty ?? true) {
-                        Divider()
-                            .padding(.vertical, 8)
-                        DronesExportSection(viewModel: viewModel)
-                    }
-
-                    // 货舱区域
-                    if !viewModel.simulationInput.cargo.items.isEmpty {
-                        Divider()
-                            .padding(.vertical, 8)
-                        CargoExportSection(viewModel: viewModel)
-                    }
-
-                    // 舰载机区域
-                    if let fighters = viewModel.simulationOutput?.fighters, !fighters.isEmpty {
-                        Divider()
-                            .padding(.vertical, 8)
-                        FightersExportSection(viewModel: viewModel)
-                    }
-
-                    // 状态信息区域前的分割线
-                    Divider()
-                        .padding(.vertical, 8)
-
-                    // 状态信息区域 - 使用原有的状态组件
-                    VStack(spacing: 16) {
-                        // 资源统计
-                        ShipResourcesStatsView(viewModel: viewModel)
-
-                        // 抗性统计
-                        ShipResistancesStatsView(viewModel: viewModel)
-
-                        // 电容统计
-                        ShipCapacitorStatsView(viewModel: viewModel)
-
-                        // 火力统计
-                        ShipFirepowerStatsView(viewModel: viewModel)
-
-                        // 维修统计
-                        ShipRepairStatsView(viewModel: viewModel)
-
-                        // 其他属性
-                        ShipMiscStatsView(viewModel: viewModel)
-
-                        // 货仓属性
-                        ShipAllCargoView(viewModel: viewModel)
-                    }
-                    .padding(.horizontal)
+                    .padding(.horizontal, 16)
 
                     // Footer信息
                     FooterView()
                 }
-                .frame(width: 425)
+                .frame(width: 900)
                 .fixedSize(horizontal: false, vertical: true)
                 .background(Color(.systemGroupedBackground))
                 // 明确设置当前颜色模式
@@ -799,7 +889,27 @@ struct FittingSettingsView: View {
 
                 // 使用ImageRenderer渲染
                 let renderer = ImageRenderer(content: contentView)
-                renderer.scale = 4.0 // 分辨率
+                // 先获取布局尺寸，不绘制位图。长图固定 4 倍渲染可能超过
+                // 渲染或相册显示链路的纹理尺寸限制，即使保存成功也可能显示黑图。
+                var contentSize = CGSize.zero
+                renderer.render { size, _ in
+                    contentSize = size
+                }
+                guard contentSize.width.isFinite, contentSize.height.isFinite,
+                      contentSize.width > 0, contentSize.height > 0
+                else {
+                    throw NSError(
+                        domain: "FittingSettingsView", code: 2,
+                        userInfo: [NSLocalizedDescriptionKey: "图片布局尺寸无效: \(contentSize)"]
+                    )
+                }
+                let preferredScale: CGFloat = 4
+                // 保守的兼容性预算，并非所有设备的实际硬件上限。
+                let maximumPixelDimension: CGFloat = 8192
+                renderer.scale = min(
+                    preferredScale,
+                    maximumPixelDimension / max(contentSize.width, contentSize.height)
+                )
 
                 if let uiImage = renderer.uiImage {
                     // 保存到相册
@@ -886,6 +996,8 @@ struct FittingSettingsView: View {
 // MARK: - Footer视图
 
 struct FooterView: View {
+    @Environment(\.locale) private var displayLocale
+    @Environment(\.timeZone) private var displayTimeZone
     /// 获取应用版本信息
     private var appVersion: String {
         if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
@@ -896,11 +1008,7 @@ struct FooterView: View {
 
     /// 格式化当前时间
     private var currentTime: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        formatter.locale = Locale.current
-        return formatter.string(from: Date())
+        return FormatUtil.formatDate(Date(), dateStyle: .medium, timeStyle: .short)
     }
 
     var body: some View {
@@ -931,6 +1039,69 @@ struct FooterView: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 16)
+        }
+    }
+}
+
+/// Native alert text field provides an inline clear button without changing the rename flow.
+private struct FittingNameAlert: UIViewControllerRepresentable {
+    @Binding var isPresented: Bool
+    let initialName: String
+    let onSave: (String) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIViewController(context _: Context) -> UIViewController {
+        UIViewController()
+    }
+
+    func updateUIViewController(_ controller: UIViewController, context: Context) {
+        guard isPresented, context.coordinator.alert == nil else { return }
+        let coordinator = context.coordinator
+        DispatchQueue.main.async {
+            guard isPresented, controller.view.window != nil, coordinator.alert == nil else { return }
+            let alert = UIAlertController(title: NSLocalizedString("Misc_Rename", comment: ""),
+                                          message: nil, preferredStyle: .alert)
+            coordinator.alert = alert
+            alert.addTextField { field in
+                field.text = initialName
+                field.placeholder = NSLocalizedString("Fitting_Name", comment: "")
+                field.clearButtonMode = .whileEditing
+                field.delegate = coordinator
+                field.addTarget(coordinator, action: #selector(Coordinator.textChanged(_:)), for: .editingChanged)
+            }
+            alert.addAction(UIAlertAction(title: NSLocalizedString("Misc_Cancel", comment: ""), style: .cancel) { _ in
+                isPresented = false
+                coordinator.alert = nil
+            })
+            let save = UIAlertAction(title: NSLocalizedString("Misc_Save", comment: ""), style: .default) { [weak alert] _ in
+                let name = (alert?.textFields?.first?.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                isPresented = false
+                coordinator.alert = nil
+                if !name.isEmpty {
+                    onSave(name)
+                }
+            }
+            save.isEnabled = !initialName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            coordinator.saveAction = save
+            alert.addAction(save)
+            controller.present(alert, animated: true)
+        }
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        weak var alert: UIAlertController?
+        weak var saveAction: UIAlertAction?
+
+        @objc func textChanged(_ field: UITextField) {
+            saveAction?.isEnabled = !(field.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
+        func textFieldShouldClear(_: UITextField) -> Bool {
+            saveAction?.isEnabled = false
+            return true
         }
     }
 }

@@ -502,15 +502,7 @@ struct ShipFirepowerStatsView: View {
             durationWeaponDisruptionBurstProjectorMs
         )
 
-        // 获取装填时间（毫秒），默认为10000ms
-        let reloadTimeMs = module.attributesByName["reloadTime"] ?? 10000.0
-
-        // 获取弹药容量
-        let chargeSize = module.attributesByName["chargeSize"] ?? 1.0
-
-        // 转换为秒
         let cycleDuration = cycleDurationMs / 1000.0
-        let reloadTime = reloadTimeMs / 1000.0
 
         // 齐射伤害就是总伤害
         let volleyDamage = totalDamage
@@ -534,18 +526,9 @@ struct ShipFirepowerStatsView: View {
             dpsWithoutReload = 0
         }
 
-        // 计算考虑装弹的DPS
-        let dpsWithReload: Double
-        if chargeSize > 0 && cycleDuration > 0 {
-            // 完整一轮（发射所有弹药+装填）的时间
-            let fullCycleTime = (cycleDuration * chargeSize) + reloadTime
-            // 一轮内的总伤害
-            let fullCycleDamage = totalDamage * chargeSize
-            // 计算平均DPS
-            dpsWithReload = fullCycleDamage / fullCycleTime
-        } else {
-            dpsWithReload = dpsWithoutReload
-        }
+        let dpsWithReload = FittingWeaponStatistics.dpsIncludingReload(
+            volley: totalDamage, cycle: cycleDuration, module: module
+        )
 
         return WeaponDPSResult(
             emDamage: emDamage,

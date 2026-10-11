@@ -18,47 +18,7 @@ struct IndustryCountdownView: View {
             return NSLocalizedString("Industry_Status_completed", comment: "")
         }
 
-        let totalSeconds = Int(remainingTime)
-        let days = totalSeconds / (24 * 3600)
-        let hours = (totalSeconds % (24 * 3600)) / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let seconds = totalSeconds % 60
-
-        if days > 0 {
-            if hours > 0 {
-                return String(
-                    format: NSLocalizedString("Industry_Remaining_Days_Hours", comment: ""),
-                    days, hours
-                )
-            } else {
-                return String(
-                    format: NSLocalizedString("Industry_Remaining_Days", comment: ""),
-                    days
-                )
-            }
-        } else if hours > 0 {
-            if minutes > 0 {
-                return String(
-                    format: NSLocalizedString("Industry_Remaining_Hours_Minutes", comment: ""),
-                    hours, minutes
-                )
-            } else {
-                return String(
-                    format: NSLocalizedString("Industry_Remaining_Hours", comment: ""),
-                    hours
-                )
-            }
-        } else if minutes > 0 {
-            return String(
-                format: NSLocalizedString("Industry_Remaining_Minutes_Seconds", comment: "%d分%d秒"),
-                minutes, seconds
-            )
-        } else {
-            return String(
-                format: NSLocalizedString("Industry_Remaining_Seconds", comment: "%d秒"),
-                seconds
-            )
-        }
+        return FormatUtil.formatCompactDuration(remainingTime, rounding: .ceil)
     }
 }
 
@@ -72,7 +32,8 @@ struct IndustryProgressView: View {
                 progress: getProgress(at: context.date),
                 color: getProgressColor(at: context.date),
                 height: 4,
-                cornerRadius: 2
+                cornerRadius: 2,
+                showPulse: job.status == "active"
             )
         }
     }

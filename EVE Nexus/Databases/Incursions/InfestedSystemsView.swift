@@ -75,7 +75,7 @@ struct InfestedSystemsView: View {
     @StateObject private var viewModel: InfestedSystemsViewModel
     @StateObject private var iconLoader = AllianceIconLoader()
 
-    /// 入侵集结星系（行右侧以 station 图标标记）
+    /// 入侵集结星系（行右侧以 incursions 图标标记）
     private let stagingSystemId: Int
 
     init(databaseManager: DatabaseManager, systemIds: [Int], stagingSystemId: Int) {
@@ -134,7 +134,7 @@ struct InfestedSystemsView: View {
         )
         .overlay(alignment: .trailing) {
             if row.systemId == stagingSystemId {
-                Image("station")
+                Image("incursions")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 32, height: 32)

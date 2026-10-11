@@ -1,6 +1,6 @@
 import Foundation
 
-/// Step1实现 - 物品、属性和效果的采集阶段
+/// 收集参与模拟的类型与效果。属性由 SimulationInput 和 Step3 的技能初始化提供。
 class Step1 {
     private let databaseManager: DatabaseManager
 
@@ -8,284 +8,41 @@ class Step1 {
         self.databaseManager = databaseManager
     }
 
-    /// 执行Step1处理 - 物品、属性和效果的采集
-    /// - Parameter input: 模拟输入数据
-    /// - Returns: 处理后的数据，包含物品属性和效果
-    func process(input: SimulationInput) -> (
-        itemAttributes: [Int: [Int: Double]],
-        itemAttributesByName: [Int: [String: Double]],
-        itemEffects: [Int: [EffectDetail]]
-    ) {
-        Logger.info("执行Step1 - 物品、属性和效果的采集阶段")
-
-        // 1. 收集所有物品和技能的ID
-        let (itemIds, skillIds, initialAttributes, initialAttributesByName, typeInfo) =
-            collectIdsAndInitialAttributes(input: input)
-        Logger.info("收集到\(itemIds.count)个物品和\(skillIds.count)个技能")
-
-        // 记录植入体和增效剂的数量
-        Logger.info("包含\(input.implants.count)个植入体和增效剂，\(input.environmentEffects.count)个环境效果")
-
-        // 2. 收集属性和效果
-        let (attributes, attributesByName, effects) = collectAttributesAndEffects(
-            itemIds: itemIds,
-            skillIds: skillIds,
-            initialAttributes: initialAttributes,
-            initialAttributesByName: initialAttributesByName,
-            typeInfo: typeInfo,
-            characterSkills: input.characterSkills
-        )
-
-        Logger.info("Step1完成 - 物品、属性和效果采集完成，共\(attributes.count)个物品/技能")
-
-        return (attributes, attributesByName, effects)
-    }
-
-    /// 收集所有物品和技能的ID以及初始属性
-    /// - Parameter input: 模拟输入数据
-    /// - Returns: (物品ID数组, 技能ID数组, 初始属性字典, 初始属性名称字典, 类型信息)
-    private func collectIdsAndInitialAttributes(input: SimulationInput) -> (
-        [Int],
-        [Int],
-        [Int: [Int: Double]],
-        [Int: [String: Double]],
-        [Int: (name: String, groupId: Int)]
-    ) {
-        var itemIds = Set<Int>()
-        var initialAttributes: [Int: [Int: Double]] = [:]
-        var initialAttributesByName: [Int: [String: Double]] = [:]
+    func process(input: SimulationInput) -> [Int: [EffectDetail]] {
         var typeInfo: [Int: (name: String, groupId: Int)] = [:]
-
-        // 添加飞船ID和属性
-        let shipId = input.ship.typeId
-        itemIds.insert(shipId)
-        initialAttributes[shipId] = input.ship.baseAttributes
-        initialAttributesByName[shipId] = input.ship.baseAttributesByName
-        typeInfo[shipId] = (name: input.ship.name, groupId: input.ship.groupID)
-
-        // 添加角色ID和属性
-        let characterId = input.character.typeId
-        itemIds.insert(characterId)
-        initialAttributes[characterId] = input.character.baseAttributes
-        initialAttributesByName[characterId] = input.character.baseAttributesByName
-        typeInfo[characterId] = (name: "Character", groupId: 0)
-
-        // 添加所有模块ID和属性
+        func include(_ id: Int, _ name: String, _ groupId: Int) {
+            typeInfo[id] = (name, groupId)
+        }
+        include(input.ship.typeId, input.ship.name, input.ship.groupID)
+        include(input.character.typeId, "Character", 0)
         for module in input.modules {
-            let moduleId = module.typeId
-            itemIds.insert(moduleId)
-            initialAttributes[moduleId] = module.attributes
-            initialAttributesByName[moduleId] = module.attributesByName
-            typeInfo[moduleId] = (name: module.name, groupId: module.groupID)
-
-            // 添加弹药ID和属性（如果有）
+            include(module.typeId, module.name, module.groupID)
             if let charge = module.charge {
-                let chargeId = charge.typeId
-                itemIds.insert(chargeId)
-                initialAttributes[chargeId] = charge.attributes
-                initialAttributesByName[chargeId] = charge.attributesByName
-                typeInfo[chargeId] = (name: charge.name, groupId: charge.groupID)
+                include(charge.typeId, charge.name, charge.groupID)
             }
         }
-
-        // 添加所有无人机ID和属性
         for drone in input.drones {
-            let droneId = drone.typeId
-            itemIds.insert(droneId)
-            initialAttributes[droneId] = drone.attributes
-            initialAttributesByName[droneId] = drone.attributesByName
-            typeInfo[droneId] = (name: drone.name, groupId: drone.groupID)
+            include(drone.typeId, drone.name, drone.groupID)
         }
-
-        // 添加所有舰载机ID和属性
-        if let fighters = input.fighters {
-            for fighter in fighters {
-                let fighterId = fighter.typeId
-                itemIds.insert(fighterId)
-                initialAttributes[fighterId] = fighter.attributes
-                initialAttributesByName[fighterId] = fighter.attributesByName
-                typeInfo[fighterId] = (name: fighter.name, groupId: fighter.groupID)
-            }
+        for fighter in input.fighters ?? [] {
+            include(fighter.typeId, fighter.name, fighter.groupID)
         }
-
-        // 添加所有植入体和增效剂的ID和属性
         for implant in input.implants {
-            let implantId = implant.typeId
-            itemIds.insert(implantId)
-            initialAttributes[implantId] = implant.attributes
-            initialAttributesByName[implantId] = implant.attributesByName
-            typeInfo[implantId] = (name: implant.name, groupId: implant.groupID)
+            include(implant.typeId, implant.name, implant.groupID)
         }
-
-        // 添加所有环境效果的ID和属性
         for effect in input.environmentEffects {
-            let effectId = effect.typeId
-            itemIds.insert(effectId)
-            initialAttributes[effectId] = effect.attributes
-            initialAttributesByName[effectId] = effect.attributesByName
-            typeInfo[effectId] = (name: effect.name, groupId: 0)
+            include(effect.typeId, effect.name, 0)
+        }
+        for id in input.characterSkills.keys where typeInfo[id] == nil {
+            let info = SDEMemoryStore.type(for: id)
+            include(id, info?.name ?? "Unknown", info?.groupID ?? 0)
         }
 
-        // 获取所有技能ID
-        let skillIds = Array(input.characterSkills.keys)
-
-        // 初始化技能的属性字典，并设置技能等级
-        for skillId in skillIds {
-            initialAttributes[skillId] = [:]
-            initialAttributesByName[skillId] = [:]
-
-            // 设置技能等级属性 (attribute_id=280)
-            let level = input.characterSkills[skillId] ?? 0
-            initialAttributes[skillId]?[280] = Double(level)
-            initialAttributesByName[skillId]?["skillLevel"] = Double(level)
-        }
-
-        // 目前暂不包含货仓
-
-        return (Array(itemIds), skillIds, initialAttributes, initialAttributesByName, typeInfo)
-    }
-
-    /// 收集属性和效果
-    /// - Parameters:
-    ///   - itemIds: 物品ID数组
-    ///   - skillIds: 技能ID数组
-    ///   - initialAttributes: 初始属性字典
-    ///   - initialAttributesByName: 初始属性名称字典
-    ///   - typeInfo: 类型信息
-    ///   - characterSkills: 角色技能等级
-    /// - Returns: (属性字典, 属性名称字典, 效果字典)
-    private func collectAttributesAndEffects(
-        itemIds: [Int],
-        skillIds: [Int],
-        initialAttributes: [Int: [Int: Double]],
-        initialAttributesByName: [Int: [String: Double]],
-        typeInfo: [Int: (name: String, groupId: Int)],
-        characterSkills _: [Int: Int]
-    ) -> (
-        [Int: [Int: Double]],
-        [Int: [String: Double]],
-        [Int: [EffectDetail]]
-    ) {
-        // 复制初始属性字典
-        var attributes = initialAttributes
-        var attributesByName = initialAttributesByName
-        var effects: [Int: [EffectDetail]] = [:]
-
-        // 为所有物品和技能初始化效果数组
-        for id in itemIds + skillIds {
-            effects[id] = []
-        }
-
-        // 合并所有需要查询的ID
-        let allIds = itemIds + skillIds
-
-        if allIds.isEmpty {
-            return (attributes, attributesByName, effects)
-        }
-
-        // 1. 收集缺失的类型信息和特殊属性
-        var updatedTypeInfo = typeInfo
-        let idsNeedingInfo = allIds.filter { id in
-            let needsTypeInfo = !typeInfo.keys.contains(id)
-            let needsSpecialAttributes =
-                attributes[id]?[4] == nil // mass
-                || attributes[id]?[38] == nil // capacity
-                || attributes[id]?[161] == nil // volume
-            return needsTypeInfo || needsSpecialAttributes
-        }
-
-        if !idsNeedingInfo.isEmpty {
-            collectTypeInfoAndSpecialAttributes(
-                ids: idsNeedingInfo,
-                typeInfo: &updatedTypeInfo,
-                attributes: &attributes,
-                attributesByName: &attributesByName
-            )
-        }
-
-        // 2. 收集所有物品和技能的属性
-        collectAttributes(
-            ids: allIds,
-            attributes: &attributes,
-            attributesByName: &attributesByName
-        )
-
-        // 3. 收集所有物品和技能的效果
-        collectEffects(
-            ids: allIds,
-            effects: &effects,
-            typeInfo: updatedTypeInfo
-        )
-
-        // 4. 收集dbuffCollection表中的额外修饰器
-        collectDbuffCollectionModifiers(
-            ids: allIds,
-            effects: &effects,
-            typeInfo: updatedTypeInfo
-        )
-
-        Logger.info("完成\(allIds.count)个物品和技能的属性和效果采集")
-
-        return (attributes, attributesByName, effects)
-    }
-
-    /// 收集类型信息和特殊属性（合并方法）
-    /// - Parameters:
-    ///   - ids: 需要收集信息的ID数组
-    ///   - typeInfo: 类型信息字典（会被修改）
-    ///   - attributes: 属性字典（会被修改）
-    ///   - attributesByName: 属性名称字典（会被修改）
-    private func collectTypeInfoAndSpecialAttributes(
-        ids: [Int],
-        typeInfo: inout [Int: (name: String, groupId: Int)],
-        attributes: inout [Int: [Int: Double]],
-        attributesByName: inout [Int: [String: Double]]
-    ) {
-        for typeId in ids {
-            guard let info = SDEMemoryStore.type(for: typeId) else { continue }
-            if let groupId = info.groupID {
-                typeInfo[typeId] = (name: info.name, groupId: groupId)
-            }
-
-            if attributes[typeId]?[4] == nil {
-                attributes[typeId]?[4] = info.mass
-                attributesByName[typeId]?["mass"] = info.mass
-            }
-            if attributes[typeId]?[38] == nil {
-                attributes[typeId]?[38] = info.capacity
-                attributesByName[typeId]?["capacity"] = info.capacity
-            }
-            if attributes[typeId]?[161] == nil {
-                attributes[typeId]?[161] = info.volume
-                attributesByName[typeId]?["volume"] = info.volume
-            }
-        }
-    }
-
-    /// 收集属性
-    /// - Parameters:
-    ///   - ids: 需要收集属性的ID数组
-    ///   - attributes: 属性字典（会被修改）
-    ///   - attributesByName: 属性名称字典（会被修改）
-    private func collectAttributes(
-        ids: [Int],
-        attributes: inout [Int: [Int: Double]],
-        attributesByName: inout [Int: [String: Double]]
-    ) {
-        if ids.isEmpty {
-            return
-        }
-
-        // 批量取属性（内存索引）
-        for (typeId, attrs) in SDEMemoryStore.typeAttributes(for: ids) {
-            guard attributes[typeId] != nil else { continue }
-            for (attrId, value) in attrs.attributes {
-                attributes[typeId]?[attrId] = value
-            }
-            for (name, value) in attrs.attributesByName {
-                attributesByName[typeId]?[name] = value
-            }
-        }
+        let ids = Array(typeInfo.keys)
+        var effects = Dictionary(uniqueKeysWithValues: ids.map { ($0, [EffectDetail]()) })
+        collectEffects(ids: ids, effects: &effects, typeInfo: typeInfo)
+        collectDbuffCollectionModifiers(ids: ids, effects: &effects, typeInfo: typeInfo)
+        return effects
     }
 
     /// 收集效果

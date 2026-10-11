@@ -5,6 +5,42 @@ import SwiftUI
 struct ModulesExportSection: View {
     @ObservedObject var viewModel: FittingEditorViewModel
 
+    private struct ExportRow {
+        let module: SimModuleOutput?
+        var count: Int
+    }
+
+    /// 保留首次出现的槽位顺序，只合并状态、弹药和属性一致的装备。
+    private func exportRows(
+        modules: [SimModuleOutput], slotType: FittingSlotType, slotCount: Int
+    ) -> [ExportRow] {
+        var rows: [ExportRow] = []
+        for slotIndex in 0 ..< slotCount {
+            let flag = getSlotFlag(for: slotType, index: slotIndex)
+            guard let module = modules.first(where: { $0.flag == flag }) else {
+                rows.append(ExportRow(module: nil, count: 1))
+                continue
+            }
+            if let index = rows.firstIndex(where: { row in
+                guard let existing = row.module else { return false }
+                return existing.typeId == module.typeId
+                    && existing.name == module.name
+                    && existing.iconFileName == module.iconFileName
+                    && existing.mutatedTypeId == module.mutatedTypeId
+                    && existing.status == module.status
+                    && existing.attributes == module.attributes
+                    && existing.charge?.typeId == module.charge?.typeId
+                    && existing.charge?.chargeQuantity == module.charge?.chargeQuantity
+                    && existing.charge?.attributes == module.charge?.attributes
+            }) {
+                rows[index].count += 1
+            } else {
+                rows.append(ExportRow(module: module, count: 1))
+            }
+        }
+        return rows
+    }
+
     /// 获取槽位类型的显示模块
     private func getDisplayModules(for slotType: FittingSlotType) -> [SimModuleOutput] {
         guard let simulationOutput = viewModel.simulationOutput else { return [] }
@@ -106,6 +142,7 @@ struct ModulesExportSection: View {
 
                 // 只显示有槽位的类型
                 if slotCount > 0 {
+                    let rows = exportRows(modules: modules, slotType: slotType, slotCount: slotCount)
                     VStack(spacing: 0) {
                         // 槽位类型标题
                         HStack {
@@ -121,18 +158,16 @@ struct ModulesExportSection: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        .padding(.horizontal)
-                        .padding(.top, 16)
-                        .padding(.bottom, 8)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
 
-                        // 创建完整的槽位列表（包括空槽位）
-                        ForEach(0 ..< slotCount, id: \.self) { slotIndex in
-                            // 查找该槽位是否有装备
-                            let slotFlag = getSlotFlag(for: slotType, index: slotIndex)
-                            let installedModule = modules.first { $0.flag == slotFlag }
+                        // 重复装备合并展示，空槽位保持独立显示。
+                        ForEach(rows.indices, id: \.self) { rowIndex in
+                            let row = rows[rowIndex]
 
-                            HStack(spacing: 12) {
-                                if let module = installedModule {
+                            HStack(spacing: 8) {
+                                if let module = row.module {
                                     // 已安装装备
                                     // 装备图标 - 优先使用突变后的图标
                                     let displayIconFileName = module.mutatedIconFileName ?? module.iconFileName
@@ -140,20 +175,22 @@ struct ModulesExportSection: View {
                                         IconManager.shared.loadImage(for: iconFileName)
                                             .resizable()
                                             .scaledToFit()
-                                            .frame(width: 32, height: 32)
+                                            .frame(width: 28, height: 28)
                                             .cornerRadius(4)
                                     } else {
                                         Image(systemName: "questionmark.square")
                                             .resizable()
                                             .scaledToFit()
-                                            .frame(width: 32, height: 32)
+                                            .frame(width: 28, height: 28)
                                             .foregroundColor(.gray)
                                     }
 
                                     // 装备名称和状态 - 优先使用突变后的名称
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(module.name)
-                                            .font(.body)
+                                        (Text(module.name)
+                                            + Text(row.count > 1 ? " × \(row.count)" : "")
+                                            .foregroundColor(.secondary))
+                                            .font(.subheadline)
                                             .foregroundColor(.primary)
 
                                         // 弹药信息
@@ -186,24 +223,24 @@ struct ModulesExportSection: View {
                                     IconManager.shared.loadImage(for: getSlotIcon(for: slotType))
                                         .resizable()
                                         .scaledToFit()
-                                        .frame(width: 32, height: 32)
+                                        .frame(width: 28, height: 28)
                                         .opacity(0.4)
                                         .cornerRadius(4)
 
                                     Text(NSLocalizedString("Fitting_Empty_Slot", comment: "空槽位"))
-                                        .font(.body)
+                                        .font(.subheadline)
                                         .foregroundColor(.secondary)
 
                                     Spacer()
                                 }
                             }
-                            .padding(.horizontal)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 4)
 
                             // 分割线（除了最后一个）
-                            if slotIndex < slotCount - 1 {
+                            if rowIndex < rows.count - 1 {
                                 Divider()
-                                    .padding(.leading, 56)
+                                    .padding(.leading, 48)
                             }
                         }
                     }
@@ -234,26 +271,26 @@ struct DronesExportSection: View {
                     .foregroundColor(.primary)
                 Spacer()
             }
-            .padding(.horizontal)
-            .padding(.top, 16)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
 
             // 无人机列表
             if let drones = viewModel.simulationOutput?.drones {
                 ForEach(drones, id: \.typeId) { drone in
-                    HStack(spacing: 12) {
+                    HStack(spacing: 8) {
                         // 无人机图标
                         if let iconFileName = drone.iconFileName {
                             IconManager.shared.loadImage(for: iconFileName)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 32, height: 32)
+                                .frame(width: 28, height: 28)
                                 .cornerRadius(4)
                         } else {
                             Image(systemName: "questionmark.square")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 32, height: 32)
+                                .frame(width: 28, height: 28)
                                 .foregroundColor(.gray)
                         }
 
@@ -261,7 +298,7 @@ struct DronesExportSection: View {
                         VStack(alignment: .leading, spacing: 2) {
                             // 无人机名称和数量
                             Text("\(drone.quantity)× \(drone.name)")
-                                .font(.body)
+                                .font(.subheadline)
                                 .foregroundColor(.primary)
                         }
 
@@ -282,12 +319,12 @@ struct DronesExportSection: View {
                             }
                         }
                     }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
 
                     if drone.typeId != drones.last?.typeId {
                         Divider()
-                            .padding(.leading, 56)
+                            .padding(.leading, 48)
                     }
                 }
             }
@@ -311,31 +348,31 @@ struct CargoExportSection: View {
                     .foregroundColor(.primary)
                 Spacer()
             }
-            .padding(.horizontal)
-            .padding(.top, 16)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
 
             // 货舱物品列表
             ForEach(viewModel.simulationInput.cargo.items, id: \.typeId) { item in
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     // 物品图标
                     if let iconFileName = item.iconFileName {
                         IconManager.shared.loadImage(for: iconFileName)
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 32, height: 32)
+                            .frame(width: 28, height: 28)
                             .cornerRadius(4)
                     } else {
                         Image(systemName: "questionmark.square")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 32, height: 32)
+                            .frame(width: 28, height: 28)
                             .foregroundColor(.gray)
                     }
 
                     // 物品名称和数量
                     Text("\(item.quantity)× \(item.name)")
-                        .font(.body)
+                        .font(.subheadline)
                         .foregroundColor(.primary)
 
                     Spacer()
@@ -345,12 +382,12 @@ struct CargoExportSection: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
 
                 if item.typeId != viewModel.simulationInput.cargo.items.last?.typeId {
                     Divider()
-                        .padding(.leading, 56)
+                        .padding(.leading, 48)
                 }
             }
         }
@@ -373,42 +410,42 @@ struct FightersExportSection: View {
                     .foregroundColor(.primary)
                 Spacer()
             }
-            .padding(.horizontal)
-            .padding(.top, 16)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
 
             // 舰载机列表
             if let fighters = viewModel.simulationOutput?.fighters {
                 ForEach(fighters, id: \.instanceId) { fighter in
-                    HStack(spacing: 12) {
+                    HStack(spacing: 8) {
                         // 舰载机图标
                         if let iconFileName = fighter.iconFileName {
                             IconManager.shared.loadImage(for: iconFileName)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 32, height: 32)
+                                .frame(width: 28, height: 28)
                                 .cornerRadius(4)
                         } else {
                             Image(systemName: "questionmark.square")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 32, height: 32)
+                                .frame(width: 28, height: 28)
                                 .foregroundColor(.gray)
                         }
 
                         // 舰载机名称和数量
                         Text("\(fighter.quantity)× \(fighter.name)")
-                            .font(.body)
+                            .font(.subheadline)
                             .foregroundColor(.primary)
 
                         Spacer()
                     }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
 
                     if fighter.instanceId != fighters.last?.instanceId {
                         Divider()
-                            .padding(.leading, 56)
+                            .padding(.leading, 48)
                     }
                 }
             }
@@ -432,28 +469,28 @@ struct ImplantsExportSection: View {
                     .foregroundColor(.primary)
                 Spacer()
             }
-            .padding(.horizontal)
-            .padding(.top, 16)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
 
             // 植入体列表
             ForEach(
                 viewModel.simulationInput.implants.sorted(by: { $0.typeId < $1.typeId }),
                 id: \.instanceId
             ) { implant in
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     // 植入体图标
                     if let iconFileName = implant.iconFileName {
                         IconManager.shared.loadImage(for: iconFileName)
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 32, height: 32)
+                            .frame(width: 28, height: 28)
                             .cornerRadius(4)
                     } else {
                         Image(systemName: "questionmark.square")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 32, height: 32)
+                            .frame(width: 28, height: 28)
                             .foregroundColor(.gray)
                     }
 
@@ -461,18 +498,18 @@ struct ImplantsExportSection: View {
                     VStack(alignment: .leading, spacing: 2) {
                         // 植入体名称
                         Text(implant.name)
-                            .font(.body)
+                            .font(.subheadline)
                             .foregroundColor(.primary)
                     }
 
                     Spacer()
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
 
                 if implant.instanceId != viewModel.simulationInput.implants.last?.instanceId {
                     Divider()
-                        .padding(.leading, 56)
+                        .padding(.leading, 48)
                 }
             }
         }
