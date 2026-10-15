@@ -25,9 +25,7 @@ struct InsurgencySystemCell: View {
     let insurgency: Insurgency
     let factionIconMap: [Int: String]
 
-    private var hasEnoughWidth: Bool {
-        DeviceUtils.screenWidth >= 428 // 只在屏幕宽度大于等于 428 时显示额外信息
-    }
+    @State private var hasEnoughWidth = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -173,6 +171,12 @@ struct InsurgencySystemCell: View {
             }
         }
         .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onGeometryChange(for: Bool.self) { geometry in
+            geometry.size.width >= 380
+        } action: { showsExtraInfo in
+            hasEnoughWidth = showsExtraInfo
+        }
     }
 }
 
@@ -189,9 +193,7 @@ struct InsurgencyView: View {
     @State private var isInfoSheetPresented = false
     @Environment(\.colorScheme) private var colorScheme
 
-    private var hasEnoughWidth: Bool {
-        DeviceUtils.screenWidth >= 428 // 只在屏幕宽度大于等于 428 时显示额外信息
-    }
+    @State private var hasEnoughWidth = false
 
     enum SortType {
         case corruption
@@ -418,6 +420,12 @@ struct InsurgencyView: View {
                                     .font(.system(.caption, design: .monospaced))
                             }
                         }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onGeometryChange(for: Bool.self) { geometry in
+                        geometry.size.width >= 380
+                    } action: { showsExtraInfo in
+                        hasEnoughWidth = showsExtraInfo
                     }
                     .padding(.vertical, 8)
                 } header: {

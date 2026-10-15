@@ -164,6 +164,16 @@
       },
       "shouldTranslate" : false
     },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
     "%@ (—)" : {
       "shouldTranslate" : false
     },
@@ -1059,6 +1069,98 @@
         }
       }
     },
+    "Account_Logout_Confirm" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log out of the current character?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выйти из текущего персонажа?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "是否登出当前人物？"
+          }
+        }
+      }
+    },
+    "Account_Logout_Message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This action will not remove your saved credentials."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это действие не удалит сохранённые учётные данные."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此操作不会移除已保存的凭证信息"
+          }
+        }
+      }
+    },
+    "Account_Manage_Credentials" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage Credentials"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Управление доступом"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "管理凭证"
+          }
+        }
+      }
+    },
+    "Account_Manage_Credentials_Hint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Remove Credentials below a character to remove its saved sign-in information."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите «Удалить учётные данные» под персонажем, чтобы удалить сохранённые данные входа."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击角色下方的“移除凭证”以移除其保存的登录信息。"
+          }
+        }
+      }
+    },
     "Account_Management" : {
       "comment" : "Account Management",
       "localizations" : {
@@ -1105,6 +1207,7 @@
       }
     },
     "Account_Remove_Confirm_Remove" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1127,6 +1230,7 @@
       }
     },
     "Account_Remove_Confirm_Title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1144,6 +1248,75 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "移除角色"
+          }
+        }
+      }
+    },
+    "Account_Remove_Credentials" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Credentials"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить учётные данные"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除凭证"
+          }
+        }
+      }
+    },
+    "Account_Remove_Credentials_Message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will remove saved credentials and local character data for “%@” from this app and cancel their skill queue notifications. You will need to authorize again to use this character. Your EVE Online character will not be deleted."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Из приложения будут удалены сохранённые учётные данные и локальные данные персонажа «%@», а уведомления об очереди навыков будут отменены. Для дальнейшего использования потребуется повторная авторизация. Персонаж в EVE Online не будет удалён."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将从此 App 移除“%@”的登录凭证及本地角色数据，并取消该角色的技能队列提醒。再次使用时需要重新授权。此操作不会删除 EVE Online 中的角色。"
+          }
+        }
+      }
+    },
+    "Account_Remove_Credentials_Title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove saved credentials?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить сохранённые учётные данные?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除已保存的凭证？"
           }
         }
       }
@@ -44170,6 +44343,7 @@
       }
     },
     "SDE_Done" : {
+      "comment" : "完成",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44317,6 +44491,7 @@
       }
     },
     "SDE_Log_Calculating_SHA" : {
+      "comment" : "正在计算 SHA256…",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44859,6 +45034,7 @@
       }
     },
     "SDE_Status_Downloading" : {
+      "comment" : "正在下载",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44875,6 +45051,7 @@
       }
     },
     "SDE_Status_Installing" : {
+      "comment" : "正在安装",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44891,6 +45068,7 @@
       }
     },
     "SDE_Status_Pending" : {
+      "comment" : "等待中",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44907,6 +45085,7 @@
       }
     },
     "SDE_Status_Verifying" : {
+      "comment" : "正在校验",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44940,6 +45119,7 @@
       }
     },
     "SDE_Update_Failed" : {
+      "comment" : "更新失败",
       "localizations" : {
         "en" : {
           "stringUnit" : {

@@ -150,7 +150,7 @@ struct MarketItemDetailView: View {
     @State private var selectedLocation: Int
     @State private var structureOrdersProgress: StructureOrdersProgress? = nil // 建筑订单加载进度
     @State private var selectedTimeRange: PriceHistoryTimeRange = .oneYear // 默认选择近一年
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var availableSize: CGSize = .zero
 
     /// 当前选中的地点类型
     private var locationType: MarketLocationType? {
@@ -173,14 +173,9 @@ struct MarketItemDetailView: View {
     }
 
     private var chartHeight: CGFloat {
-        // 根据设备类型和方向调整高度
-        if horizontalSizeClass == .regular {
-            // iPad 或大屏设备
-            return 300
-        } else {
-            // iPhone 或小屏设备
-            return UIScreen.main.bounds.height * 0.25 // 使用屏幕高度的 25%
-        }
+        // Keep the chart usable in short windows while allowing more detail at wider sizes.
+        let preferredHeight = availableSize.width >= 600 ? CGFloat(300) : availableSize.height * 0.25
+        return min(max(preferredHeight, 160), max(160, availableSize.height * 0.5))
     }
 
     init(databaseManager: DatabaseManager, itemID: Int, selectedLocation: Int = 0) {
@@ -352,6 +347,11 @@ struct MarketItemDetailView: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle(NSLocalizedString("Main_Market", comment: "市场详情"))
+        .onGeometryChange(for: CGSize.self) { geometry in
+            geometry.size
+        } action: { size in
+            availableSize = size
+        }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {

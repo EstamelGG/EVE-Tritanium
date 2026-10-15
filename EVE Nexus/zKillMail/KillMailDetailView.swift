@@ -40,16 +40,7 @@ struct BRKillMailDetailView: View {
     @State private var victimShipDetailSheetItem: KMVictimShipSheetItem?
     @State private var fittingToShow: KMFittingSheetItem?
 
-    /// 监听屏幕方向变化
-    @State private var orientation = UIDevice.current.orientation
-
-    /// 布局状态标识符（用于判断是否需要重新渲染视图）
-    @State private var layoutMode: LayoutMode = DeviceUtils.currentLayoutMode
-
-    /// 判断是否应该使用紧凑布局（横屏或iPad）
-    private var shouldUseCompactLayout: Bool {
-        DeviceUtils.shouldUseCompactLayout
-    }
+    @State private var shouldUseCompactLayout = false
 
     /// 导航辅助方法
     @ViewBuilder
@@ -251,18 +242,16 @@ struct BRKillMailDetailView: View {
                 await loadBRKillMailDetail()
             }
         }
-        .onAppear {
-            setupOrientationNotification()
+        .onGeometryChange(for: Bool.self) { geometry in
+            geometry.size.width >= 600
+        } action: { usesWideLayout in
+            shouldUseCompactLayout = usesWideLayout
         }
-        .onDisappear {
-            removeOrientationNotification()
-        }
-        .id(layoutMode)
     }
 
     // MARK: - 布局视图函数
 
-    /// 紧凑布局（横屏或iPad）
+    /// 可用宽度足够时并排显示
     @ViewBuilder
     private func compactLayout(detail: KillMailDetailData) -> some View {
         // 第一行：左侧装配视图 + 右侧基本信息
@@ -977,35 +966,6 @@ struct BRKillMailDetailView: View {
             }
             .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
         }
-    }
-
-    // MARK: - 方向变化通知处理
-
-    /// 设置方向变化通知
-    private func setupOrientationNotification() {
-        NotificationCenter.default.addObserver(
-            forName: UIDevice.orientationDidChangeNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            self.orientation = UIDevice.current.orientation
-
-            // 只有当布局模式真正发生变化时才更新layoutMode
-            let newLayoutMode = DeviceUtils.currentLayoutMode
-            if DeviceUtils.shouldUpdateLayout(from: self.layoutMode, to: newLayoutMode) {
-                Logger.debug("布局模式变化: \(self.layoutMode.rawValue) -> \(newLayoutMode.rawValue)")
-                self.layoutMode = newLayoutMode
-            }
-        }
-    }
-
-    /// 移除方向变化通知
-    private func removeOrientationNotification() {
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIDevice.orientationDidChangeNotification,
-            object: nil
-        )
     }
 
     // MARK: - 原有的辅助函数

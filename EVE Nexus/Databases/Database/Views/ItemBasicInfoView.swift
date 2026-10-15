@@ -1,13 +1,14 @@
 import SwiftUI
 
 struct ItemBasicInfoView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let itemDetails: ItemDetails
     @ObservedObject var databaseManager: DatabaseManager
     let modifiedAttributes: [Int: Double]?
 
     @StateObject private var skillsManager = SharedSkillsManager.shared
     @State private var renderImage: UIImage?
-    @State private var orientation = UIDevice.current.orientation
+    @State private var availableWidth: CGFloat = 0
     @State private var marketPath: String = ""
     @State private var showSaveSuccess = false
     @State private var showSaveError = false
@@ -24,14 +25,13 @@ struct ItemBasicInfoView: View {
         2, 3, 6, 11, 18, 22, 23, 40, 41, 46, 65, 87, 91,
     ]
 
+    /// Use the list row's width, including when its navigation column is resized.
     private var shouldUseCompactLayout: Bool {
-        // 引用 orientation 以便设备旋转时触发 body 重新渲染
-        _ = orientation
-        return DeviceUtils.shouldUseCompactLayout
+        availableWidth >= 560
     }
 
     private var imageSize: CGFloat {
-        DeviceUtils.isIPad ? 256 : 128
+        availableWidth >= 700 ? 256 : 128
     }
 
     private var itemNameCanToggleEnglish: Bool {
@@ -121,6 +121,12 @@ struct ItemBasicInfoView: View {
                         originalLayoutView()
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.size.width
+                } action: { width in
+                    availableWidth = width
+                }
 
                 if !itemDetails.description.isEmpty {
                     RichTextView(text: itemDetails.description, databaseManager: databaseManager)
@@ -141,10 +147,6 @@ struct ItemBasicInfoView: View {
                     }
                 }
                 checkModelAvailability()
-                setupOrientationNotification()
-            }
-            .onDisappear {
-                removeOrientationNotification()
             }
             .alert(
                 NSLocalizedString("Misc_Save_Render_Image", comment: ""),
@@ -315,7 +317,7 @@ struct ItemBasicInfoView: View {
                 .padding(.trailing, 8)
 
             VStack(alignment: .leading, spacing: 8) {
-                itemTitleLabel(lineLimit: 2)
+                itemTitleLabel(lineLimit: dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .contextMenu { itemNameContextMenu(includeSaveImage: true) }
 
                 Text(
@@ -323,7 +325,7 @@ struct ItemBasicInfoView: View {
                 )
                 .font(.subheadline)
                 .foregroundColor(.secondary)
-                .lineLimit(2)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
 
                 if !marketPath.isEmpty {
                     Text(
@@ -331,7 +333,7 @@ struct ItemBasicInfoView: View {
                     )
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -630,23 +632,5 @@ struct ItemBasicInfoView: View {
                 }
             }
         }
-    }
-
-    private func setupOrientationNotification() {
-        NotificationCenter.default.addObserver(
-            forName: UIDevice.orientationDidChangeNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            orientation = UIDevice.current.orientation
-        }
-    }
-
-    private func removeOrientationNotification() {
-        NotificationCenter.default.removeObserver(
-            self,
-            name: UIDevice.orientationDidChangeNotification,
-            object: nil
-        )
     }
 }
