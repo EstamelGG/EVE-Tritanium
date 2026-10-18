@@ -1,6 +1,47 @@
 import Foundation
 
 extension FitConvert {
+    private static let fittingPersistenceLock = NSRecursiveLock()
+
+    private static func fittingDirectory(_ directory: URL?) throws -> URL {
+        if let directory {
+            return directory
+        }
+        guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw NSError(domain: "FitConvert", code: 1, userInfo: [NSLocalizedDescriptionKey: "无法访问文档目录"])
+        }
+        return documents.appendingPathComponent("Fitting")
+    }
+
+    /// 原子替换必须沿用磁盘上的实际文件名，避免大小写别名触发 File exists。
+    private static func existingFittingFileURL(fittingId: UUID, directory: URL) throws -> URL {
+        let expectedName = "local_fitting_\(fittingId.uuidString).json"
+        let expectedURL = directory.appendingPathComponent(expectedName)
+        let candidates = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        if let exact = candidates.first(where: { $0.lastPathComponent == expectedName }) {
+            return exact
+        }
+        return candidates.first { $0.lastPathComponent.caseInsensitiveCompare(expectedName) == .orderedSame }
+            ?? expectedURL
+    }
+
+    /// Loading, saving and deleting must resolve UUID filename casing in the same way.
+    static func localFittingFileURL(fittingId: UUID, directory: URL? = nil) throws -> URL {
+        fittingPersistenceLock.lock()
+        defer { fittingPersistenceLock.unlock() }
+        return try existingFittingFileURL(fittingId: fittingId, directory: fittingDirectory(directory))
+    }
+
+    private static func writeFitting(_ fitting: LocalFitting, directory: URL) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        try encoder.encode(fitting).write(
+            to: existingFittingFileURL(fittingId: fitting.fitting_id, directory: directory),
+            options: .atomic
+        )
+    }
+
     /// 将在线配置JSON数据解析为本地配置模型
     static func online2local(jsonData: Data) throws -> [LocalFitting] {
         let decoder = JSONDecoder()
@@ -89,60 +130,31 @@ extension FitConvert {
         }
     }
 
-    /// 将本地配置保存为JSON文件
-    static func saveLocalFitting(_ fitting: LocalFitting) throws {
-        // 获取文档目录
-        guard
-            let documentsDirectory = FileManager.default.urls(
-                for: .documentDirectory, in: .userDomainMask
-            ).first
-        else {
-            throw NSError(
-                domain: "FitConvert", code: 1, userInfo: [NSLocalizedDescriptionKey: "无法访问文档目录"]
-            )
-        }
-
-        // 创建Fitting目录
-        let fittingsDirectory = documentsDirectory.appendingPathComponent("Fitting")
-        if !FileManager.default.fileExists(atPath: fittingsDirectory.path) {
-            try FileManager.default.createDirectory(
-                at: fittingsDirectory, withIntermediateDirectories: true
-            )
-        }
-
-        // 创建文件路径
-        let filePath = fittingsDirectory.appendingPathComponent(
-            "local_fitting_\(fitting.fitting_id.uuidString).json"
-        )
-
-        // 将配置转换为JSON数据
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted // 美化输出格式
-        let jsonData = try encoder.encode(fitting)
-
-        // 写入文件
-        try jsonData.write(to: filePath)
-
-        Logger.info("配置已保存到: \(filePath.path)")
+    /// 唯一写入入口：迁移旧名称，排除自身 ID 后分配名称，再原子写入。
+    @discardableResult
+    static func saveLocalFitting(_ fitting: LocalFitting, directory: URL? = nil) throws -> LocalFitting {
+        fittingPersistenceLock.lock()
+        defer { fittingPersistenceLock.unlock() }
+        let directory = try fittingDirectory(directory)
+        let existing = try loadAllLocalFittings(directory: directory)
+        let names = existing.fittings.filter {
+            $0.ship_type_id == fitting.ship_type_id && $0.fitting_id != fitting.fitting_id
+        }.map(\.name) + existing.unreadable.filter {
+            $0.shipTypeId == fitting.ship_type_id
+        }.compactMap(\.name)
+        let saved = fitting.renamed(FittingNamePolicy.uniqueName(
+            fitting.name, occupied: Set(names.map(FittingNamePolicy.key))
+        ))
+        try writeFitting(saved, directory: directory)
+        return saved
     }
 
     /// 从JSON文件加载本地配置
-    static func loadLocalFitting(fittingId: UUID) throws -> LocalFitting {
-        // 获取文档目录
-        guard
-            let documentsDirectory = FileManager.default.urls(
-                for: .documentDirectory, in: .userDomainMask
-            ).first
-        else {
-            throw NSError(
-                domain: "FitConvert", code: 1, userInfo: [NSLocalizedDescriptionKey: "无法访问文档目录"]
-            )
-        }
-
-        // 创建文件路径
-        let filePath = documentsDirectory.appendingPathComponent(
-            "Fitting/local_fitting_\(fittingId.uuidString).json"
-        )
+    static func loadLocalFitting(fittingId: UUID, directory: URL? = nil) throws -> LocalFitting {
+        fittingPersistenceLock.lock()
+        defer { fittingPersistenceLock.unlock() }
+        let directory = try fittingDirectory(directory)
+        let filePath = try existingFittingFileURL(fittingId: fittingId, directory: directory)
 
         // 读取文件数据
         let jsonData = try Data(contentsOf: filePath)
@@ -158,82 +170,138 @@ extension FitConvert {
         let unreadable: [UnreadableFitting]
     }
 
-    /// 从JSON文件加载所有本地配置。
-    /// 坏文件处理：尝试抢救装配名与飞船ID——两者皆无法取得则删除文件，否则保留并标记为无法解析
-    static func loadAllLocalFittings() throws -> LocalFittingLoadResult {
-        // 获取文档目录
-        guard
-            let documentsDirectory = FileManager.default.urls(
-                for: .documentDirectory, in: .userDomainMask
-            ).first
-        else {
-            throw NSError(
-                domain: "FitConvert", code: 1, userInfo: [NSLocalizedDescriptionKey: "无法访问文档目录"]
-            )
+    /// 同一路径可能只有大小写不同。迁移后不能把仍指向目标文件的源路径删除。
+    private static func isSameFittingFile(_ first: URL, _ second: URL) throws -> Bool {
+        if first == second {
+            return true
         }
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: first.path), fileManager.fileExists(atPath: second.path) else {
+            return false
+        }
+        let firstAttributes = try fileManager.attributesOfItem(atPath: first.path)
+        let secondAttributes = try fileManager.attributesOfItem(atPath: second.path)
+        guard let firstNumber = firstAttributes[.systemFileNumber] as? NSNumber,
+              let secondNumber = secondAttributes[.systemFileNumber] as? NSNumber,
+              let firstSystem = firstAttributes[.systemNumber] as? NSNumber,
+              let secondSystem = secondAttributes[.systemNumber] as? NSNumber else { return false }
+        return firstNumber == secondNumber && firstSystem == secondSystem
+    }
 
-        // 创建Fitting目录路径
-        let fittingsDirectory = documentsDirectory.appendingPathComponent("Fitting")
-
-        // 检查目录是否存在
-        guard FileManager.default.fileExists(atPath: fittingsDirectory.path) else {
+    /// 先完整读取，再规划身份与名称，最后写入；加载失败的文件始终保留供用户处理。
+    static func loadAllLocalFittings(directory: URL? = nil) throws -> LocalFittingLoadResult {
+        fittingPersistenceLock.lock()
+        defer { fittingPersistenceLock.unlock() }
+        let fittingsDirectory = try fittingDirectory(directory)
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: fittingsDirectory.path) else {
             return LocalFittingLoadResult(fittings: [], unreadable: [])
         }
 
-        // 获取目录中的所有文件
-        let fileURLs = try FileManager.default.contentsOfDirectory(
-            at: fittingsDirectory, includingPropertiesForKeys: nil
-        )
-
-        // 过滤出配置文件并加载（顺带迁移旧版时间戳文件到 UUID 文件）
-        var fittings: [LocalFitting] = []
+        let fileURLs = try fileManager.contentsOfDirectory(at: fittingsDirectory, includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasPrefix("local_fitting_") && $0.pathExtension == "json" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        var snapshots: [(url: URL, data: Data, fitting: LocalFitting)] = []
         var unreadable: [UnreadableFitting] = []
-        for fileURL in fileURLs
-            where fileURL.lastPathComponent.hasPrefix("local_fitting_")
-            && fileURL.pathExtension == "json"
-        {
-            let fileName = fileURL.lastPathComponent
+        for fileURL in fileURLs {
             do {
-                let jsonData = try Data(contentsOf: fileURL)
-                let decoder = JSONDecoder()
-                let fitting = try decoder.decode(LocalFitting.self, from: jsonData)
-
-                // 旧版文件名为时间戳、JSON 内 fitting_id 为 Int（解码时已生成新 UUID）：
-                // 文件名与 ID 不一致即需迁移——写入 UUID 新文件并删除旧文件
-                let expectedName = "local_fitting_\(fitting.fitting_id.uuidString).json"
-                if fileName != expectedName {
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = .prettyPrinted
-                    let newData = try encoder.encode(fitting)
-                    try newData.write(to: fittingsDirectory.appendingPathComponent(expectedName))
-                    try? FileManager.default.removeItem(at: fileURL)
-                    Logger.info(
-                        "旧版装配文件已迁移到 UUID: \(fileName) -> \(expectedName)"
-                    )
-                }
-
-                fittings.append(fitting)
+                let data = try Data(contentsOf: fileURL)
+                let fitting = try JSONDecoder().decode(LocalFitting.self, from: data)
+                snapshots.append((fileURL, data, fitting))
             } catch {
-                // 完整解码失败：仅抢救装配名与飞船ID（不解析装配内容）
                 let meta = salvageMetadata(fromFile: fileURL)
-                if meta.name == nil && meta.shipTypeId == nil {
-                    // 连基本信息都无法取得，视为彻底损坏，删除文件
-                    try? FileManager.default.removeItem(at: fileURL)
-                    Logger.warning("装配文件完全无法解析，已删除: \(fileName)")
-                } else {
-                    Logger.warning(
-                        "装配文件解析失败，保留并标记为无法解析: \(fileName) - \(error.localizedDescription)"
-                    )
-                    unreadable.append(
-                        UnreadableFitting(
-                            fileName: fileName, name: meta.name, shipTypeId: meta.shipTypeId
-                        )
-                    )
-                }
+                unreadable.append(UnreadableFitting(
+                    fileName: fileURL.lastPathComponent, name: meta.name, shipTypeId: meta.shipTypeId
+                ))
+                Logger.warning("装配文件无法加载，保留原文件: \(fileURL.lastPathComponent) - \(error.localizedDescription)")
             }
         }
 
-        return LocalFittingLoadResult(fittings: fittings, unreadable: unreadable)
+        // Prefer the canonical file when multiple hand-written files contain the same JSON UUID.
+        snapshots.sort {
+            let firstCanonical = $0.url.lastPathComponent == "local_fitting_\($0.fitting.fitting_id.uuidString).json"
+            let secondCanonical = $1.url.lastPathComponent == "local_fitting_\($1.fitting.fitting_id.uuidString).json"
+            if firstCanonical != secondCanonical {
+                return firstCanonical
+            }
+            return $0.url.lastPathComponent < $1.url.lastPathComponent
+        }
+        var reservedIDs = Set(snapshots.map { $0.fitting.fitting_id })
+        var usedIDs: Set<UUID> = []
+        var occupiedNames: [Int: Set<String>] = [:]
+        var seenNames: [Int: Set<String>] = [:]
+        for snapshot in snapshots {
+            occupiedNames[snapshot.fitting.ship_type_id, default: []].insert(FittingNamePolicy.key(snapshot.fitting.name))
+        }
+        for item in unreadable {
+            guard let shipTypeId = item.shipTypeId, let name = item.name else { continue }
+            let key = FittingNamePolicy.key(name)
+            occupiedNames[shipTypeId, default: []].insert(key)
+            seenNames[shipTypeId, default: []].insert(key)
+        }
+        var plans: [(source: URL, data: Data, fitting: LocalFitting, target: URL, migratesFile: Bool, changed: Bool)] = []
+        for snapshot in snapshots {
+            var fitting = snapshot.fitting
+            let targetName = "local_fitting_\(fitting.fitting_id.uuidString).json"
+            let collidesWithUnreadable = unreadable.contains {
+                $0.fileName.caseInsensitiveCompare(targetName) == .orderedSame
+            }
+            if usedIDs.contains(fitting.fitting_id) || collidesWithUnreadable {
+                var newID = UUID()
+                while reservedIDs.contains(newID) || fileManager.fileExists(
+                    atPath: fittingsDirectory.appendingPathComponent("local_fitting_\(newID.uuidString).json").path
+                ) {
+                    newID = UUID()
+                }
+                fitting = fitting.duplicated(newId: newID, name: fitting.name)
+                reservedIDs.insert(newID)
+            }
+            usedIDs.insert(fitting.fitting_id)
+            if !seenNames[fitting.ship_type_id, default: []].insert(FittingNamePolicy.key(fitting.name)).inserted {
+                let name = FittingNamePolicy.uniqueName(fitting.name, occupied: occupiedNames[fitting.ship_type_id, default: []])
+                fitting = fitting.renamed(name)
+                occupiedNames[fitting.ship_type_id, default: []].insert(FittingNamePolicy.key(name))
+            }
+            let canonicalTarget = try existingFittingFileURL(fittingId: fitting.fitting_id, directory: fittingsDirectory)
+            let migratesFile = try !isSameFittingFile(snapshot.url, canonicalTarget)
+            let target = migratesFile ? canonicalTarget : snapshot.url
+            plans.append((snapshot.url, snapshot.data, fitting, target, migratesFile,
+                          migratesFile || fitting.fitting_id != snapshot.fitting.fitting_id
+                              || fitting.name != snapshot.fitting.name))
+        }
+
+        // Keep original bytes before any filename/identity migration can replace another source path.
+        // Backups are outside the catalog and are never automatically removed.
+        if plans.contains(where: { $0.migratesFile }) {
+            let backup = fittingsDirectory.appendingPathComponent("MigrationBackups", isDirectory: true)
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try fileManager.createDirectory(at: backup, withIntermediateDirectories: true)
+            for snapshot in snapshots {
+                try snapshot.data.write(to: backup.appendingPathComponent(snapshot.url.lastPathComponent), options: .atomic)
+            }
+        }
+        for plan in plans where plan.changed {
+            // Change only identity and name; preserve unrecognized fields in hand-written files.
+            guard var json = try JSONSerialization.jsonObject(with: plan.data) as? [String: Any] else {
+                throw NSError(domain: "FitConvert", code: 2, userInfo: [NSLocalizedDescriptionKey: "装配文件必须是 JSON 对象"])
+            }
+            json["fitting_id"] = plan.fitting.fitting_id.uuidString
+            json["name"] = plan.fitting.name
+            try JSONSerialization.data(withJSONObject: json, options: .prettyPrinted)
+                .write(to: plan.target, options: .atomic)
+        }
+
+        // All targets are durable before obsolete source names are cleaned up.
+        let targetNames = Set(plans.map { $0.target.lastPathComponent })
+        let targetsByCase = Dictionary(grouping: plans.map(\.target)) { $0.lastPathComponent.lowercased() }
+        for plan in plans where !targetNames.contains(plan.source.lastPathComponent) {
+            let candidates = targetsByCase[plan.source.lastPathComponent.lowercased()] ?? []
+            let stillReferencesTarget = try candidates.contains { try isSameFittingFile(plan.source, $0) }
+            if !stillReferencesTarget && fileManager.fileExists(atPath: plan.source.path) {
+                try fileManager.removeItem(at: plan.source)
+            }
+        }
+        return LocalFittingLoadResult(fittings: plans.map(\.fitting), unreadable: unreadable)
     }
 
     /// 抢救解析：仅从原始 JSON 提取装配名与飞船ID，兼容数字被序列化为 Double/字符串的情况

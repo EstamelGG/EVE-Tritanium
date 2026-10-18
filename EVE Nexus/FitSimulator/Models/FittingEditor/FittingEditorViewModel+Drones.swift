@@ -160,15 +160,6 @@ extension FittingEditorViewModel {
         Logger.info("添加无人机，重新计算属性")
         calculateAttributes()
 
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
-        // 通知UI更新
-        objectWillChange.send()
-
-        // 自动保存配置
-        saveConfiguration()
-
         Logger.info("添加无人机成功: \(name), 数量: \(quantity), 激活数量: \(activeCount)")
     }
 
@@ -189,15 +180,6 @@ extension FittingEditorViewModel {
         Logger.info("移除无人机，重新计算属性")
         calculateAttributes()
 
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
-        // 通知UI更新
-        objectWillChange.send()
-
-        // 自动保存配置
-        saveConfiguration()
-
         Logger.info("移除无人机成功，类型ID: \(typeId)")
     }
 
@@ -214,15 +196,6 @@ extension FittingEditorViewModel {
         // 重新计算属性
         Logger.info("移除无人机，重新计算属性")
         calculateAttributes()
-
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
-        // 通知UI更新
-        objectWillChange.send()
-
-        // 自动保存配置
-        saveConfiguration()
 
         Logger.info("移除索引为\(index)的无人机成功")
     }
@@ -301,15 +274,6 @@ extension FittingEditorViewModel {
         // 移除重新计算属性的调用，只更新无人机相关的UI
         // calculateAttributes()
 
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
-        // 通知UI更新
-        objectWillChange.send()
-
-        // 自动保存配置
-        saveConfiguration()
-
         Logger.info("更新无人机成功: \(drone.name), 数量: \(quantity), 激活数量: \(activeCount)")
     }
 
@@ -351,18 +315,9 @@ extension FittingEditorViewModel {
 
         simulationInput.drones[index] = updatedDrone
 
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
         // 重新计算属性（突变会影响属性值）
         Logger.info("更新无人机突变数据，重新计算属性")
         calculateAttributes()
-
-        // 通知UI更新
-        objectWillChange.send()
-
-        // 自动保存配置
-        saveConfiguration()
 
         Logger.info("更新无人机突变数据成功: \(currentDrone.name), 突变质体ID: \(mutaplasmidID?.description ?? "nil"), 突变属性数量: \(mutatedAttributes.count)")
     }
@@ -459,15 +414,6 @@ extension FittingEditorViewModel {
         // 重新计算属性
         Logger.info("替换无人机，重新计算属性")
         calculateAttributes()
-
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
-        // 通知UI更新
-        objectWillChange.send()
-
-        // 自动保存配置
-        saveConfiguration()
 
         Logger.info("替换无人机成功: 从ID \(oldTypeId) 到 ID \(newTypeId)")
     }

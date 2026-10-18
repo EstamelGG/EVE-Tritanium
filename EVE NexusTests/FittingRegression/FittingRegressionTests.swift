@@ -55,10 +55,16 @@ final class FittingRegressionTests: XCTestCase {
             var values: [UUID: [Int: Double]] = [output.originalInput.ship.instanceId: output.ship.attributes]
             for module in output.modules {
                 values[module.instanceId] = module.attributes
-                if let charge = module.charge { values[charge.instanceId] = charge.attributes }
+                if let charge = module.charge {
+                    values[charge.instanceId] = charge.attributes
+                }
             }
-            for drone in output.drones { values[drone.instanceId] = drone.attributes }
-            for fighter in output.fighters ?? [] { values[fighter.instanceId] = fighter.attributes }
+            for drone in output.drones {
+                values[drone.instanceId] = drone.attributes
+            }
+            for fighter in output.fighters ?? [] {
+                values[fighter.instanceId] = fighter.attributes
+            }
             for (id, attributes) in output.attributeTraces {
                 for (attributeID, trace) in attributes {
                     var previous = trace.baseValue
@@ -159,6 +165,9 @@ final class FittingRegressionTests: XCTestCase {
         XCTAssertEqual(bursts.first { $0.flag == .hiSlot3 }?.status, 0)
         let output = try XCTUnwrap(editor.simulationOutput)
         XCTAssertEqual(output.modules.first { $0.flag == .hiSlot3 }?.status, 0)
+        XCTAssertTrue(editor.hasUnsavedChanges)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: savedURL.path))
+        XCTAssertTrue(editor.saveConfiguration())
         let saved = try FitConvert.loadLocalFitting(fittingId: fitting.fitting_id)
         XCTAssertEqual(saved.items.first { $0.flag == .hiSlot3 }?.status, 0)
 
@@ -406,15 +415,201 @@ final class FittingRegressionTests: XCTestCase {
         XCTAssertEqual(after.skills.first?.attributes[attribute], original)
     }
 
-    func testOnlineAutosavesUpdateOneLocalCopy() throws {
+    func testViewingOnlineFittingsDoesNotRequireSaveConfirmation() throws {
         let data = try data()
-        let name = "OnlineAutosaveTest-\(UUID().uuidString)"
+        let itemsCases: [[FittingItem]] = [
+            [],
+            [FittingItem(flag: .medSlot0, quantity: 1, type_id: 35656)],
+        ]
+        var cases = itemsCases.map { items in
+            CharacterFitting(
+                description: "", fitting_id: 123, items: items,
+                name: "Online viewing", ship_type_id: 47466
+            )
+        }
+        for id in ["S20-N1不兼容", "S20-N2同组超限"] {
+            let fitting = try data.fixture(id).fitting
+            cases.append(CharacterFitting(
+                description: "", fitting_id: 123,
+                items: fitting.items.map { FittingItem(flag: $0.flag, quantity: $0.quantity, type_id: $0.type_id) },
+                name: id, ship_type_id: fitting.ship_type_id
+            ))
+        }
+        for online in cases {
+            let editor = FittingEditorViewModel(onlineFitting: online, databaseManager: data.db, characterSkills: data.skills)
+            XCTAssertFalse(editor.hasUnsavedChanges, "加载和初始校验不应让在线装配触发退出保存确认")
+            XCTAssertFalse(editor.hasSavedLocally)
+            XCTAssertTrue(editor.canSaveConfiguration, "未修改的在线装配仍允许手动保存为本地副本")
+            editor.calculateAttributes()
+            XCTAssertFalse(editor.hasUnsavedChanges, "仅重新计算属性不应视为用户编辑")
+            editor.updateName("Edited online fitting")
+            XCTAssertTrue(editor.hasUnsavedChanges, "用户编辑后应提示未保存并确认退出")
+            editor.updateName(online.name)
+            XCTAssertFalse(editor.hasUnsavedChanges, "还原在线装配后不再提示保存")
+        }
+    }
+
+    private func saveTestDirectory() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+        return directory
+    }
+
+    private func savedSnapshotEditor(directory: URL) throws -> FittingEditorViewModel {
+        let data = try data()
+        let fitting = try data.fixture("S01-A").fitting.duplicated(newId: UUID(), name: "Snapshot test")
+        let editor = FittingEditorViewModel(temporaryFitting: fitting, databaseManager: data.db,
+                                            characterSkills: data.skills, fittingDirectory: directory)
+        XCTAssertTrue(editor.hasUnsavedChanges)
+        XCTAssertTrue(editor.saveConfiguration())
+        return editor
+    }
+
+    func testSavedContentCanBeEditedAndRestoredWithoutSaving() throws {
+        let editor = try savedSnapshotEditor(directory: saveTestDirectory())
+        let original = editor.simulationInput
+        editor.updateName(original.name)
+        XCTAssertFalse(editor.hasUnsavedChanges, "重复赋相同值不产生未保存修改")
+        editor.updateName("Changed")
+        XCTAssertTrue(editor.hasUnsavedChanges)
+        editor.updateName(original.name)
+        XCTAssertFalse(editor.hasUnsavedChanges)
+        editor.simulationInput.description += " Changed"
+        XCTAssertTrue(editor.hasUnsavedChanges)
+        editor.simulationInput = original
+        XCTAssertFalse(editor.hasUnsavedChanges)
+        let module = try XCTUnwrap(original.modules.first)
+        editor.simulationInput.modules[0] = module.withStatus(module.status == 0 ? 1 : 0)
+        XCTAssertTrue(editor.hasUnsavedChanges)
+        editor.simulationInput = original
+        XCTAssertFalse(editor.hasUnsavedChanges)
+        editor.simulationInput.cargo = SimCargo(items: original.cargo.items + [
+            SimCargoItem(typeId: 34, quantity: 1, volume: 0.1, name: "Tritanium", iconFileName: nil),
+        ])
+        XCTAssertTrue(editor.hasUnsavedChanges)
+        editor.simulationInput = original
+        XCTAssertFalse(editor.hasUnsavedChanges)
+        XCTAssertFalse(editor.canSaveConfiguration)
+    }
+
+    func testSimulationAndPresentationChangesDoNotChangeSavedSnapshot() throws {
+        let editor = try savedSnapshotEditor(directory: saveTestDirectory())
+        editor.simulationInput.characterSkills[1] = 1
+        editor.simulationInput.characterSkillAttributes = [1: [2: 3]]
+        editor.simulationInput.ship.baseAttributesByName["Snapshot test attribute"] = 123
+        editor.hiSlotsCollapsed.toggle()
+        editor.currentSkillsMode = "all_5"
+        XCTAssertFalse(editor.hasUnsavedChanges)
+        editor.calculateAttributes()
+        XCTAssertFalse(editor.hasUnsavedChanges)
+    }
+
+    func testDraftRemainsUnsavedUntilFirstSuccessfulSave() throws {
+        let data = try data()
+        let directory = try saveTestDirectory()
+        let fitting = try data.fixture("S01-A").fitting
+        let imported = FittingEditorViewModel(temporaryFitting: fitting, databaseManager: data.db,
+                                              characterSkills: data.skills, fittingDirectory: directory)
+        imported.updateName("Changed")
+        imported.updateName(fitting.name)
+        XCTAssertTrue(imported.hasUnsavedChanges)
+        XCTAssertFalse(imported.hasSavedLocally)
+        let blocked = directory.appendingPathComponent("not-a-directory")
+        try Data().write(to: blocked)
+        let failedImport = FittingEditorViewModel(temporaryFitting: fitting, databaseManager: data.db,
+                                                  characterSkills: data.skills, fittingDirectory: blocked)
+        XCTAssertFalse(failedImport.saveConfiguration())
+        XCTAssertTrue(failedImport.hasUnsavedChanges)
+        XCTAssertFalse(failedImport.hasSavedLocally)
+        XCTAssertFalse(failedImport.canDeleteConfiguration)
+        let draft = FittingEditorViewModel(shipTypeId: fitting.ship_type_id, shipInfo: ("Test ship", ""),
+                                           databaseManager: data.db, characterSkills: data.skills, fittingDirectory: directory)
+        XCTAssertTrue(draft.hasUnsavedChanges)
+        XCTAssertFalse(draft.hasSavedLocally)
+        XCTAssertTrue(draft.saveConfiguration())
+        XCTAssertFalse(draft.hasUnsavedChanges)
+        XCTAssertTrue(draft.hasSavedLocally)
+    }
+
+    func testFailedSaveKeepsBaselineAndSuccessfulRetryUpdatesIt() throws {
+        let directory = try saveTestDirectory()
+        let editor = try savedSnapshotEditor(directory: directory)
+        let original = editor.simulationInput
+        guard case let .local(id) = original.fittingId else { return XCTFail("Expected a local target") }
+        let file = try FitConvert.localFittingFileURL(fittingId: id, directory: directory)
+        let originalBytes = try Data(contentsOf: file)
+        editor.simulationInput.modules[0].selectedMutaplasmidID = 100
+        editor.simulationInput.modules[0].mutatedAttributes = [1: .nan]
+        XCTAssertTrue(editor.hasUnsavedChanges, "无法编码的内容不能误判为已保存")
+        XCTAssertFalse(editor.saveConfiguration())
+        XCTAssertEqual(try Data(contentsOf: file), originalBytes, "编码失败不能触碰原文件")
+        editor.simulationInput = original
+        XCTAssertFalse(editor.hasUnsavedChanges)
+        let backup = directory.appendingPathExtension("backup")
+        try FileManager.default.moveItem(at: directory, to: backup)
+        defer { try? FileManager.default.removeItem(at: backup) }
+        try Data().write(to: directory) // 用普通文件占据目录路径，稳定模拟写入失败。
+        editor.updateName("Failed change")
+        XCTAssertFalse(editor.saveConfiguration())
+        XCTAssertTrue(editor.hasUnsavedChanges)
+        XCTAssertTrue(editor.hasSavedLocally)
+        XCTAssertNotNil(editor.errorMessage)
+        editor.simulationInput = original
+        XCTAssertFalse(editor.hasUnsavedChanges, "失败的保存不能改变之前的基准")
+        try FileManager.default.removeItem(at: directory)
+        try FileManager.default.moveItem(at: backup, to: directory)
+        editor.updateName("Successful retry")
+        XCTAssertTrue(editor.saveConfiguration())
+        XCTAssertFalse(editor.hasUnsavedChanges)
+        XCTAssertNil(editor.errorMessage)
+        let loaded = try FitConvert.loadLocalFitting(fittingId: id, directory: directory)
+        XCTAssertEqual(loaded.name, "Successful retry")
+        let reopened = FittingEditorViewModel(fittingId: id, databaseManager: editor.databaseManager,
+                                              characterSkills: original.characterSkills, fittingDirectory: directory)
+        XCTAssertFalse(reopened.hasUnsavedChanges)
+    }
+
+    func testCollisionRenameUsesFinalSavedNameAsBaseline() throws {
+        let directory = try saveTestDirectory()
+        let first = try savedSnapshotEditor(directory: directory)
+        let second = try savedSnapshotEditor(directory: directory)
+        XCTAssertEqual(second.simulationInput.name, first.simulationInput.name + "(1)")
+        XCTAssertFalse(second.hasUnsavedChanges)
+        let savedName = second.simulationInput.name
+        second.updateName(first.simulationInput.name)
+        XCTAssertTrue(second.hasUnsavedChanges)
+        second.updateName(savedName)
+        XCTAssertFalse(second.hasUnsavedChanges)
+        XCTAssertTrue(second.saveConfiguration())
+        XCTAssertEqual(second.simulationInput.name, savedName)
+        XCTAssertEqual(try FitConvert.loadAllLocalFittings(directory: directory).fittings.count, 2)
+    }
+
+    func testLocalValidationChangesAreComparedWithLoadedFile() throws {
+        let data = try data()
+        let directory = try saveTestDirectory()
+        let fitting = try data.fixture("S20-N1不兼容").fitting.duplicated(newId: UUID(), name: "Invalid local fitting")
+        try FitConvert.saveLocalFitting(fitting, directory: directory)
+        let editor = FittingEditorViewModel(fittingId: fitting.fitting_id, databaseManager: data.db,
+                                            characterSkills: data.skills, fittingDirectory: directory)
+        XCTAssertFalse(editor.invalidModules.isEmpty)
+        XCTAssertTrue(editor.hasUnsavedChanges, "已保存文件中被移除的装备属于实际内容差异")
+        XCTAssertTrue(editor.saveConfiguration())
+        XCTAssertFalse(editor.hasUnsavedChanges)
+        XCTAssertTrue(try FitConvert.loadLocalFitting(fittingId: fitting.fitting_id, directory: directory).items.isEmpty)
+    }
+
+    func testOnlineEditsRequireManualSaveAndUpdateOneLocalCopy() throws {
+        let data = try data()
+        let name = "OnlineManualSaveTest-\(UUID().uuidString)"
         let online = CharacterFitting(
             description: "", fitting_id: 123,
             items: [FittingItem(flag: .medSlot0, quantity: 1, type_id: 35656)],
             name: name, ship_type_id: 47466
         )
         let editor = FittingEditorViewModel(onlineFitting: online, databaseManager: data.db, characterSkills: data.skills)
+        XCTAssertFalse(editor.hasUnsavedChanges)
         let directory = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
             .appendingPathComponent("Fitting")
         defer {
@@ -426,13 +621,26 @@ final class FittingRegressionTests: XCTestCase {
             }
         }
         XCTAssertTrue(editor.simulationInput.modules.contains { $0.typeId == 35656 })
+        XCTAssertTrue(try FitConvert.loadAllLocalFittings().fittings.filter { $0.name == name }.isEmpty)
         var savedId: UUID?
+        var previouslySavedStatus: Int?
         for status in [1, 2, 0, 2, 1] {
             editor.updateModuleStatus(flag: .medSlot0, newStatus: status)
+            XCTAssertTrue(editor.hasUnsavedChanges)
+            let beforeSave = try FitConvert.loadAllLocalFittings().fittings.filter { $0.name == name }
+            if let previouslySavedStatus {
+                XCTAssertEqual(beforeSave.first?.items.first { $0.type_id == 35656 }?.status, previouslySavedStatus)
+            } else {
+                XCTAssertTrue(beforeSave.isEmpty, "编辑在线装配不能自动创建本地副本")
+            }
+            XCTAssertTrue(editor.saveConfiguration())
+            previouslySavedStatus = status
             let copies = try FitConvert.loadAllLocalFittings().fittings.filter { $0.name == name }
             XCTAssertEqual(copies.count, 1)
             let copy = try XCTUnwrap(copies.first)
-            if let savedId { XCTAssertEqual(copy.fitting_id, savedId) }
+            if let savedId {
+                XCTAssertEqual(copy.fitting_id, savedId)
+            }
             savedId = copy.fitting_id
             XCTAssertEqual(copy.items.first { $0.type_id == 35656 }?.status, status)
             XCTAssertEqual(editor.simulationInput.fittingId, .online(123))
@@ -468,5 +676,66 @@ final class FittingRegressionTests: XCTestCase {
             let input = FitConvert.localFittingToSimulationInput(localFitting: fitting, databaseManager: data.db, characterSkills: data.skills)
             XCTAssertEqual(input.modules.first { $0.typeId == 35656 }?.status, 2)
         }
+    }
+
+    func testDraftAndLocalEditorUseCentralChangeTracking() throws {
+        let data = try data()
+        let fixture = try data.fixture("S01-A")
+        let fitting = fixture.fitting.duplicated(newId: UUID(), name: "ManualState-\(UUID().uuidString)")
+        let editor = FittingEditorViewModel(temporaryFitting: fitting, databaseManager: data.db, characterSkills: data.skills)
+        defer {
+            if let file = try? FitConvert.localFittingFileURL(fittingId: fitting.fitting_id) {
+                try? FileManager.default.removeItem(at: file)
+            }
+        }
+        XCTAssertTrue(editor.hasUnsavedChanges)
+        XCTAssertTrue(editor.canSaveConfiguration)
+        XCTAssertFalse(editor.canDeleteConfiguration)
+        XCTAssertTrue(editor.saveConfiguration())
+        XCTAssertFalse(editor.hasUnsavedChanges)
+        XCTAssertFalse(editor.canSaveConfiguration)
+        XCTAssertTrue(editor.canDeleteConfiguration)
+
+        let loaded = FittingEditorViewModel(fittingId: fitting.fitting_id, databaseManager: data.db, characterSkills: data.skills)
+        XCTAssertTrue(loaded.hasSavedLocally)
+        XCTAssertFalse(loaded.hasUnsavedChanges)
+        loaded.updateName("Renamed-\(UUID().uuidString)")
+        XCTAssertTrue(loaded.hasUnsavedChanges)
+        XCTAssertTrue(loaded.canSaveConfiguration)
+        XCTAssertEqual(try FitConvert.loadLocalFitting(fittingId: fitting.fitting_id).name, fitting.name)
+        XCTAssertTrue(loaded.saveConfiguration())
+        loaded.simulationInput.cargo = SimCargo(items: [
+            SimCargoItem(typeId: 34, quantity: 10, volume: 0.1, name: "Test cargo", iconFileName: nil),
+        ])
+        XCTAssertTrue(loaded.hasUnsavedChanges, "直接修改输入也应由统一的变更跟踪标记")
+        XCTAssertNil(try FitConvert.loadLocalFitting(fittingId: fitting.fitting_id).cargo?.first { $0.type_id == 34 })
+    }
+
+    func testSingleAndBatchLocalDeletionResolveActualFilenames() throws {
+        let data = try data()
+        let fixture = try data.fixture("S01-A")
+        let first = fixture.fitting.duplicated(newId: UUID(), name: "DeleteState-\(UUID().uuidString)")
+        let second = fixture.fitting.duplicated(newId: UUID(), name: "DeleteState-\(UUID().uuidString)")
+        let directory = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
+            .appendingPathComponent("Fitting")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for fitting in [first, second] {
+            try JSONEncoder().encode(fitting).write(to: directory.appendingPathComponent("local_fitting_\(fitting.fitting_id.uuidString.lowercased()).json"))
+        }
+        defer {
+            for fitting in [first, second] {
+                if let file = try? FitConvert.localFittingFileURL(fittingId: fitting.fitting_id) {
+                    try? FileManager.default.removeItem(at: file)
+                }
+            }
+        }
+        let model = LocalFittingViewModel(databaseManager: data.db)
+        let alreadyMissing = UUID()
+        XCTAssertEqual(model.deleteFittings(fittingIds: [first.fitting_id, alreadyMissing]), [first.fitting_id, alreadyMissing])
+        XCTAssertThrowsError(try FitConvert.loadLocalFitting(fittingId: first.fitting_id))
+        XCTAssertNoThrow(try FitConvert.loadLocalFitting(fittingId: second.fitting_id))
+        model.deleteFitting(fittingId: second.fitting_id)
+        XCTAssertThrowsError(try FitConvert.loadLocalFitting(fittingId: second.fitting_id))
+        XCTAssertNil(model.errorMessage)
     }
 }

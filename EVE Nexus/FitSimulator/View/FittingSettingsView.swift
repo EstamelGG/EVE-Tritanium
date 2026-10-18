@@ -9,9 +9,6 @@ struct FittingSettingsView: View {
     @State private var draftFittingName = ""
     @State private var showingRenameAlert = false
     @State private var showingShipInfo = false
-    @State private var showingLocalSaveAlert = false
-    @State private var showingLocalSaveConfirmation = false
-    @State private var localSaveSucceeded = false
     let databaseManager: DatabaseManager
     let shipTypeID: Int
     @State private var shipItem: DatabaseListItem?
@@ -149,8 +146,6 @@ struct FittingSettingsView: View {
         }
 
         viewModel.calculateAttributes()
-        viewModel.hasUnsavedChanges = true
-        viewModel.saveConfiguration()
     }
 
     private var skillModeText: String {
@@ -536,7 +531,7 @@ struct FittingSettingsView: View {
                 .listRowSeparator(.hidden)
             }
 
-            if onDelete != nil {
+            if onDelete != nil && viewModel.canDeleteConfiguration {
                 Section {
                     Button(role: .destructive) {
                         showingDeleteConfirmAlert = true
@@ -578,34 +573,7 @@ struct FittingSettingsView: View {
                 onNameChanged(fittingData)
             }
         }
-        .alert(NSLocalizedString("Fitting_Save_To_Local", comment: ""), isPresented: $showingLocalSaveConfirmation) {
-            Button(NSLocalizedString("Misc_Cancel", comment: ""), role: .cancel) {}
-            Button(NSLocalizedString("Misc_Save", comment: "")) {
-                commitPendingEnvironmentSelection()
-                localSaveSucceeded = viewModel.saveConfiguration()
-                showingLocalSaveAlert = true
-            }
-        } message: {
-            Text(NSLocalizedString("Fitting_Save_To_Local_Confirm", comment: "是否将当前装配保存到本地？"))
-        }
-        .alert(NSLocalizedString("Fitting_Save_To_Local", comment: ""), isPresented: $showingLocalSaveAlert) {
-            Button(NSLocalizedString("Common_OK", comment: "")) {}
-        } message: {
-            Text(NSLocalizedString(localSaveSucceeded ? "Fitting_Local_Save_Success" : "Fitting_Local_Save_Failed", comment: ""))
-        }
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                if case .online = viewModel.simulationInput.fittingId {
-                    Button {
-                        showingLocalSaveConfirmation = true
-                    } label: {
-                        Image(systemName: "square.and.arrow.down")
-                            .foregroundStyle(.blue)
-                    }
-                    .accessibilityLabel(NSLocalizedString("Fitting_Save_To_Local", comment: "保存到本地"))
-                }
-            }
-
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
                     dismiss()

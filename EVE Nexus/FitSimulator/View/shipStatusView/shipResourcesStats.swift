@@ -131,23 +131,20 @@ struct ShipResourcesStatsView: View {
                 Spacer()
             }
         }
-        .onAppear {
-            updateValues()
-        }
-        .onReceive(viewModel.objectWillChange) { _ in
-            updateValues()
+        .onReceive(viewModel.$simulationOutput) { output in
+            updateValues(output: output)
         }
     }
 
     /// 更新所有数值
-    private func updateValues() {
-        updateSlotValues()
-        updateResourceValues()
+    private func updateValues(output: SimulationOutput?) {
+        updateSlotValues(output: output)
+        updateResourceValues(output: output)
     }
 
     /// 更新槽位数值
-    private func updateSlotValues() {
-        if let output = viewModel.simulationOutput {
+    private func updateSlotValues(output: SimulationOutput?) {
+        if let output {
             Logger.info("使用计算后的属性值更新槽位数")
             slotsValues["turretSlotsLeft"] = Int(
                 output.ship.attributesByName["turretSlotsLeft"] ?? 0
@@ -173,12 +170,12 @@ struct ShipResourcesStatsView: View {
     }
 
     /// 更新资源数值
-    private func updateResourceValues() {
+    private func updateResourceValues(output: SimulationOutput?) {
         // 计算CPU和电力使用情况
         var cpuUsed: Double = 0
         var pgUsed: Double = 0
 
-        if let output = viewModel.simulationOutput {
+        if let output {
             // CPU和PG总量
             resourceValues["cpuTotal"] = output.ship.attributesByName["cpuOutput"] ?? 0
             resourceValues["pgTotal"] = output.ship.attributesByName["powerOutput"] ?? 0

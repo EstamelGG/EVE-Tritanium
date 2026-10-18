@@ -489,7 +489,7 @@ class NotificationManager: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        formatter.locale = Locale.current
+        formatter.locale = FormatUtil.appLocale
         return formatter.string(from: date)
     }
 
@@ -498,7 +498,7 @@ class NotificationManager: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateStyle = .full
         formatter.timeStyle = .short
-        formatter.locale = Locale.current
+        formatter.locale = FormatUtil.appLocale
         return formatter.string(from: date)
     }
 

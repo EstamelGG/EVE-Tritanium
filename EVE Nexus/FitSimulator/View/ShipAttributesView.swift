@@ -89,23 +89,20 @@ struct ShipAttributesView: View {
         .padding(.vertical, 8)
         .background(Color(.systemBackground))
         .overlay(Divider(), alignment: .bottom)
-        .onAppear {
-            updateResourceUsage()
-        }
-        .onReceive(viewModel.objectWillChange) { _ in
-            updateResourceUsage()
+        .onReceive(viewModel.$simulationOutput) { output in
+            updateResourceUsage(output: output)
         }
     }
 
     /// 更新资源使用情况
-    private func updateResourceUsage() {
+    private func updateResourceUsage(output: SimulationOutput?) {
         // 计算已使用的CPU和电力
         var cpuTotal: Double = 0
         var pgTotal: Double = 0
         var rigTotal: Double = 0
 
         // 使用计算后的属性值，从simulationOutput中获取
-        if let output = viewModel.simulationOutput {
+        if let output {
             Logger.info("使用计算后的属性值计算资源使用情况")
             // 获取计算后的挂点数
             turretHardpoints = Int(output.ship.attributesByName["turretSlotsLeft"] ?? 0)

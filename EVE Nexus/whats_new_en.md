@@ -525,3 +525,9 @@ Fixes & Improvements:
 3. Improved market history charts
 4. Added a time zone setting to choose between the current system time zone and UTC+0 (EVE time); server time on the home page remains in UTC+0
 5. Fitting simulation: press a changed attribute on the item info page to view its influences, including skills, modules, implants, boosters, environmental effects, and mutations, with before-and-after values and numeric differences
+
+# v1.14.9 October 18, 2026
+
+1. Fitting simulation: switched to manual saving, with unsaved changes indicators and confirmation prompts
+2. Fitting simulation: fittings are now grouped by ship, with multiple selection, select all per ship, and bulk deletion
+3. Added support for iPhone Duo

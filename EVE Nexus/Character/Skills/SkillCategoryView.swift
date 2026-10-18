@@ -65,12 +65,6 @@ class SkillCategoryViewModel: ObservableObject {
     /// 存储技能队列
     private var skillQueue: [SkillQueueItem] = []
 
-    /// 判断单个技能组是否满了
-    func isGroupCompleted(_ group: SkillGroup) -> Bool {
-        return group.maxTotalSkillPoints > 0 &&
-            group.learnedTotalSkillPoints >= group.maxTotalSkillPoints
-    }
-
     /// 获取指定技能组中在队列中的技能数量（仅未完成的，按技能ID去重）
     func getQueueCount(for group: SkillGroup) -> Int {
         let groupSkillIds = allSkillsDict.filter { $0.value.groupID == group.id }.keys

@@ -133,15 +133,20 @@ struct ServerStatusView: View {
     @ObservedObject var mainViewModel: MainViewModel
 
     var body: some View {
-        HStack(spacing: 4) {
-            Text(formattedUTCDateTime)
-                .font(.monospacedDigit(.caption)())
-                .fixedSize()
-            Text("-")
-                .font(.caption)
-            statusText
-                .lineLimit(1)
-                .truncationMode(.tail)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 4) {
+                serverTimeText
+                Text("-")
+                    .font(.caption)
+                statusText
+            }
+            .fixedSize(horizontal: true, vertical: false)
+
+            VStack(alignment: .leading, spacing: 2) {
+                serverTimeText
+                statusText
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .onAppear {
             viewModel.startTimers()
@@ -149,6 +154,12 @@ struct ServerStatusView: View {
         .onDisappear {
             viewModel.stopTimers()
         }
+    }
+
+    private var serverTimeText: some View {
+        Text(formattedUTCDateTime)
+            .font(.monospacedDigit(.caption)())
+            .fixedSize()
     }
 
     /// Tranquility 日期与时间同列，UTC，MM/dd HH:mm

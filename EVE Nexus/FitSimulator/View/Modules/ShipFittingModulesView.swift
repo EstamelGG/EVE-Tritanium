@@ -243,12 +243,6 @@ struct ShipFittingModulesView: View {
         if successCount > 0 {
             Logger.info("批量安装装备完成，重新计算属性")
             viewModel.calculateAttributes()
-
-            // 标记有未保存的更改
-            viewModel.hasUnsavedChanges = true
-
-            // 自动保存配置
-            viewModel.saveConfiguration()
         }
 
         Logger.info("批量安装装备完成，成功: \(successCount)/\(emptySlots.count)")
@@ -374,12 +368,6 @@ struct ShipFittingModulesView: View {
         // 只在最后计算一次属性
         Logger.info("批量删除模块完成，重新计算属性")
         viewModel.calculateAttributes()
-
-        // 标记有未保存的更改
-        viewModel.hasUnsavedChanges = true
-
-        // 自动保存配置
-        viewModel.saveConfiguration()
 
         Logger.info("批量删除模块成功: \(flags.count) 个")
     }
@@ -555,12 +543,6 @@ struct ShipFittingModulesView: View {
         // 只在最后计算一次属性
         Logger.info("批量替换装备完成，重新计算属性")
         viewModel.calculateAttributes()
-
-        // 标记有未保存的更改
-        viewModel.hasUnsavedChanges = true
-
-        // 自动保存配置
-        viewModel.saveConfiguration()
 
         Logger.info("批量替换装备完成，成功: \(successCount)/\(flags.count)")
 

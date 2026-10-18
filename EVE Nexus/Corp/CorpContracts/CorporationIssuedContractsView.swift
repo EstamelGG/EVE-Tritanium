@@ -866,6 +866,8 @@ struct CorporationIssuedContractsView: View {
 
 /// 专门用于公司发起合同的 ContractRow，price 始终显示为绿色正号
 struct CorporationIssuedContractRow: View {
+    @State private var shouldUseCompactLayout = false
+
     @Environment(\.timeZone) private var displayTimeZone
     let contract: ContractInfo
     let databaseManager: DatabaseManager
@@ -1013,7 +1015,7 @@ struct CorporationIssuedContractRow: View {
             )
         } label: {
             VStack(alignment: .leading, spacing: 4) {
-                if DeviceUtils.shouldUseCompactLayout {
+                if shouldUseCompactLayout {
                     HStack {
                         Text(formatContractStatus(contract.status))
                             .font(.caption)
@@ -1163,6 +1165,12 @@ struct CorporationIssuedContractRow: View {
                         }
                     }
                 }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onGeometryChange(for: Bool.self) { geometry in
+                geometry.size.width >= 560
+            } action: { usesWideLayout in
+                shouldUseCompactLayout = usesWideLayout
             }
             .padding(.vertical, 2)
             .contextMenu {

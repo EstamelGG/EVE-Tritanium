@@ -79,14 +79,6 @@ extension FittingEditorViewModel {
         )
     }
 
-    /// 重新计算属性、标记未保存更改、通知UI并自动保存配置
-    private func applyChanges() {
-        calculateAttributes()
-        hasUnsavedChanges = true
-        objectWillChange.send()
-        saveConfiguration()
-    }
-
     /// 每次计算后的统一校验：
     /// 乐观安装并跑完计算管线后，用**计算后**的同组限制统一校验并降级，返回是否发生变化，由调用方补算。
     /// 解决"装配数量/同组上限依赖计算结果（如加成处理器增加脉冲波槽位）而逐个安装时无法得知"的死锁。
@@ -122,13 +114,18 @@ extension FittingEditorViewModel {
             let maxOnline = Int(outModule.attributesByName["maxGroupOnline"] ?? 0)
             let maxActive = Int(outModule.attributesByName["maxGroupActive"] ?? 0)
             if maxOnline > 0 || maxActive > 0 {
+                // inout 即使没有修改也会触发属性回写；仅在实际降级后更新输入。
+                var validatedModules = simulationInput.modules
                 let modified = ModuleGroupManager.handleGroupDowngrade(
-                    modules: &simulationInput.modules,
+                    modules: &validatedModules,
                     groupID: groupID,
                     maxGroupOnline: maxOnline,
                     maxGroupActive: maxActive
                 )
-                changed = changed || !modified.isEmpty
+                if !modified.isEmpty {
+                    simulationInput.modules = validatedModules
+                    changed = true
+                }
             }
         }
 
@@ -338,7 +335,7 @@ extension FittingEditorViewModel {
 
             // 重新计算属性
             Logger.info("更新装备状态，重新计算属性")
-            applyChanges()
+            calculateAttributes()
 
             Logger.info("更新模块状态成功: \(currentModule.name), 从 \(originalStatus) 到 \(newStatus)")
         }
@@ -356,7 +353,7 @@ extension FittingEditorViewModel {
         Logger.info(
             "更新装备完全预热: \(currentModule.name), isSpoolUpFull=\(isFull)"
         )
-        applyChanges()
+        calculateAttributes()
     }
 
     func batchUpdateModuleSpoolUpFull(flags: [FittingFlag], isFull: Bool) {
@@ -375,7 +372,7 @@ extension FittingEditorViewModel {
         guard didChange else { return }
 
         Logger.info("批量更新装备完全预热: \(flags.count) 个槽位, isSpoolUpFull=\(isFull)")
-        applyChanges()
+        calculateAttributes()
     }
 
     /// 批量更新模块状态（优化版本，只在最后计算一次属性）
@@ -471,7 +468,7 @@ extension FittingEditorViewModel {
 
         // 只在最后计算一次属性
         Logger.info("批量更新模块状态完成，重新计算属性")
-        applyChanges()
+        calculateAttributes()
 
         Logger.info("批量更新模块状态成功: \(actualUpdatedFlags.count)/\(flags.count) 个模块实际更新")
     }
@@ -519,7 +516,7 @@ extension FittingEditorViewModel {
 
         // 只在最后计算一次属性
         Logger.info("批量安装弹药完成，重新计算属性")
-        applyChanges()
+        calculateAttributes()
 
         Logger.info("批量安装弹药成功: \(name) 到 \(flags.count) 个模块")
     }
@@ -541,7 +538,7 @@ extension FittingEditorViewModel {
 
         // 只在最后计算一次属性
         Logger.info("批量清除弹药完成，重新计算属性")
-        applyChanges()
+        calculateAttributes()
 
         Logger.info("批量清除弹药成功: \(flags.count) 个模块")
     }
@@ -581,7 +578,7 @@ extension FittingEditorViewModel {
 
             // 重新计算属性
             Logger.info("设置弹药，重新计算属性")
-            applyChanges()
+            calculateAttributes()
 
             Logger.info("安装弹药成功: \(name) 到 \(currentModule.name), 弹药数量: \(chargeQuantity ?? 0)")
         }
@@ -602,7 +599,7 @@ extension FittingEditorViewModel {
 
             // 重新计算属性
             Logger.info("移除装备，重新计算属性")
-            applyChanges()
+            calculateAttributes()
 
             Logger.info("移除弹药成功: 从 \(currentModule.name)")
         }
@@ -680,7 +677,7 @@ extension FittingEditorViewModel {
 
         // 计算新属性
         Logger.info("安装装备，重新计算属性")
-        applyChanges()
+        calculateAttributes()
 
         Logger.info("安装装备成功: \(model_name) 到 \(flag.rawValue), 状态: \(moduleStatus)")
     }
@@ -700,7 +697,7 @@ extension FittingEditorViewModel {
 
         // 计算新属性
         Logger.info("移除属性，重新计算属性")
-        applyChanges()
+        calculateAttributes()
 
         Logger.info("移除槽位\(flag.rawValue)的装备成功")
     }
@@ -760,7 +757,7 @@ extension FittingEditorViewModel {
 
         // 重新计算属性（突变会影响属性值）
         Logger.info("更新模块突变数据，重新计算属性")
-        applyChanges()
+        calculateAttributes()
 
         Logger.info("更新模块突变数据成功: \(currentModule.name), 突变质体ID: \(mutaplasmidID?.description ?? "nil"), 突变属性数量: \(mutatedAttributes.count)")
     }
@@ -813,7 +810,6 @@ extension FittingEditorViewModel {
                 simulationInput.modules.append(oldModule)
                 Logger.info("撤回装备替换，重新计算属性")
                 calculateAttributes()
-                objectWillChange.send()
             }
 
             return false
@@ -918,7 +914,7 @@ extension FittingEditorViewModel {
 
         // 计算新属性
         Logger.info("替换装备，重新计算属性")
-        applyChanges()
+        calculateAttributes()
 
         Logger.info("替换装备成功: \(model_name) 到 \(flag.rawValue), 状态: \(moduleStatus)")
         return true

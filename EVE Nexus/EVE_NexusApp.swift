@@ -24,7 +24,7 @@ struct EVE_NexusApp: App {
     init() {
         // Hosted unit tests prepare their own bundled data; avoid concurrent SDE loads,
         // OTA updates and account/network side effects while the test runner is active.
-        if Self.isUnitTestHost {
+        if Self.isUnitTestHost || Self.isFittingNavigationUITest {
             return
         }
         // 配置 Pulse 日志系统（必须在其他初始化之前）
@@ -460,40 +460,70 @@ struct EVE_NexusApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                if Self.isUnitTestHost {
-                    Color.clear
-                } else if isInitialized {
-                    ContentView(databaseManager: databaseManager)
-                        .transition(.opacity)
-                } else {
-                    StartupSplashView(
-                        stage: startupStage,
-                        progress: startupProgress,
-                        detailText: startupDetailText
-                    )
+            if Self.isFittingNavigationUITest {
+                fittingNavigationUITestRoot
+            } else {
+                normalAppRoot
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var fittingNavigationUITestRoot: some View {
+        #if DEBUG
+            if ProcessInfo.processInfo.environment["EVE_FITTING_LOADING_UI_TEST"] == "1" {
+                FittingOnlineLoadingUITestHost()
+            } else {
+                FittingNavigationUITestHost()
+            }
+        #else
+            EmptyView()
+        #endif
+    }
+
+    private static var isFittingNavigationUITest: Bool {
+        #if DEBUG
+            ProcessInfo.processInfo.environment["EVE_FITTING_NAVIGATION_UI_TEST"] == "1"
+                || ProcessInfo.processInfo.environment["EVE_FITTING_LOADING_UI_TEST"] == "1"
+        #else
+            false
+        #endif
+    }
+
+    private var normalAppRoot: some View {
+        ZStack {
+            if Self.isUnitTestHost {
+                Color.clear
+            } else if isInitialized {
+                ContentView(databaseManager: databaseManager)
                     .transition(.opacity)
-                    .onAppear {
-                        guard !hasStartedLoading else { return }
-                        hasStartedLoading = true
-                        Task {
-                            await checkAndPrepareStaticResources()
-                        }
+            } else {
+                StartupSplashView(
+                    stage: startupStage,
+                    progress: startupProgress,
+                    detailText: startupDetailText
+                )
+                .transition(.opacity)
+                .onAppear {
+                    guard !hasStartedLoading else { return }
+                    hasStartedLoading = true
+                    Task {
+                        await checkAndPrepareStaticResources()
                     }
                 }
             }
-            // 初始化完成后开屏与主界面交叉淡入淡出
-            .animation(.easeInOut(duration: 0.5), value: isInitialized)
-            // 主题统一在根视图生效，开屏页与主界面共享同一份映射（@AppStorage 变化即时刷新）
-            .preferredColorScheme(preferredColorScheme)
-            .environment(\.locale, Locale(identifier: selectedLanguage ?? "en"))
-            .environment(\.timeZone, FormatUtil.displayTimeZone(for: selectedTimeZone))
-            .environment(\.calendar, FormatUtil.appCalendar)
-            .alert(NSLocalizedString("RateLimit_Alert_Title", comment: ""), isPresented: $rateLimitAlertManager.shouldShowRateLimitAlert) {
-                Button(NSLocalizedString("RateLimit_Alert_OK", comment: "")) {}
-            } message: {
-                Text(NSLocalizedString("RateLimit_Alert_Message", comment: ""))
-            }
+        }
+        // 初始化完成后开屏与主界面交叉淡入淡出
+        .animation(.easeInOut(duration: 0.5), value: isInitialized)
+        // 主题统一在根视图生效，开屏页与主界面共享同一份映射（@AppStorage 变化即时刷新）
+        .preferredColorScheme(preferredColorScheme)
+        .environment(\.locale, Locale(identifier: selectedLanguage ?? "en"))
+        .environment(\.timeZone, FormatUtil.displayTimeZone(for: selectedTimeZone))
+        .environment(\.calendar, FormatUtil.appCalendar)
+        .alert(NSLocalizedString("RateLimit_Alert_Title", comment: ""), isPresented: $rateLimitAlertManager.shouldShowRateLimitAlert) {
+            Button(NSLocalizedString("RateLimit_Alert_OK", comment: "")) {}
+        } message: {
+            Text(NSLocalizedString("RateLimit_Alert_Message", comment: ""))
         }
     }
 

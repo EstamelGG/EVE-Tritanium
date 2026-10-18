@@ -188,3 +188,21 @@ enum FittingTreeBuilder {
         }
     }
 }
+
+/// Selection is keyed by full fitting identity and remains independent across ship sections.
+struct FittingCatalogSelection {
+    var refs: Set<FittingRef> = []
+
+    mutating func toggleAll(in fittings: [FittingItemNode]) {
+        let sectionRefs = Set(fittings.map(\.ref))
+        if sectionRefs.isSubset(of: refs) {
+            refs.subtract(sectionRefs)
+        } else {
+            refs.formUnion(sectionRefs)
+        }
+    }
+
+    mutating func retainVisible(_ visibleRefs: Set<FittingRef>) {
+        refs.formIntersection(visibleRefs)
+    }
+}

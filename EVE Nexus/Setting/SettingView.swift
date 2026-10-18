@@ -1202,17 +1202,17 @@ private struct PackageUpdateCard: View {
     private var statusLabel: String {
         switch state.step {
         case .pending:
-            return String(localized: "SDE_Status_Pending", defaultValue: "等待中")
+            return NSLocalizedString("SDE_Status_Pending", comment: "等待中")
         case .downloading:
-            return String(localized: "SDE_Status_Downloading", defaultValue: "正在下载")
+            return NSLocalizedString("SDE_Status_Downloading", comment: "正在下载")
         case .verifying:
-            return String(localized: "SDE_Status_Verifying", defaultValue: "正在校验")
+            return NSLocalizedString("SDE_Status_Verifying", comment: "正在校验")
         case .installing:
-            return String(localized: "SDE_Status_Installing", defaultValue: "正在安装")
+            return NSLocalizedString("SDE_Status_Installing", comment: "正在安装")
         case .done, .skipped:
-            return String(localized: "SDE_Done", defaultValue: "完成")
+            return NSLocalizedString("SDE_Done", comment: "完成")
         case .failed:
-            return String(localized: "SDE_Update_Failed", defaultValue: "更新失败")
+            return NSLocalizedString("SDE_Update_Failed", comment: "更新失败")
         }
     }
 

@@ -254,15 +254,15 @@ final class SDEUpdateManager: ObservableObject {
                     field: SDECloudKitManager.fieldIcons,
                     zipName: SDECloudKitManager.iconsZipName,
                     expectedHash: updateChecker.currentMetadata?.iconSha256 ?? "",
-                    downloadLog: String(localized: "SDE_Log_Downloading_Icons"),
-                    prepareLog: String(localized: "SDE_Log_Preparing_Icons"),
-                    verifyLog: String(localized: "SDE_Log_Verifying_Icons_SHA"),
-                    extractLog: String(localized: "SDE_Log_Extracting_Icons"),
-                    successLog: String(localized: "SDE_Log_Extract_Icons_Success"),
+                    downloadLog: NSLocalizedString("SDE_Log_Downloading_Icons", comment: ""),
+                    prepareLog: NSLocalizedString("SDE_Log_Preparing_Icons", comment: ""),
+                    verifyLog: NSLocalizedString("SDE_Log_Verifying_Icons_SHA", comment: ""),
+                    extractLog: NSLocalizedString("SDE_Log_Extracting_Icons", comment: ""),
+                    successLog: NSLocalizedString("SDE_Log_Extract_Icons_Success", comment: ""),
                     extract: { [downloader] p in try await downloader.extractIcons(progress: p) }
                 )
             } else {
-                skipPackage(.icons, message: String(localized: "SDE_Log_Icons_Up_To_Date"))
+                skipPackage(.icons, message: NSLocalizedString("SDE_Log_Icons_Up_To_Date", comment: ""))
             }
 
             if needsSDE {
@@ -271,15 +271,15 @@ final class SDEUpdateManager: ObservableObject {
                     field: SDECloudKitManager.fieldSDE,
                     zipName: SDECloudKitManager.sdeZipName,
                     expectedHash: updateChecker.currentMetadata?.sdeSha256 ?? "",
-                    downloadLog: String(localized: "SDE_Log_Downloading_SDE"),
-                    prepareLog: String(localized: "SDE_Log_Preparing_SDE"),
-                    verifyLog: String(localized: "SDE_Log_Verifying_SDE_SHA"),
-                    extractLog: String(localized: "SDE_Log_Extracting_SDE"),
-                    successLog: String(localized: "SDE_Log_Extract_SDE_Success"),
+                    downloadLog: NSLocalizedString("SDE_Log_Downloading_SDE", comment: ""),
+                    prepareLog: NSLocalizedString("SDE_Log_Preparing_SDE", comment: ""),
+                    verifyLog: NSLocalizedString("SDE_Log_Verifying_SDE_SHA", comment: ""),
+                    extractLog: NSLocalizedString("SDE_Log_Extracting_SDE", comment: ""),
+                    successLog: NSLocalizedString("SDE_Log_Extract_SDE_Success", comment: ""),
                     extract: { [downloader] p in try await downloader.extractSDE(progress: p) }
                 )
             } else {
-                skipPackage(.sde, message: String(localized: "SDE_Log_SDE_Up_To_Date"))
+                skipPackage(.sde, message: NSLocalizedString("SDE_Log_SDE_Up_To_Date", comment: ""))
             }
 
             if needsIcons || needsSDE {
@@ -317,22 +317,22 @@ final class SDEUpdateManager: ObservableObject {
         appendLine(kind, downloadLog)
 
         let staged = try await downloadZip(kind: kind, field: field, zipName: zipName)
-        appendLine(kind, String(localized: "SDE_Log_Download_Completed"), .success)
+        appendLine(kind, NSLocalizedString("SDE_Log_Download_Completed", comment: ""), .success)
         setProgress(kind, 0.6)
 
         appendLine(kind, prepareLog)
         setStep(kind, .verifying)
         setProgress(kind, 0.65)
 
-        appendLine(kind, String(localized: "SDE_Log_Calculating_SHA", defaultValue: "正在计算 SHA256…"))
+        appendLine(kind, NSLocalizedString("SDE_Log_Calculating_SHA", comment: "正在计算 SHA256…"))
         setProgress(kind, 0.7)
         appendLine(kind, verifyLog)
         guard try downloader.verifySHA256(of: staged, expected: expectedHash) else {
-            appendLine(kind, String(localized: "SDE_Log_SHA_Failed"), .error)
+            appendLine(kind, NSLocalizedString("SDE_Log_SHA_Failed", comment: ""), .error)
             throw NSError(domain: "SDEUpdateManager", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "\(zipName) SHA256 failed"])
         }
-        appendLine(kind, String(localized: "SDE_Log_SHA_Verified"), .success)
+        appendLine(kind, NSLocalizedString("SDE_Log_SHA_Verified", comment: ""), .success)
         setProgress(kind, 0.75)
 
         appendLine(kind, extractLog)

@@ -8,23 +8,6 @@ class ExtractionSimulation {
     private static let f2: Double = 1.0 / 5.0
     private static let f3: Double = 1.0 / 2.0
 
-    /// 计算特定时间点的产出
-    /// - Parameters:
-    ///   - baseValue: 基础产量
-    ///   - startTime: 开始时间
-    ///   - currentTime: 当前时间
-    ///   - cycleTime: 周期时长（秒）
-    /// - Returns: 该时间点的产量
-    static func getProgramOutput(
-        baseValue: Int,
-        startTime: Date,
-        currentTime: Date,
-        cycleTime: TimeInterval
-    ) -> Int64 {
-        Program(baseValue: baseValue, cycleDuration: cycleTime)
-            .output(startTime: startTime, currentTime: currentTime)
-    }
-
     /// 固定采集参数；仅复用常量，保留原公式的运算顺序和逐周期取整。
     struct Program {
         private let baseValue: Int

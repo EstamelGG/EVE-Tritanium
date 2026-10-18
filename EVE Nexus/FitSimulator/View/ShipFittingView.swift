@@ -37,9 +37,6 @@ struct ShipFittingView: View {
     }
 
     @State private var viewModel: FittingEditorViewModel?
-    @State private var showingSettings = false
-    @State private var selectedViewType: FittingViewType = .modules
-    @Environment(\.dismiss) private var dismiss
 
     private let entry: Entry
     private let databaseManager: DatabaseManager
@@ -70,7 +67,7 @@ struct ShipFittingView: View {
     var body: some View {
         ZStack {
             if let viewModel {
-                fittingBody(viewModel: viewModel)
+                FittingEditorPage(viewModel: viewModel, databaseManager: databaseManager)
                     .transition(Self.detailContentTransition)
             } else {
                 ProgressView()
@@ -78,21 +75,162 @@ struct ShipFittingView: View {
                     .transition(Self.loadingTransition)
             }
         }
-        .navigationTitle(viewModel?.shipInfo.name ?? "")
-        .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await loadViewModel()
-        }
-        .onDisappear {
-            if let viewModel {
-                clearSelectorPreferences(viewModel: viewModel)
+        .task { await loadViewModel() }
+    }
+
+    private static let switchAnimation: Animation = .easeInOut(duration: 0.38)
+    private static let loadingTransition: AnyTransition = .opacity
+    private static let detailContentTransition: AnyTransition = .opacity
+
+    private func loadViewModel() async {
+        guard viewModel == nil else { return }
+        let skills = await FittingCharacterSkillsLoader.loadSkillsBeforeFittingCalculation()
+        await MainActor.run {
+            let vm: FittingEditorViewModel
+            switch entry {
+            case let .new(shipTypeId, shipInfo):
+                vm = FittingEditorViewModel(
+                    shipTypeId: shipTypeId,
+                    shipInfo: shipInfo,
+                    databaseManager: databaseManager,
+                    characterSkills: skills
+                )
+            case let .local(fittingId):
+                vm = FittingEditorViewModel(
+                    fittingId: fittingId,
+                    databaseManager: databaseManager,
+                    characterSkills: skills
+                )
+            case let .online(onlineFitting):
+                vm = FittingEditorViewModel(
+                    onlineFitting: onlineFitting,
+                    databaseManager: databaseManager,
+                    characterSkills: skills
+                )
+            case let .temporary(localFitting):
+                vm = FittingEditorViewModel(
+                    temporaryFitting: localFitting,
+                    databaseManager: databaseManager,
+                    characterSkills: skills
+                )
             }
-            // 返回配置列表时刷新本地配置（详情内改名/删除后立即反映）
-            NotificationCenter.default.post(
-                name: NSNotification.Name("RefreshLocalFittings"),
-                object: nil
-            )
+            withAnimation(Self.switchAnimation) {
+                viewModel = vm
+            }
         }
+    }
+}
+
+private struct FittingEditorPage: View {
+    @ObservedObject var viewModel: FittingEditorViewModel
+    let databaseManager: DatabaseManager
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var successfulSaveCount = 0
+    @State private var showingSettings = false
+    @State private var selectedViewType: FittingViewType = .modules
+    @State private var showingExitConfirmation = false
+    @State private var showingSaveError = false
+
+    private var showsSavedCheckmark: Bool {
+        successfulSaveCount > 0 && !viewModel.hasUnsavedChanges
+    }
+
+    private var fittingName: String {
+        viewModel.simulationInput.name.isEmpty ? viewModel.shipInfo.name : viewModel.simulationInput.name
+    }
+
+    var body: some View {
+        fittingBody(viewModel: viewModel)
+            .navigationTitle(fittingName)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 6) {
+                        Text(fittingName)
+                            .lineLimit(1)
+                        if viewModel.hasUnsavedChanges {
+                            Text(NSLocalizedString("Fitting_Unsaved", comment: ""))
+                                .foregroundStyle(.orange)
+                                .fixedSize()
+                        }
+                    }
+                    .font(.headline)
+                    .accessibilityElement(children: .combine)
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: requestExit) {
+                        Label(NSLocalizedString("Fitting_Back", comment: ""), systemImage: "chevron.left")
+                    }
+                }
+            }
+            .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
+                Button {
+                    save()
+                } label: {
+                    Label {
+                        Text(NSLocalizedString("Misc_Save", comment: ""))
+                    } icon: {
+                        Image(systemName: showsSavedCheckmark ? "checkmark" : "square.and.arrow.down")
+                            .foregroundStyle(showsSavedCheckmark ? Color.green : Color.white)
+                            .contentTransition(reduceMotion ? .opacity : .symbolEffect(.replace))
+                    }
+                    .font(.headline)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .background(Capsule().fill(Color.accentColor))
+                .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
+                .disabled(!viewModel.canSaveConfiguration)
+                .opacity(viewModel.canSaveConfiguration || showsSavedCheckmark ? 1 : 0.5)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 1), value: showsSavedCheckmark)
+                .padding(.trailing, 20)
+                .padding(.vertical, 12)
+            }
+            .sensoryFeedback(.impact(weight: .light), trigger: successfulSaveCount)
+            .background(FittingExitGuard(isDirty: viewModel.hasUnsavedChanges, onExitAttempt: requestExit))
+            .alert(NSLocalizedString("Fitting_Unsaved_Exit_Title", comment: ""), isPresented: $showingExitConfirmation) {
+                Button(NSLocalizedString("Fitting_Save_And_Exit", comment: "")) {
+                    if save() {
+                        dismiss()
+                    }
+                }
+                Button(NSLocalizedString("Fitting_Discard_And_Exit", comment: ""), role: .destructive) { dismiss() }
+                Button(NSLocalizedString("Fitting_Continue_Editing", comment: ""), role: .cancel) {}
+            } message: {
+                Text(NSLocalizedString("Fitting_Unsaved_Exit_Message", comment: ""))
+            }
+            .alert(NSLocalizedString("Fitting_Local_Save_Failed", comment: ""), isPresented: $showingSaveError) {
+                Button(NSLocalizedString("Common_OK", comment: "")) {}
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
+            .onDisappear {
+                clearSelectorPreferences(viewModel: viewModel)
+                NotificationCenter.default.post(name: NSNotification.Name("RefreshLocalFittings"), object: nil)
+            }
+    }
+
+    private func requestExit() {
+        if viewModel.hasUnsavedChanges {
+            showingExitConfirmation = true
+        } else {
+            dismiss()
+        }
+    }
+
+    @discardableResult
+    private func save() -> Bool {
+        let saved = viewModel.saveConfiguration()
+        if saved {
+            successfulSaveCount += 1
+        } else {
+            showingSaveError = true
+        }
+        return saved
     }
 
     private func fittingBody(viewModel: FittingEditorViewModel) -> some View {
@@ -140,8 +278,7 @@ struct ShipFittingView: View {
                     onNameChanged: { updatedData in
                         if let name = updatedData["name"] as? String {
                             viewModel.updateName(name)
-                            viewModel.saveConfiguration()
-                            Logger.info("配置名称更新并保存: \(name)")
+                            Logger.info("配置名称已更新，等待保存: \(name)")
                         }
                     },
                     onSkillModeChanged: {
@@ -152,50 +289,6 @@ struct ShipFittingView: View {
                         deleteFitting(viewModel: viewModel)
                     }
                 )
-            }
-        }
-    }
-
-    /// 仅用于「加载中 → 配置详情」切换，不影响导航栈其它动画。
-    private static let switchAnimation: Animation = .easeInOut(duration: 0.38)
-
-    private static let loadingTransition: AnyTransition = .opacity
-
-    private static let detailContentTransition: AnyTransition = .opacity
-
-    private func loadViewModel() async {
-        let skills = await FittingCharacterSkillsLoader.loadSkillsBeforeFittingCalculation()
-        await MainActor.run {
-            let vm: FittingEditorViewModel
-            switch entry {
-            case let .new(shipTypeId, shipInfo):
-                vm = FittingEditorViewModel(
-                    shipTypeId: shipTypeId,
-                    shipInfo: shipInfo,
-                    databaseManager: databaseManager,
-                    characterSkills: skills
-                )
-            case let .local(fittingId):
-                vm = FittingEditorViewModel(
-                    fittingId: fittingId,
-                    databaseManager: databaseManager,
-                    characterSkills: skills
-                )
-            case let .online(onlineFitting):
-                vm = FittingEditorViewModel(
-                    onlineFitting: onlineFitting,
-                    databaseManager: databaseManager,
-                    characterSkills: skills
-                )
-            case let .temporary(localFitting):
-                vm = FittingEditorViewModel(
-                    temporaryFitting: localFitting,
-                    databaseManager: databaseManager,
-                    characterSkills: skills
-                )
-            }
-            withAnimation(Self.switchAnimation) {
-                viewModel = vm
             }
         }
     }
@@ -236,21 +329,8 @@ struct ShipFittingView: View {
             return
         }
 
-        guard
-            let documentsDirectory = FileManager.default.urls(
-                for: .documentDirectory, in: .userDomainMask
-            ).first
-        else {
-            Logger.error("删除本地配置失败: 无法访问文档目录")
-            return
-        }
-
-        let fittingsDirectory = documentsDirectory.appendingPathComponent("Fitting")
-        let filePath = fittingsDirectory.appendingPathComponent(
-            "local_fitting_\(fittingId.uuidString).json"
-        )
-
         do {
+            let filePath = try FitConvert.localFittingFileURL(fittingId: fittingId)
             try FileManager.default.removeItem(at: filePath)
             Logger.info("本地配置文件删除成功: \(filePath.path)")
             dismiss()

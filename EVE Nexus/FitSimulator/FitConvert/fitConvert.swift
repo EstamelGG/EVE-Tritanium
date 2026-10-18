@@ -233,10 +233,12 @@ class FitConvert {
     }
 
     /// 将模拟器输入数据转为本地配置
-    static func simulationInputToLocalFitting(input: SimulationInput) -> LocalFitting {
+    static func simulationInputToLocalFitting(input: SimulationInput, fittingID: UUID? = nil) -> LocalFitting {
         // 本地装配沿用原 ID；在线/临时装配保存为本地时生成新 UUID
         let fitId: UUID
-        if case let .local(uuid) = input.fittingId {
+        if let fittingID {
+            fitId = fittingID
+        } else if case let .local(uuid) = input.fittingId {
             fitId = uuid
         } else {
             fitId = UUID()

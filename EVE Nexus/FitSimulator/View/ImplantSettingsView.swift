@@ -382,16 +382,12 @@ struct ImplantSettingsView: View {
         if implantIds.isEmpty, boosterIds.isEmpty {
             if !viewModel.simulationInput.implants.isEmpty {
                 viewModel.simulationInput.implants = []
-                viewModel.hasUnsavedChanges = true
 
                 // 只有在配置发生变化时才重新计算属性
                 if hasChanges {
                     Logger.info("清空所有植入体和增效剂，重新计算属性")
                     viewModel.calculateAttributes()
                 }
-
-                // 保存配置
-                viewModel.saveConfiguration()
             }
             return
         }
@@ -483,12 +479,6 @@ struct ImplantSettingsView: View {
         } else {
             Logger.info("植入体和增效剂配置未变化，跳过属性计算")
         }
-
-        // 标记有未保存的更改
-        viewModel.hasUnsavedChanges = true
-
-        // 自动保存配置
-        viewModel.saveConfiguration()
     }
 
     /// 生成植入体/增效剂的变更签名（typeId + 副作用开关），用于判断是否需要重算属性

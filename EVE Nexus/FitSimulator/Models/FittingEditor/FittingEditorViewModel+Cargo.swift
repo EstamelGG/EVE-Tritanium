@@ -48,15 +48,6 @@ extension FittingEditorViewModel {
             simulationInput.cargo = SimCargo(items: updatedItems)
         }
 
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
-        // 通知UI更新
-        objectWillChange.send()
-
-        // 自动保存配置
-        saveConfiguration()
-
         Logger.info("添加货舱物品成功: \(name), 数量: \(quantity)")
     }
 
@@ -77,15 +68,6 @@ extension FittingEditorViewModel {
         // 直接更新货舱，不调用updateCargo来避免重新计算属性
         simulationInput.cargo = SimCargo(items: updatedItems)
 
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
-        // 通知UI更新
-        objectWillChange.send()
-
-        // 自动保存配置
-        saveConfiguration()
-
         Logger.info("移除货舱物品成功，类型ID: \(typeId)")
     }
 
@@ -102,15 +84,6 @@ extension FittingEditorViewModel {
 
         // 直接更新货舱，不调用updateCargo来避免重新计算属性
         simulationInput.cargo = SimCargo(items: updatedItems)
-
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
-        // 通知UI更新
-        objectWillChange.send()
-
-        // 自动保存配置
-        saveConfiguration()
 
         Logger.info("移除索引为\(index)的货舱物品成功")
     }
@@ -147,15 +120,6 @@ extension FittingEditorViewModel {
 
         // 直接更新货舱，不调用updateCargo来避免重新计算属性
         simulationInput.cargo = SimCargo(items: updatedItems)
-
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
-        // 通知UI更新
-        objectWillChange.send()
-
-        // 自动保存配置
-        saveConfiguration()
 
         Logger.info("更新货舱物品成功: \(item.name), 数量: \(quantity)")
     }

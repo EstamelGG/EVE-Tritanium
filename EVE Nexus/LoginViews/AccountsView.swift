@@ -253,10 +253,9 @@ struct AccountsView: View {
                             Image(systemName: "plus.circle.fill")
                         }
                         Text(
-                            NSLocalizedString(
-                                isLoggingIn ? "Account_Logging_In" : "Account_Add_Character",
-                                comment: ""
-                            )
+                            isLoggingIn
+                                ? NSLocalizedString("Account_Logging_In", comment: "")
+                                : NSLocalizedString("Account_Add_Character", comment: "")
                         )
                         Spacer()
                     }
@@ -294,11 +293,12 @@ struct AccountsView: View {
                                     isRefreshingScopes = false // 重置刷新状态
 
                                     // 根据数据来源选择不同的消息
-                                    let messageKey =
+                                    let messageFormat =
                                         scopeResult.source == .network
-                                            ? "Scopes_Refresh_Success" : "Scopes_Local_Refresh_Success"
+                                            ? NSLocalizedString("Scopes_Refresh_Success", comment: "")
+                                            : NSLocalizedString("Scopes_Local_Refresh_Success", comment: "")
                                     successMessage = String(
-                                        format: NSLocalizedString(messageKey, comment: ""),
+                                        format: messageFormat,
                                         scopeResult.scopes.count
                                     )
                                     showingSuccess = true
@@ -336,26 +336,33 @@ struct AccountsView: View {
                 Section(header: accountListHeader) {
                     ForEach(viewModel.characters, id: \.CharacterID) { character in
                         Button {
-                            if isEditing {
-                                characterToRemove = character
-                            } else {
-                                let portrait = viewModel.characterPortraits[character.CharacterID]
-                                onCharacterSelect?(character, portrait)
-                                selectedItem = nil
-                            }
+                            let portrait = viewModel.characterPortraits[character.CharacterID]
+                            onCharacterSelect?(character, portrait)
+                            selectedItem = nil
                         } label: {
                             characterRow(for: character)
                         }
                         .buttonStyle(.plain)
+                        .disabled(isEditing)
+                        .overlay(alignment: .trailing) {
+                            credentialRemovalOverlay(for: character)
+                                .opacity(isEditing ? 1 : 0)
+                                .allowsHitTesting(isEditing)
+                                .accessibilityHidden(!isEditing)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            if !isEditing {
+                                Button {
+                                    characterToRemove = character
+                                } label: {
+                                    Label(NSLocalizedString("Account_Remove_Credentials", comment: ""), systemImage: "trash")
+                                }
+                                .tint(.red)
+                            }
+                        }
                     }
                     .onMove { from, to in
                         viewModel.moveCharacter(from: from, to: to)
-                    }
-                    .onDelete { indexSet in
-                        // 左滑删除：与点 trash 按钮一致，触发确认 alert
-                        if let index = indexSet.first, index < viewModel.characters.count {
-                            characterToRemove = viewModel.characters[index]
-                        }
                     }
                 }
             }
@@ -371,12 +378,14 @@ struct AccountsView: View {
             if !viewModel.characters.isEmpty {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        isEditing.toggle()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isEditing.toggle()
+                        }
                     }) {
                         Text(
-                            NSLocalizedString(
-                                isEditing ? "Main_Market_Done" : "Main_Market_Edit", comment: ""
-                            )
+                            isEditing
+                                ? NSLocalizedString("Main_Market_Done", comment: "")
+                                : NSLocalizedString("Account_Manage_Credentials", comment: "")
                         )
                         .foregroundColor(.blue)
                     }
@@ -403,7 +412,7 @@ struct AccountsView: View {
             Text(successMessage)
         }
         .alert(
-            NSLocalizedString("Account_Remove_Confirm_Title", comment: ""),
+            NSLocalizedString("Account_Remove_Credentials_Title", comment: ""),
             isPresented: .init(
                 get: { characterToRemove != nil },
                 set: {
@@ -417,7 +426,7 @@ struct AccountsView: View {
                 characterToRemove = nil
             }
             Button(
-                NSLocalizedString("Account_Remove_Confirm_Remove", comment: ""), role: .destructive
+                NSLocalizedString("Account_Remove_Credentials", comment: ""), role: .destructive
             ) {
                 if let character = characterToRemove {
                     let characterId = character.CharacterID
@@ -441,7 +450,7 @@ struct AccountsView: View {
             }
         } message: {
             if let character = characterToRemove {
-                Text(character.CharacterName)
+                Text(String(format: NSLocalizedString("Account_Remove_Credentials_Message", comment: ""), character.CharacterName))
             }
         }
         .sheet(isPresented: $showingSteamLoginSheet) {
@@ -547,9 +556,44 @@ struct AccountsView: View {
             }
             Text(accountSummaryText)
                 .font(.caption)
+                .fontDesign(.monospaced)
                 .foregroundColor(.secondary)
                 .textCase(.none)
         }
+    }
+
+    /// 覆盖在原有行上，不占用布局空间，避免管理模式切换时改变行高。
+    private func credentialRemovalOverlay(for character: EVECharacterInfo) -> some View {
+        ZStack(alignment: .trailing) {
+            LinearGradient(
+                stops: [
+                    .init(color: Color(uiColor: .secondarySystemGroupedBackground).opacity(0), location: 0),
+                    .init(color: Color(uiColor: .secondarySystemGroupedBackground), location: 0.55),
+                    .init(color: Color(uiColor: .secondarySystemGroupedBackground), location: 1),
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .allowsHitTesting(false)
+
+            Button(role: .destructive) {
+                characterToRemove = character
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.red)
+                    .frame(width: 44, height: 44)
+                    .background(.red.opacity(0.12), in: Circle())
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(
+                "\(NSLocalizedString("Account_Remove_Credentials", comment: "")) · \(character.CharacterName)"
+            )
+            .padding(.trailing, 4)
+        }
+        .frame(width: 100)
+        .frame(maxHeight: .infinity)
     }
 
     /// 更新人物的钱包、技能、位置与公共信息；头像由独立任务优先读取缓存。
@@ -613,7 +657,6 @@ struct AccountsView: View {
             character: character,
             portrait: viewModel.characterPortraits[character.CharacterID],
             isRefreshing: refreshingCharacters.contains(character.CharacterID),
-            isEditing: isEditing,
             refreshTokenhasExpired: expiredTokenCharacters.contains(character.CharacterID),
             formatISK: FormatUtil.formatISK,
             formatSkillPoints: { FormatUtil.formatForUI(Double($0)) },
@@ -915,7 +958,6 @@ struct CharacterRowView: View {
     let character: EVECharacterInfo
     let portrait: UIImage?
     let isRefreshing: Bool
-    let isEditing: Bool
     let refreshTokenhasExpired: Bool
     let formatISK: (Double) -> String
     let formatSkillPoints: (Int) -> String
@@ -1005,6 +1047,7 @@ struct CharacterRowView: View {
                             formatter: formatISK,
                             emptyPlaceholder: "-- ISK"
                         )
+                        .fontDesign(.monospaced)
 
                         // 技能点信息
                         optionalInfoRow(
@@ -1101,19 +1144,6 @@ struct CharacterRowView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 4)
-        .overlay(alignment: .trailing) {
-            Image(systemName: "trash.fill")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.white)
-                .frame(width: 24, height: 24)
-                .background(Circle().fill(Color.red))
-                .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
-                .padding(.trailing, 4)
-                .allowsHitTesting(false)
-                .scaleEffect(isEditing ? 1 : 0)
-                .opacity(isEditing ? 1 : 0)
-                .animation(.easeInOut(duration: 0.2), value: isEditing)
-        }
         .contentShape(Rectangle())
     }
 }

@@ -116,13 +116,6 @@ struct RichTextView: View {
     private func fittingSheetContent(_ item: FittingSheetItem) -> some View {
         NavigationStack {
             ShipFittingView(temporaryFitting: item.fitting, databaseManager: databaseManager)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button(NSLocalizedString("Misc_back", comment: "")) {
-                            fittingToShow = nil
-                        }
-                    }
-                }
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)

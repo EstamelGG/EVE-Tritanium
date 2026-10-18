@@ -498,9 +498,6 @@ struct ShipFittingFightersView: View {
         if fighters.count != validFighters.count {
             Logger.info("移除了 \(fighters.count - validFighters.count) 个超额舰载机")
             viewModel.simulationInput.fighters = validFighters
-
-            // 保存更新后的配置
-            viewModel.saveConfiguration()
         }
     }
 
@@ -780,11 +777,9 @@ struct FighterTubeRowView: View {
                     } else {
                         // 如果舰载机已满，显示不同的文本
                         Text(
-                            NSLocalizedString(
-                                isFighterBayFull
-                                    ? "Fitting_can_not_add_Fighters" : "Fitting_Add_Fighters",
-                                comment: ""
-                            )
+                            isFighterBayFull
+                                ? NSLocalizedString("Fitting_can_not_add_Fighters", comment: "")
+                                : NSLocalizedString("Fitting_Add_Fighters", comment: "")
                         )
                         .foregroundColor(.secondary)
                     }

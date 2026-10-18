@@ -5,7 +5,18 @@ import SwiftUI
 @MainActor
 class FittingEditorViewModel: ObservableObject {
     /// 配置数据
-    @Published var simulationInput: SimulationInput
+    @Published var simulationInput: SimulationInput {
+        didSet {
+            saveState?.update(simulationInput)
+        }
+    }
+
+    @Published private var saveState: FittingSaveState?
+    private let fittingDirectory: URL?
+
+    var hasSavedLocally: Bool {
+        saveState?.localFileID != nil
+    }
 
     /// 新的计算结果（使用输出结构）
     @Published private(set) var simulationOutput: SimulationOutput?
@@ -22,11 +33,25 @@ class FittingEditorViewModel: ObservableObject {
 
     // 元数据
     @Published var shipInfo: (name: String, iconFileName: String)
-    @Published var isNewFitting: Bool
-    @Published var isLocalFitting: Bool = true // 是否为本地配置，默认为true
-    @Published var hasUnsavedChanges = false
-    /// 同一次在线编辑的自动保存始终写入同一个本地副本，不改变在线来源身份。
-    private let localCopyFittingId = UUID()
+    var isLocalFitting: Bool {
+        if case .local = simulationInput.fittingId {
+            return true
+        }
+        return false
+    }
+
+    var canSaveConfiguration: Bool {
+        simulationInput.ship.typeId != 0 && (hasUnsavedChanges || !hasSavedLocally)
+    }
+
+    var canDeleteConfiguration: Bool {
+        hasSavedLocally || !isLocalFitting
+    }
+
+    var hasUnsavedChanges: Bool {
+        simulationInput.ship.typeId != 0 && (saveState?.hasUnsavedChanges ?? false)
+    }
+
     @Published var errorMessage: String? // 添加错误消息
     @Published var invalidModules: [(module: SimModule, reason: String)] = [] // 无效的模块列表
 
@@ -47,12 +72,12 @@ class FittingEditorViewModel: ObservableObject {
     init(
         shipTypeId: Int, shipInfo: (name: String, iconFileName: String),
         databaseManager: DatabaseManager,
-        characterSkills: [Int: Int]? = nil
+        characterSkills: [Int: Int]? = nil,
+        fittingDirectory: URL? = nil
     ) {
         self.databaseManager = databaseManager
+        self.fittingDirectory = fittingDirectory
         self.shipInfo = shipInfo
-        isNewFitting = true
-        isLocalFitting = true // 新建配置为本地配置
         attributeCalculator = AttributeCalculator(databaseManager: databaseManager)
 
         let resolvedSkills = characterSkills ?? FittingCharacterSkillsLoader.skillsFromUserPreferences()
@@ -70,18 +95,20 @@ class FittingEditorViewModel: ObservableObject {
         Logger.info("新建配置，计算初始属性")
         calculateAttributes()
         syncSelectedCharacterIdFromPreferencesIfNeeded()
+        saveState = FittingSaveState(input: simulationInput, isExisting: false)
     }
 
     /// 初始化方法（加载本地配置）
-    init(fittingId: UUID, databaseManager: DatabaseManager, characterSkills: [Int: Int]? = nil) {
+    init(fittingId: UUID, databaseManager: DatabaseManager, characterSkills: [Int: Int]? = nil, fittingDirectory: URL? = nil) {
         self.databaseManager = databaseManager
+        self.fittingDirectory = fittingDirectory
         attributeCalculator = AttributeCalculator(databaseManager: databaseManager)
 
         let resolvedSkills = characterSkills ?? FittingCharacterSkillsLoader.skillsFromUserPreferences()
 
         do {
             // 加载配置
-            let localFitting = try FitConvert.loadLocalFitting(fittingId: fittingId)
+            let localFitting = try FitConvert.loadLocalFitting(fittingId: fittingId, directory: fittingDirectory)
 
             // 查询飞船信息
             if let info = ItemInfoMap.typeInfo(for: localFitting.ship_type_id) {
@@ -91,9 +118,6 @@ class FittingEditorViewModel: ObservableObject {
                     name: NSLocalizedString("Unknown", comment: "Unknown Ship"), iconFileName: ""
                 )
             }
-
-            isNewFitting = false
-            isLocalFitting = true // 本地配置文件
 
             // 转换为模拟输入
             let simInput = FitConvert.localFittingToSimulationInput(
@@ -111,6 +135,7 @@ class FittingEditorViewModel: ObservableObject {
             // 直接使用处理后的输入，保留原始状态
             simulationInput = processedInput
             self.invalidModules = invalidModules
+            saveState = FittingSaveState(input: simInput, isExisting: true)
 
             // 如果有无效模块，设置错误消息
             if !invalidModules.isEmpty {
@@ -118,7 +143,6 @@ class FittingEditorViewModel: ObservableObject {
                     separator: ", "
                 )
                 errorMessage = "以下装备无法安装到当前飞船，已自动移除: \(invalidModuleNames)"
-                hasUnsavedChanges = true
 
                 // 记录警告日志
                 Logger.warning("配置中包含无法安装的装备，已移除: \(invalidModuleNames)")
@@ -128,13 +152,12 @@ class FittingEditorViewModel: ObservableObject {
             Logger.info("加载本地配置，计算初始属性")
             calculateAttributes()
             syncSelectedCharacterIdFromPreferencesIfNeeded()
+            saveState?.update(simulationInput)
         } catch {
             // 错误处理
             Logger.error("加载配置失败: \(error)")
 
             // 初始化为默认值
-            isNewFitting = true
-            isLocalFitting = true // 错误情况下默认为本地配置
             shipInfo = (name: "Error", iconFileName: "")
 
             // 使用默认值 - 这里应该更优雅地处理
@@ -160,8 +183,9 @@ class FittingEditorViewModel: ObservableObject {
     }
 
     /// 初始化方法（临时装配，如DNA导入，不保存文件）
-    init(temporaryFitting: LocalFitting, databaseManager: DatabaseManager, characterSkills: [Int: Int]? = nil) {
+    init(temporaryFitting: LocalFitting, databaseManager: DatabaseManager, characterSkills: [Int: Int]? = nil, fittingDirectory: URL? = nil) {
         self.databaseManager = databaseManager
+        self.fittingDirectory = fittingDirectory
         attributeCalculator = AttributeCalculator(databaseManager: databaseManager)
 
         let resolvedSkills = characterSkills ?? FittingCharacterSkillsLoader.skillsFromUserPreferences()
@@ -174,9 +198,6 @@ class FittingEditorViewModel: ObservableObject {
                 name: NSLocalizedString("Unknown", comment: "Unknown Ship"), iconFileName: ""
             )
         }
-
-        isNewFitting = false
-        isLocalFitting = false // 临时装配，不是真正的本地配置文件
 
         // 转换为模拟输入
         let simInput = FitConvert.localFittingToSimulationInput(
@@ -206,11 +227,13 @@ class FittingEditorViewModel: ObservableObject {
         Logger.info("创建临时装配视图模型，计算初始属性")
         calculateAttributes()
         syncSelectedCharacterIdFromPreferencesIfNeeded()
+        saveState = FittingSaveState(input: simulationInput, isExisting: false)
     }
 
     /// 初始化方法（加载在线配置）
-    init(onlineFitting: CharacterFitting, databaseManager: DatabaseManager, characterSkills: [Int: Int]? = nil) {
+    init(onlineFitting: CharacterFitting, databaseManager: DatabaseManager, characterSkills: [Int: Int]? = nil, fittingDirectory: URL? = nil) {
         self.databaseManager = databaseManager
+        self.fittingDirectory = fittingDirectory
         attributeCalculator = AttributeCalculator(databaseManager: databaseManager)
 
         let resolvedSkills = characterSkills ?? FittingCharacterSkillsLoader.skillsFromUserPreferences()
@@ -223,9 +246,6 @@ class FittingEditorViewModel: ObservableObject {
                 name: NSLocalizedString("Unknown", comment: "Unknown Ship"), iconFileName: ""
             )
         }
-
-        isNewFitting = false
-        isLocalFitting = false // 在线配置
 
         // 将在线配置转换为本地配置
         // 创建FittingItem数组
@@ -281,7 +301,6 @@ class FittingEditorViewModel: ObservableObject {
                         separator: ", "
                     )
                     errorMessage = "以下装备无法安装到当前飞船，已自动移除: \(invalidModuleNames)"
-                    hasUnsavedChanges = true
 
                     // 记录警告日志
                     Logger.warning("在线配置中包含无法安装的装备，已移除: \(invalidModuleNames)")
@@ -318,6 +337,8 @@ class FittingEditorViewModel: ObservableObject {
         if simulationInput.ship.typeId != 0 {
             syncSelectedCharacterIdFromPreferencesIfNeeded()
         }
+        // 加载、校验和初始计算完成后，建立在线装配的查看基准。
+        saveState = FittingSaveState(input: simulationInput, isExisting: true)
     }
 
     // MARK: - 公共方法
@@ -335,17 +356,17 @@ class FittingEditorViewModel: ObservableObject {
     @discardableResult
     func saveConfiguration() -> Bool {
         do {
-            var inputToSave = simulationInput
-            if case .online = inputToSave.fittingId {
-                inputToSave.fittingId = .local(localCopyFittingId)
-            }
-            let localFitting = FitConvert.simulationInputToLocalFitting(input: inputToSave)
-            try FitConvert.saveLocalFitting(localFitting)
-            hasUnsavedChanges = false
+            guard simulationInput.ship.typeId != 0, var state = saveState else { return false }
+            let savedFitting = try state.save(simulationInput, directory: fittingDirectory)
+            saveState = state
+            simulationInput.name = savedFitting.name
+            errorMessage = nil
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshLocalFittings"), object: nil)
             Logger.info("配置保存成功")
             return true
         } catch {
             Logger.error("保存配置失败: \(error)")
+            errorMessage = error.localizedDescription
             return false
         }
     }
@@ -449,9 +470,6 @@ class FittingEditorViewModel: ObservableObject {
     /// 更新配置名称
     func updateName(_ newName: String) {
         simulationInput.name = newName
-        hasUnsavedChanges = true
-        // calculateAttributes()
-        objectWillChange.send()
     }
 
     /// 更新配置使用的技能
@@ -463,12 +481,6 @@ class FittingEditorViewModel: ObservableObject {
 
         // 重新计算属性
         calculateAttributes()
-
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
-        // 通知UI更新
-        objectWillChange.send()
     }
 
     /// 收集装配所需的所有物品 typeID（飞船、装备、弹药、无人机、货舱、舰载机、植入体）

@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ContractRow: View {
+    @State private var shouldUseCompactLayout = false
+
     @Environment(\.timeZone) private var displayTimeZone
     let contract: ContractInfo
     let contractType: PersonalContractsViewModel.ContractType
@@ -381,8 +383,8 @@ struct ContractRow: View {
             )
         } label: {
             VStack(alignment: .leading, spacing: 4) {
-                if DeviceUtils.shouldUseCompactLayout {
-                    // iPad或横屏iPhone：紧凑布局，状态标签在左侧
+                if shouldUseCompactLayout {
+                    // 可用宽度足够时将状态、类型和价格并排显示
                     HStack {
                         Text(formatContractStatus(contract.status))
                             .font(.caption)
@@ -544,6 +546,12 @@ struct ContractRow: View {
                         }
                     }
                 }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onGeometryChange(for: Bool.self) { geometry in
+                geometry.size.width >= 560
+            } action: { usesWideLayout in
+                shouldUseCompactLayout = usesWideLayout
             }
             .padding(.vertical, 2)
             .contextMenu {

@@ -32,7 +32,7 @@
       "shouldTranslate" : false
     },
     " × %lld" : {
-
+      "shouldTranslate" : false
     },
     "-" : {
       "shouldTranslate" : false
@@ -163,6 +163,22 @@
         }
       },
       "shouldTranslate" : false
+    },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
     },
     "%@ (—)" : {
       "shouldTranslate" : false
@@ -1059,6 +1075,75 @@
         }
       }
     },
+    "Account_Logout_Confirm" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log out of the current character?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выйти из текущего персонажа?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "是否登出当前人物？"
+          }
+        }
+      }
+    },
+    "Account_Logout_Message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This action will not remove your saved credentials."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это действие не удалит сохранённые учётные данные."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此操作不会移除已保存的凭证信息"
+          }
+        }
+      }
+    },
+    "Account_Manage_Credentials" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage Credentials"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Управление доступом"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "管理凭证"
+          }
+        }
+      }
+    },
     "Account_Management" : {
       "comment" : "Account Management",
       "localizations" : {
@@ -1104,46 +1189,71 @@
         }
       }
     },
-    "Account_Remove_Confirm_Remove" : {
+    "Account_Remove_Credentials" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remove"
+            "value" : "Remove Credentials"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Удалить"
+            "value" : "Удалить учётные данные"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移除"
+            "value" : "移除凭证"
           }
         }
       }
     },
-    "Account_Remove_Confirm_Title" : {
+    "Account_Remove_Credentials_Message" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remove Character"
+            "value" : "This will remove saved credentials and local character data for “%@” from this app and cancel their skill queue notifications. You will need to authorize again to use this character. Your EVE Online character will not be deleted."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Удалить пилота"
+            "value" : "Из приложения будут удалены сохранённые учётные данные и локальные данные персонажа «%@», а уведомления об очереди навыков будут отменены. Для дальнейшего использования потребуется повторная авторизация. Персонаж в EVE Online не будет удалён."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移除角色"
+            "value" : "将从此 App 移除“%@”的登录凭证及本地角色数据，并取消该角色的技能队列提醒。再次使用时需要重新授权。此操作不会删除 EVE Online 中的角色。"
+          }
+        }
+      }
+    },
+    "Account_Remove_Credentials_Title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove saved credentials?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить сохранённые учётные данные?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除已保存的凭证？"
           }
         }
       }
@@ -11051,74 +11161,6 @@
         }
       }
     },
-    "Corp_Structure_Time_Format_Days" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d days later"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d天后"
-          }
-        }
-      }
-    },
-    "Corp_Structure_Time_Format_Days_Hours" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d days %d hours later"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d天%d小时后"
-          }
-        }
-      }
-    },
-    "Corp_Structure_Time_Format_Hours" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d hours later"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d小时后"
-          }
-        }
-      }
-    },
-    "Corp_Structure_Time_Format_Minutes" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d minutes later"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d分钟后"
-          }
-        }
-      }
-    },
     "Corp_Structure_Time_Format_UTC" : {
       "comment" : "Time Format",
       "extractionState" : "manual",
@@ -11353,10 +11395,10 @@
       }
     },
     "DateEnd" : {
-
+      "shouldTranslate" : false
     },
     "DateStart" : {
-
+      "shouldTranslate" : false
     },
     "Delete" : {
       "comment" : "Fitting Delete",
@@ -11921,6 +11963,12 @@
     },
     "Error_Delete_Fitting" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to delete fitting"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -13544,6 +13592,28 @@
         }
       }
     },
+    "Fitting_Back" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Назад"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回"
+          }
+        }
+      }
+    },
     "Fitting_Batch_Ammo_Description" : {
       "localizations" : {
         "en" : {
@@ -13572,6 +13642,116 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "批量弹药设置"
+          }
+        }
+      }
+    },
+    "Fitting_Batch_Delete_Count" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete (%d)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить (%d)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除 (%d)"
+          }
+        }
+      }
+    },
+    "Fitting_Batch_Delete_Failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d fittings could not be deleted. They remain selected so you can retry."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось удалить %d оснащений. Они остаются выбранными для повторной попытки."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d 个装配删除失败，已保留选中状态，可重试。"
+          }
+        }
+      }
+    },
+    "Fitting_Batch_Delete_Local_Confirm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete %d local fittings? This cannot be undone."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить %d локальных оснащений? Это действие нельзя отменить."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "确定删除 %d 个本地装配？此操作无法撤销。"
+          }
+        }
+      }
+    },
+    "Fitting_Batch_Delete_Online_Confirm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete %d online fittings from this character in EVE Online? This cannot be undone."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить %d онлайн-оснащений текущего персонажа из EVE Online? Это действие нельзя отменить."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "确定从当前角色的游戏内装配中删除 %d 个在线装配？此操作无法撤销。"
+          }
+        }
+      }
+    },
+    "Fitting_Batch_Deselect_All" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deselect All"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снять выделение"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消全选"
           }
         }
       }
@@ -13621,6 +13801,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "批量操作"
+          }
+        }
+      }
+    },
+    "Fitting_Batch_Select_All" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select All"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать все"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全选"
           }
         }
       }
@@ -13789,6 +13991,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "货舱中的弹药"
+          }
+        }
+      }
+    },
+    "Fitting_Catalog_Edit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑"
+          }
+        }
+      }
+    },
+    "Fitting_Continue_Editing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep Editing"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить редактирование"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续编辑"
           }
         }
       }
@@ -14016,6 +14262,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "装配配置删除成功"
+          }
+        }
+      }
+    },
+    "Fitting_Discard_And_Exit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard Changes"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выйти без сохранения"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放弃更改并退出"
           }
         }
       }
@@ -14983,30 +15251,6 @@
         }
       }
     },
-    "Fitting_Influences_Explanation" : {
-      "comment" : "依次计算，非独立贡献",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sorted by benefit, highest first. Values reflect the actual calculation steps, not the display order."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сначала показаны наиболее полезные изменения. Значения соответствуют фактическим шагам расчёта, а не порядку отображения."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "按加成收益从高到低排列；前后数值对应实际计算步骤，不代表列表顺序。"
-          }
-        }
-      }
-    },
     "Fitting_Influences_Final" : {
       "comment" : "最终值",
       "localizations" : {
@@ -15053,30 +15297,6 @@
         }
       }
     },
-    "Fitting_Influences_Penalty" : {
-      "comment" : "叠加系数",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stacking coefficient: %@%%"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Коэффициент штрафа: %@%%"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "叠加惩罚系数：%@%%"
-          }
-        }
-      }
-    },
     "Fitting_Influences_Spool" : {
       "comment" : "完全预热",
       "localizations" : {
@@ -15096,30 +15316,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "完全预热"
-          }
-        }
-      }
-    },
-    "Fitting_Influences_Steps" : {
-      "comment" : "生效顺序",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Applied in order"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Порядок применения"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "生效顺序"
           }
         }
       }
@@ -15209,38 +15405,6 @@
         }
       }
     },
-    "Fitting_List_Collapsed" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Collapsed"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已收起"
-          }
-        }
-      }
-    },
-    "Fitting_List_Expanded" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Expanded"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已展开"
-          }
-        }
-      }
-    },
     "Fitting_Local" : {
       "localizations" : {
         "en" : {
@@ -15259,7 +15423,6 @@
     },
     "Fitting_Local_Save_Failed" : {
       "comment" : "保存失败，请重试。",
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -15277,30 +15440,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "保存失败，请重试。"
-          }
-        }
-      }
-    },
-    "Fitting_Local_Save_Success" : {
-      "comment" : "装配已保存到本地。",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fitting saved locally."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Конфигурация сохранена локально."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "装配已保存到本地。"
           }
         }
       }
@@ -15933,48 +16072,24 @@
         }
       }
     },
-    "Fitting_Save_To_Local" : {
-      "comment" : "保存到本地",
+    "Fitting_Save_And_Exit" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Save Locally"
+            "value" : "Save and Leave"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сохранить локально"
+            "value" : "Сохранить и выйти"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保存到本地"
-          }
-        }
-      }
-    },
-    "Fitting_Save_To_Local_Confirm" : {
-      "comment" : "是否将当前装配保存到本地？",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Save the current fitting locally?"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сохранить текущую конфигурацию локально?"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "是否将当前装配保存到本地？"
+            "value" : "保存并退出"
           }
         }
       }
@@ -15996,24 +16111,6 @@
         }
       }
     },
-    "Fitting_Section_Fittings" : {
-      "comment" : "装配列表页的 section 标题",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fittings"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "装配列表"
-          }
-        }
-      }
-    },
     "Fitting_Section_Groups" : {
       "comment" : "分组列表页的 section 标题",
       "localizations" : {
@@ -16027,23 +16124,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "分组"
-          }
-        }
-      }
-    },
-    "Fitting_Section_Ships" : {
-      "comment" : "飞船列表页的 section 标题",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ships"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "飞船列表"
           }
         }
       }
@@ -16431,23 +16511,6 @@
         }
       }
     },
-    "Fitting_Setting_Ship" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ship Setting"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "舰船设置"
-          }
-        }
-      }
-    },
     "Fitting_Setting_Simulation_Section" : {
       "comment" : "装配模拟",
       "localizations" : {
@@ -16580,23 +16643,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "舰船"
-          }
-        }
-      }
-    },
-    "Fitting_Ship_Fittings_Summary" : {
-      "comment" : "飞船行第二行的装配数量摘要",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d fittings"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d 个装配"
           }
         }
       }
@@ -16991,6 +17037,72 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "确定要删除全部无法解析的装配配置吗？此操作无法撤销。"
+          }
+        }
+      }
+    },
+    "Fitting_Unsaved" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unsaved"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не сохранено"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未保存"
+          }
+        }
+      }
+    },
+    "Fitting_Unsaved_Exit_Message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your changes have not been saved locally. Save before leaving?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменения ещё не сохранены локально. Сохранить перед выходом?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前更改尚未保存到本地，是否保存后退出？"
+          }
+        }
+      }
+    },
+    "Fitting_Unsaved_Exit_Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save fitting changes?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить изменения оснащения?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "是否保存装配更改？"
           }
         }
       }
@@ -19665,75 +19777,6 @@
         }
       }
     },
-    "Industry_Remaining_Days" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dd"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d天"
-          }
-        }
-      }
-    },
-    "Industry_Remaining_Days_Hours" : {
-      "comment" : "Industry Remaining Time",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dd %dh"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d天 %d小时"
-          }
-        }
-      }
-    },
-    "Industry_Remaining_Hours" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dh"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d小时"
-          }
-        }
-      }
-    },
-    "Industry_Remaining_Hours_Minutes" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dh %dm"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d小时 %d分钟"
-          }
-        }
-      }
-    },
     "Industry_Remaining_Minutes" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -19747,42 +19790,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%d分钟"
-          }
-        }
-      }
-    },
-    "Industry_Remaining_Minutes_Seconds" : {
-      "comment" : "%d分%d秒",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dm %ds"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d分 %d秒"
-          }
-        }
-      }
-    },
-    "Industry_Remaining_Seconds" : {
-      "comment" : "%d秒",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%ds"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d秒"
           }
         }
       }
@@ -27478,42 +27485,6 @@
         }
       }
     },
-    "Main_Jump_Clones_Cooldown_Hours_Minutes_Seconds" : {
-      "comment" : "下次跳跃: %dh %dm %ds",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Next Jump: %dh %dm %ds"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "下次跳跃：%d小时%d分钟%d秒后"
-          }
-        }
-      }
-    },
-    "Main_Jump_Clones_Cooldown_Hours_Seconds" : {
-      "comment" : "下次跳跃: %dh %ds",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Next Jump: %dh %ds"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "下次跳跃：%d小时%d秒后"
-          }
-        }
-      }
-    },
     "Main_Jump_Clones_Cooldown_Minutes" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -27527,42 +27498,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "下次跳跃：%d分钟后"
-          }
-        }
-      }
-    },
-    "Main_Jump_Clones_Cooldown_Minutes_Seconds" : {
-      "comment" : "下次跳跃: %dm %ds",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Next Jump: %dm %ds"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "下次跳跃：%d分%d秒后"
-          }
-        }
-      }
-    },
-    "Main_Jump_Clones_Cooldown_Seconds" : {
-      "comment" : "下次跳跃: %ds",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Next Jump: %ds"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "下次跳跃：%d秒后"
           }
         }
       }
@@ -35472,7 +35407,7 @@
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "技能队列 (%d) - %@"
           }
         }
@@ -35554,78 +35489,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "训练中: %d个技能(%@)"
-          }
-        }
-      }
-    },
-    "Main_Skills_Queue_Training_Days" : {
-      "comment" : "训练中 - %d个技能 - %dd %dh %dm",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Training: %d skills(%dd %dh %dm)"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изучается: %d навыков(%dд %dч %dм)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "训练中: %d个技能(%d天%d小时%d分)"
-          }
-        }
-      }
-    },
-    "Main_Skills_Queue_Training_Hours" : {
-      "comment" : "训练中 - %d个技能 - %dh %dm %ds",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Training: %d skills(%dh %dm %ds)"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изучается: %d навыков(%dч %dм %dс)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "训练中: %d个技能(%d小时%d分%d秒)"
-          }
-        }
-      }
-    },
-    "Main_Skills_Queue_Training_Minutes" : {
-      "comment" : "训练中 - %d个技能 - %dm %ds",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Training: %d skills(%dm %ds)"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изучается: %d навыков(%dм %dс)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "训练中: %d个技能(%d分%d秒)"
           }
         }
       }
@@ -35859,57 +35722,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@后"
-          }
-        }
-      }
-    },
-    "Main_Sovereignty_Time_Days" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dd %dh"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d天%d时后"
-          }
-        }
-      }
-    },
-    "Main_Sovereignty_Time_Hours" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dh %dmin"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d时%d分后"
-          }
-        }
-      }
-    },
-    "Main_Sovereignty_Time_Minutes" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dmin"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d分后"
           }
         }
       }
@@ -39376,91 +39188,6 @@
         }
       }
     },
-    "Orders_Remaining_Days" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Expire in %dd"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d天后过期"
-          }
-        }
-      }
-    },
-    "Orders_Remaining_Days_Hours" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Expire in %dd %dh"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d天%d小时后过期"
-          }
-        }
-      }
-    },
-    "Orders_Remaining_Hours" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Expire in %dh"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d小时后过期"
-          }
-        }
-      }
-    },
-    "Orders_Remaining_Hours_Minutes" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Expire in %dh %dm"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d小时%d分后过期"
-          }
-        }
-      }
-    },
-    "Orders_Remaining_Minutes" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Expire in %dm"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d分后过期"
-          }
-        }
-      }
-    },
     "Orders_Sell" : {
       "localizations" : {
         "en" : {
@@ -41778,7 +41505,7 @@
       }
     },
     "PriceBaseline" : {
-
+      "shouldTranslate" : false
     },
     "Processing_Data" : {
       "comment" : "正在处理数据...",
@@ -44170,6 +43897,7 @@
       }
     },
     "SDE_Done" : {
+      "comment" : "完成",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44317,6 +44045,7 @@
       }
     },
     "SDE_Log_Calculating_SHA" : {
+      "comment" : "正在计算 SHA256…",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44859,6 +44588,7 @@
       }
     },
     "SDE_Status_Downloading" : {
+      "comment" : "正在下载",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44875,6 +44605,7 @@
       }
     },
     "SDE_Status_Installing" : {
+      "comment" : "正在安装",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44891,6 +44622,7 @@
       }
     },
     "SDE_Status_Pending" : {
+      "comment" : "等待中",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44907,6 +44639,7 @@
       }
     },
     "SDE_Status_Verifying" : {
+      "comment" : "正在校验",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -44940,6 +44673,7 @@
       }
     },
     "SDE_Update_Failed" : {
+      "comment" : "更新失败",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -48411,30 +48145,6 @@
         }
       }
     },
-    "Time_Days_Hours_Minutes" : {
-      "comment" : "Time Format",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dd %dh %dm"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dд %dч %dм"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d天%d小时%d分钟"
-          }
-        }
-      }
-    },
     "Time_Days_Long" : {
       "localizations" : {
         "en" : {
@@ -48447,40 +48157,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%d 天"
-          }
-        }
-      }
-    },
-    "Time_Days_Minutes" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dd %dm"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d天%d分"
-          }
-        }
-      }
-    },
-    "Time_Days_Seconds" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dd %ds"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d天%d秒"
           }
         }
       }
@@ -48530,29 +48206,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%d小时前"
-          }
-        }
-      }
-    },
-    "Time_Hours_Compact" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dh"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dч"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d时"
           }
         }
       }
@@ -48609,23 +48262,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%d小时%d分钟前"
-          }
-        }
-      }
-    },
-    "Time_Hours_Seconds" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dh %ds"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d小时%d秒"
           }
         }
       }
@@ -48696,46 +48332,6 @@
         }
       }
     },
-    "Time_Minutes_Compact" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dm"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dм"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d分"
-          }
-        }
-      }
-    },
-    "Time_Minutes_Seconds" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%dm %ds"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d分%d秒"
-          }
-        }
-      }
-    },
     "Time_Remaining" : {
       "localizations" : {
         "en" : {
@@ -48748,23 +48344,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "剩余时间:"
-          }
-        }
-      }
-    },
-    "Time_Seconds" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%ds"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d秒"
           }
         }
       }

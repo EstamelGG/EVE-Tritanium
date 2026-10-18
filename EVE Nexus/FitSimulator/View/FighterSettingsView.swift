@@ -199,8 +199,6 @@ struct FighterSettingsView: View {
                 if hasQuantityChanged {
                     Logger.info("舰载机数量发生变化，重新计算属性")
                     viewModel.calculateAttributes()
-                    // 保存配置
-                    viewModel.saveConfiguration()
                 }
             }
         }

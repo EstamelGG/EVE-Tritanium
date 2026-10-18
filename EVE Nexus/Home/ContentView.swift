@@ -21,6 +21,7 @@ struct ContentView: View {
     @State var columnVisibility = NavigationSplitViewVisibility.all
     @State var selectedItem: String? = nil
     @State var showUpdateAlert = false
+    @State var showLogoutConfirmation = false
     @State var shouldNavigateToUpdateLog = false
     @State var isRefreshTokenExpired = false // 添加token过期状态
     @State var navigationAvatarItemVisible = false
@@ -336,17 +337,29 @@ struct ContentView: View {
 
     var logoutButton: some View {
         Button {
-            currentCharacterId = 0
-            viewModel.resetCharacterInfo()
-            // 清除技能数据
-            Task {
-                SharedSkillsManager.shared.clearSkillData()
-            }
+            showLogoutConfirmation = true
         } label: {
             Image(systemName: "rectangle.portrait.and.arrow.right")
                 .resizable()
                 .frame(width: 28, height: 24)
                 .foregroundColor(.red)
+        }
+        .accessibilityLabel(NSLocalizedString("Account_Logout", comment: "登出"))
+        .alert(
+            NSLocalizedString("Account_Logout_Confirm", comment: "是否登出当前人物？"),
+            isPresented: $showLogoutConfirmation
+        ) {
+            Button(NSLocalizedString("Common_Cancel", comment: "取消"), role: .cancel) {}
+            Button(NSLocalizedString("Account_Logout", comment: "登出"), role: .destructive) {
+                currentCharacterId = 0
+                viewModel.resetCharacterInfo()
+                // 清除技能数据
+                Task {
+                    SharedSkillsManager.shared.clearSkillData()
+                }
+            }
+        } message: {
+            Text(NSLocalizedString("Account_Logout_Message", comment: "此操作不会移除已保存的凭证信息"))
         }
     }
 }

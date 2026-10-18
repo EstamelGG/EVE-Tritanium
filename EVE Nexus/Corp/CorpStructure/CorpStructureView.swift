@@ -359,6 +359,19 @@ struct StructureCell: View {
             }
         }
         .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .contextMenu {
+            if let structureName = structure["name"] as? String, !structureName.isEmpty {
+                Button {
+                    UIPasteboard.general.string = structureName
+                } label: {
+                    Label(
+                        NSLocalizedString("Misc_Copy_Structure", comment: ""),
+                        systemImage: "doc.on.doc"
+                    )
+                }
+            }
+        }
         .task {
             if let iconName = iconName {
                 icon = IconManager.shared.loadImage(for: iconName)

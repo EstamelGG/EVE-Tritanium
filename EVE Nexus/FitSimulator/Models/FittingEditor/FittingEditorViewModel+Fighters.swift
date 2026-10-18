@@ -54,14 +54,8 @@ extension FittingEditorViewModel {
             simulationInput.fighters = fighters
         }
 
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
         // 重新计算属性
         calculateAttributes()
-
-        // 自动保存配置
-        saveConfiguration()
 
         Logger.info("添加/更新舰载机: typeId=\(fighter.typeId), tubeId=\(fighter.tubeId)")
     }
@@ -85,16 +79,11 @@ extension FittingEditorViewModel {
             simulationInput.fighters = updatedFighters
         }
 
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
-
         Logger.info("开始重新计算属性...")
         // 重新计算属性
         calculateAttributes()
 
         Logger.info("开始保存配置...")
-        // 自动保存配置
-        saveConfiguration()
 
         Logger.info("舰载机移除完成: tubeId=\(tubeId)")
     }
@@ -156,11 +145,6 @@ extension FittingEditorViewModel {
             if fighters.count != validFighters.count {
                 Logger.info("自动移除了 \(fighters.count - validFighters.count) 个超额舰载机")
                 simulationInput.fighters = validFighters.isEmpty ? nil : validFighters
-
-                // 异步保存配置，避免在计算属性中同步保存
-                DispatchQueue.main.async { [weak self] in
-                    self?.saveConfiguration()
-                }
             }
         } else {
             // 统计舰载机数量（无需清理的情况）
@@ -221,9 +205,6 @@ extension FittingEditorViewModel {
         var updatedFighters = fighters
         updatedFighters[index] = updatedFighter
         simulationInput.fighters = updatedFighters
-
-        // 标记有未保存的更改
-        hasUnsavedChanges = true
 
         // 仅记录日志，不重新计算属性和保存配置
         // 这部分会在舰载机设置页面关闭时执行

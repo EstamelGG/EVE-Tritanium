@@ -2,17 +2,15 @@ import SwiftUI
 
 /// 配置列表视图
 struct FittingMainView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sourceType: FittingSourceType = .local
     @State private var searchText = ""
-    @State private var expandedShipIds: Set<Int> = []
     @State private var showShipSelector = false
     @State private var isShowingAddFittingDialog = false
     // 新建装配（sheet 选船后 push 新装配编辑器）
     @State private var selectedShip: DatabaseListItem? = nil
     @State private var navigateToShipFitting = false
     // 导入成功后自动进入装配详情
-    @State private var importedFittingId: UUID?
+    @State private var importedFitting: LocalFitting?
     @State private var navigateToImportedFitting = false
 
     // 导入错误状态管理
@@ -34,17 +32,22 @@ struct FittingMainView: View {
     @State private var isShowingDeleteConfirmation = false
     @State private var deleteCandidate: FittingDeleteTarget?
 
+    @State private var isBatchDeleting = false
+
     // 使用两个独立的视图模型
     @StateObject private var localViewModel: LocalFittingViewModel
     @StateObject private var onlineViewModel: OnlineFittingViewModel
 
-    init(characterId: Int? = nil, databaseManager: DatabaseManager) {
-        let localVM = LocalFittingViewModel(databaseManager: databaseManager)
-        let onlineVM = OnlineFittingViewModel(
-            characterId: characterId, databaseManager: databaseManager
-        )
-        _localViewModel = StateObject(wrappedValue: localVM)
-        _onlineViewModel = StateObject(wrappedValue: onlineVM)
+    init(
+        characterId: Int? = nil, databaseManager: DatabaseManager,
+        fetchOnlineFittings: @escaping (Int, Bool) async throws -> [CharacterFitting] = {
+            try await CharacterFittingAPI.getCharacterFittings(characterID: $0, forceRefresh: $1)
+        }
+    ) {
+        _localViewModel = StateObject(wrappedValue: LocalFittingViewModel(databaseManager: databaseManager))
+        _onlineViewModel = StateObject(wrappedValue: OnlineFittingViewModel(
+            characterId: characterId, databaseManager: databaseManager, fetchFittings: fetchOnlineFittings
+        ))
     }
 
     /// 当前来源下的导航树（唯一列表数据源，已分组、预排序）
@@ -64,6 +67,28 @@ struct FittingMainView: View {
             return localViewModel.searchMatches(query: searchText)
         case .online:
             return onlineViewModel.searchMatches(query: searchText)
+        }
+    }
+
+    private func deleteFittings(source: FittingSourceType, refs: Set<FittingRef>) async -> Set<FittingRef> {
+        switch source {
+        case .local:
+            let ids = Set(refs.compactMap { ref -> UUID? in
+                if case let .local(id) = ref {
+                    return id
+                }
+                return nil
+            })
+            return Set(localViewModel.deleteFittings(fittingIds: ids).map { FittingRef.local($0) })
+        case .online:
+            let ids = Set(refs.compactMap { ref -> Int? in
+                if case let .online(id) = ref {
+                    return id
+                }
+                return nil
+            })
+            let deleted = await onlineViewModel.deleteFittings(fittingIds: ids)
+            return Set(deleted.map { FittingRef.online($0) })
         }
     }
 
@@ -137,23 +162,9 @@ struct FittingMainView: View {
                 "EFT格式解析成功 - 飞船ID: \(localFitting.ship_type_id), 配置名称: \(localFitting.name)"
             )
 
-            // 保存到本地
-            try FitConvert.saveLocalFitting(localFitting)
-            Logger.info("配置已保存到本地，ID: \(localFitting.fitting_id)")
-
-            // 刷新本地配置列表
-            Task {
-                await localViewModel.loadLocalFittings(forceRefresh: true)
-
-                // 在主线程上进行导航
-                await MainActor.run {
-                    // 准备导航到装配页面
-                    importedFittingId = localFitting.fitting_id
-                    navigateToImportedFitting = true
-
-                    Logger.info("导入成功，直接打开配置详情页面，ID: \(localFitting.fitting_id)")
-                }
-            }
+            // 导入只创建内存草稿，由编辑器的保存按钮写入本地。
+            importedFitting = localFitting
+            navigateToImportedFitting = true
 
         } catch let error as NSError {
             Logger.error("从剪贴板导入配置失败: \(error.localizedDescription)")
@@ -191,7 +202,7 @@ struct FittingMainView: View {
                 let copiedFitting = localFitting.duplicated(newId: newId, name: copyName)
                 try FitConvert.saveLocalFitting(copiedFitting)
                 Logger.success("成功复制装配配置 - 原ID: \(fitting.ref.debugDescription), 新ID: \(newId)")
-                await localViewModel.loadLocalFittings(forceRefresh: true)
+                await localViewModel.loadLocalFittings()
             } catch {
                 Logger.error("复制装配配置失败: \(error)")
                 await MainActor.run {
@@ -223,7 +234,7 @@ struct FittingMainView: View {
                 Logger.success("成功重命名本地装配配置 - ID: \(fitting.ref.debugDescription)")
 
                 // 刷新列表
-                await localViewModel.loadLocalFittings(forceRefresh: true)
+                await localViewModel.loadLocalFittings()
             } catch {
                 Logger.error("重命名本地装配配置失败: \(error)")
                 await MainActor.run {
@@ -237,7 +248,7 @@ struct FittingMainView: View {
         }
     }
 
-    /// 重命名弹窗内容（列表页 / 飞船页 / 搜索页三处复用）
+    /// 重命名弹窗内容（目录与搜索结果共用）
     @ViewBuilder
     private func renameAlertContent() -> some View {
         TextField(NSLocalizedString("Misc_Name", comment: ""), text: $renameFittingName)
@@ -276,7 +287,7 @@ struct FittingMainView: View {
         deleteCandidate = nil
     }
 
-    /// 删除确认弹窗消息（列表页 / 飞船页 / 搜索页三处复用）
+    /// 删除确认弹窗消息（目录与搜索结果共用）
     private func deleteConfirmMessage() -> String {
         switch deleteCandidate {
         case let .fitting(item):
@@ -311,23 +322,9 @@ struct FittingMainView: View {
                 "使用选定飞船重新解析成功 - 飞船ID: \(localFitting.ship_type_id), 配置名称: \(localFitting.name)"
             )
 
-            // 保存到本地
-            try FitConvert.saveLocalFitting(localFitting)
-            Logger.info("配置已保存到本地，ID: \(localFitting.fitting_id)")
-
-            // 刷新本地配置列表
-            Task {
-                await localViewModel.loadLocalFittings(forceRefresh: true)
-
-                // 在主线程上进行导航
-                await MainActor.run {
-                    // 准备导航到装配页面
-                    importedFittingId = localFitting.fitting_id
-                    navigateToImportedFitting = true
-
-                    Logger.info("导入成功，直接打开配置详情页面，ID: \(localFitting.fitting_id)")
-                }
-            }
+            // 导入只创建内存草稿，由编辑器的保存按钮写入本地。
+            importedFitting = localFitting
+            navigateToImportedFitting = true
 
         } catch {
             Logger.error("使用选定飞船重新导入失败: \(error.localizedDescription)")
@@ -345,7 +342,7 @@ struct FittingMainView: View {
         shipSelectionOptions = []
     }
 
-    // MARK: - 三级列表（树驱动，纯渲染）
+    // MARK: - 分组与飞船装配目录（树驱动）
 
     /// 主页：组列表
     private var hierarchyListContent: some View {
@@ -456,35 +453,28 @@ struct FittingMainView: View {
             }
         }
         .listRowInsets(EdgeInsets(top: 8, leading: 18, bottom: 8, trailing: 18))
+        .accessibilityIdentifier("fitting.group.\(node.groupID)")
     }
 
-    /// 组页：飞船可展开显示全部装配，页面大标题随滚动收缩
+    /// 第二层目录：每艘飞船独立 section，在当前页面直接编辑选择。
     private func groupPage(groupID: Int) -> some View {
-        // 从当前树直取最新节点（避免 value 快照在删除/刷新后过期）
         let node = currentTree.first { $0.groupID == groupID }
 
-        return List {
-            if let node, !node.children.isEmpty {
-                Section(header: Text(NSLocalizedString("Fitting_Section_Ships", comment: ""))) {
-                    ForEach(node.children) { child in
-                        shipRowView(child)
-                    }
-                }
-            } else {
-                NoDataSection()
-            }
+        return FittingShipSectionsView(
+            ships: node?.children ?? [], source: sourceType,
+            isDeleting: $isBatchDeleting, onDelete: deleteFittings
+        ) { item in
+            fittingRowView(item)
         }
-        .listStyle(.insetGrouped)
-        .animation(shipExpansionAnimation, value: expandedShipIds)
         .navigationTitle(node?.groupName ?? "")
         .navigationBarTitleDisplayMode(.large)
         .modifier(EmptyFittingGroupDismissal(isEmpty: (node?.fittingCount ?? 0) == 0,
-                                             isLoading: isLoading))
+                                             isLoading: isLoading || isBatchDeleting))
         .onAppear {
             Task {
                 switch sourceType {
                 case .local:
-                    await localViewModel.loadLocalFittings(forceRefresh: true)
+                    await localViewModel.loadLocalFittings()
                 case .online:
                     onlineViewModel.refreshDisplayedFittings()
                 }
@@ -502,65 +492,6 @@ struct FittingMainView: View {
             onConfirm: performDeleteConfirmation,
             onCancel: { deleteCandidate = nil }
         )
-    }
-
-    private var shipExpansionAnimation: Animation? {
-        reduceMotion ? nil : .easeInOut(duration: 0.32)
-    }
-
-    /// 飞船标题和装配保持独立 List 行，显式动画化展开状态与行插入/移除。
-    @ViewBuilder
-    private func shipRowView(_ node: FittingShipNode) -> some View {
-        let isExpanded = expandedShipIds.contains(node.typeId)
-        Button {
-            withAnimation(shipExpansionAnimation) {
-                if isExpanded {
-                    expandedShipIds.remove(node.typeId)
-                } else {
-                    expandedShipIds.insert(node.typeId)
-                }
-            }
-        } label: {
-            HStack(spacing: 12) {
-                Image(uiImage: IconManager.shared.loadUIImage(for: node.shipInfo.iconFileName))
-                    .resizable()
-                    .frame(width: 32, height: 32)
-                    .cornerRadius(6)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(node.shipInfo.name)
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-
-                    Text(String(
-                        format: NSLocalizedString("Fitting_Ship_Fittings_Summary", comment: "飞船行第二行的装配数量摘要"),
-                        node.fittings.count
-                    ))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    .animation(shipExpansionAnimation, value: isExpanded)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityValue(Text(isExpanded ? "Fitting_List_Expanded" : "Fitting_List_Collapsed"))
-        .listRowInsets(EdgeInsets(top: 8, leading: 18, bottom: 8, trailing: 18))
-
-        if isExpanded {
-            ForEach(node.fittings) { fitting in
-                fittingRowView(fitting, indentation: 20)
-                    .transition(reduceMotion ? .identity : .move(edge: .top).combined(with: .opacity))
-            }
-        }
     }
 
     // MARK: - 搜索结果
@@ -602,33 +533,10 @@ struct FittingMainView: View {
         }
     }
 
-    /// 装配行：全站复用（飞船展开列表 / 搜索结果），点击进入装配详情。
-    /// 布局与 shipRowView 保持一致（spacing 12、飞船名单行）
-    private func fittingRowView(_ item: FittingItemNode, indentation: CGFloat = 0) -> some View {
+    /// 装配行：飞船图标与装配名称，点击进入详情。
+    private func fittingRowView(_ item: FittingItemNode) -> some View {
         NavigationLink(value: item.ref) {
-            HStack(spacing: 12) {
-                Image(uiImage: IconManager.shared.loadUIImage(for: shipIconFileName(item.shipTypeId)))
-                    .resizable()
-                    .frame(width: 32, height: 32)
-                    .cornerRadius(6)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(currentShipInfo[item.shipTypeId]?.name ?? "Unknown")
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-
-                    Text(
-                        item.name.isEmpty
-                            ? NSLocalizedString("Unnamed", comment: "") : item.name
-                    )
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                }
-
-                Spacer()
-            }
-            .padding(.leading, indentation)
+            FittingCatalogRow(name: item.name, iconFileName: shipIconFileName(item.shipTypeId))
         }
         .listRowInsets(EdgeInsets(top: 8, leading: 18, bottom: 8, trailing: 18))
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -698,6 +606,7 @@ struct FittingMainView: View {
                 databaseManager: localViewModel.databaseManager
             )
             .id(fittingId)
+            .onAppear { Logger.info("打开本地装配详情 - UUID: \(fittingId)") }
         case let .online(fittingId):
             if let onlineFitting = onlineViewModel.fittingsByID[fittingId] {
                 ShipFittingView(
@@ -705,6 +614,7 @@ struct FittingMainView: View {
                     databaseManager: onlineViewModel.databaseManager
                 )
                 .id(fittingId)
+                .onAppear { Logger.info("打开在线装配详情 - ESI ID: \(fittingId)") }
             }
         }
     }
@@ -732,14 +642,14 @@ struct FittingMainView: View {
                     // 搜索时显示专门的搜索结果视图
                     if !searchText.isEmpty {
                         searchResultsSection
-                    } else if currentTree.isEmpty && localViewModel.unreadableFittings.isEmpty {
+                    } else if currentTree.isEmpty && (sourceType == .online || localViewModel.unreadableFittings.isEmpty) {
                         emptyStateView
                     } else {
-                        // 组 - 飞船 - 装配 三级树列表
+                        // 一级飞船分组目录
                         hierarchyListContent
 
                         // 无法解析的装配（仅提醒，不可点击）
-                        if !localViewModel.unreadableFittings.isEmpty {
+                        if sourceType == .local && !localViewModel.unreadableFittings.isEmpty {
                             unreadableFittingsSection
                         }
                     }
@@ -748,7 +658,7 @@ struct FittingMainView: View {
                 .refreshable {
                     switch sourceType {
                     case .local:
-                        await localViewModel.loadLocalFittings(forceRefresh: true)
+                        await localViewModel.loadLocalFittings()
                     case .online:
                         await onlineViewModel.loadOnlineFittings(forceRefresh: true)
                     }
@@ -788,8 +698,9 @@ struct FittingMainView: View {
                         .tag(FittingSourceType.online)
                 }
                 .pickerStyle(.segmented)
+                .accessibilityIdentifier("fitting.source")
                 .frame(width: 200)
-                .disabled(onlineViewModel.characterId == nil)
+                .disabled(onlineViewModel.characterId == nil || isBatchDeleting)
             }
 
             if #available(iOS 26.0, *) {
@@ -835,11 +746,11 @@ struct FittingMainView: View {
         }
         // 导入成功后自动进入装配详情
         .navigationDestination(isPresented: $navigateToImportedFitting) {
-            if let fittingId = importedFittingId {
-                fittingDetail(ref: .local(fittingId))
+            if let importedFitting {
+                ShipFittingView(temporaryFitting: importedFitting, databaseManager: localViewModel.databaseManager)
             }
         }
-        // 组页内展开飞船，装配行直接导航到详情
+        // 组页按飞船分 section，装配行直接导航到详情
         .navigationDestination(for: FittingGroupNode.self) { node in
             groupPage(groupID: node.groupID)
         }
@@ -847,39 +758,29 @@ struct FittingMainView: View {
             fittingDetail(ref: ref)
         }
         .onChange(of: sourceType) { _, newValue in
-            expandedShipIds.removeAll()
+            Logger.info("[装配列表] 来源切换：\(newValue)，在线模型=\(ObjectIdentifier(onlineViewModel))")
             // 如果没有角色但尝试切换到线上，切换回本地
             if newValue == .online && onlineViewModel.characterId == nil {
                 sourceType = .local
                 return
             }
-
-            // 当切换配置来源类型时，加载对应的配置
             Task {
                 switch newValue {
                 case .local:
-                    await localViewModel.loadLocalFittings(forceRefresh: true)
+                    await localViewModel.loadLocalFittings()
                 case .online:
                     await onlineViewModel.loadOnlineFittings()
                 }
             }
         }
-        .task {
-            // 在视图加载时立即刷新配置列表
-            switch sourceType {
-            case .local:
-                await localViewModel.loadLocalFittings(forceRefresh: true)
-            case .online:
-                await onlineViewModel.loadOnlineFittings()
-            }
-        }
         .onAppear {
-            // 在视图出现时加载当前类型的配置
+            Logger.info("[装配列表] 页面出现：\(sourceType)，在线模型=\(ObjectIdentifier(onlineViewModel))")
             Task {
-                switch sourceType {
-                case .local:
-                    await localViewModel.loadLocalFittings(forceRefresh: true)
-                case .online:
+                if sourceType == .local {
+                    await localViewModel.loadLocalFittings()
+                }
+                // 与旧版一致，在本地目录可见时准备线上数据；模型安装后才启动预加载。
+                if onlineViewModel.characterId != nil {
                     await onlineViewModel.loadOnlineFittings()
                 }
             }
@@ -907,7 +808,7 @@ struct FittingMainView: View {
             // 从配置详情返回时刷新本地配置列表（设置 sheet 里改名 / 详情内删除后立即反映新名称）
             guard sourceType == .local else { return }
             Task {
-                await localViewModel.loadLocalFittings(forceRefresh: true)
+                await localViewModel.loadLocalFittings()
             }
         }
         .alert(
