@@ -144,13 +144,13 @@ struct MarketItemDetailView: View {
     @State private var isLoadingPrice: Bool = false
     @State private var marketOrders: [MarketOrder]?
     @State private var marketHistory: [MarketHistory]?
+    @State private var chartDataByTimeRange: [PriceHistoryTimeRange: MarketHistoryChartData] = [:]
     @State private var isLoadingHistory: Bool = false
     @State private var isFromParent: Bool = true
     @State private var activeSheet: ActiveSheet?
     @State private var selectedLocation: Int
     @State private var structureOrdersProgress: StructureOrdersProgress? = nil // 建筑订单加载进度
     @State private var selectedTimeRange: PriceHistoryTimeRange = .oneYear // 默认选择近一年
-    @State private var availableSize: CGSize = .zero
 
     /// 当前选中的地点类型
     private var locationType: MarketLocationType? {
@@ -170,12 +170,6 @@ struct MarketItemDetailView: View {
     /// 是否为建筑
     private var isStructureSelection: Bool {
         StructureMarketManager.isStructureId(selectedLocation)
-    }
-
-    private var chartHeight: CGFloat {
-        // Keep the chart usable in short windows while allowing more detail at wider sizes.
-        let preferredHeight = availableSize.width >= 600 ? CGFloat(300) : availableSize.height * 0.25
-        return min(max(preferredHeight, 160), max(160, availableSize.height * 0.5))
     }
 
     init(databaseManager: DatabaseManager, itemID: Int, selectedLocation: Int = 0) {
@@ -326,32 +320,28 @@ struct MarketItemDetailView: View {
 
                     Divider()
 
-                    // 使用 ZStack 来保持固定高度
-                    ZStack {
-                        if isLoadingHistory {
-                            ProgressView()
-                        } else if let history = marketHistory, !history.isEmpty {
-                            MarketHistoryChartView(
-                                history: filteredHistory(for: history, timeRange: selectedTimeRange),
-                                orders: marketOrders ?? [],
-                                fullHistory: history
-                            )
-                        } else {
-                            Text("-")
-                                .foregroundColor(.secondary)
+                    // Derive row height during layout, without feeding geometry back into page state.
+                    MarketHistoryChartLayout {
+                        ZStack {
+                            if isLoadingHistory {
+                                ProgressView()
+                            } else if let history = marketHistory, !history.isEmpty,
+                                      let chartData = chartDataByTimeRange[selectedTimeRange]
+                            {
+                                MarketHistoryChartView(chartData: chartData)
+                                    .equatable()
+                            } else {
+                                Text("-")
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .frame(height: chartHeight) // 使用动态高度
                 }
             }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(NSLocalizedString("Main_Market", comment: "市场详情"))
-        .onGeometryChange(for: CGSize.self) { geometry in
-            geometry.size
-        } action: { size in
-            availableSize = size
-        }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
@@ -500,6 +490,7 @@ struct MarketItemDetailView: View {
 
         // 开始加载前清除旧数据
         marketHistory = nil
+        chartDataByTimeRange = [:]
         isLoadingHistory = true
 
         defer { isLoadingHistory = false }
@@ -533,6 +524,13 @@ struct MarketItemDetailView: View {
             )
 
             // 更新UI
+            // Prepare each window only when history changes, not on every layout or order update.
+            chartDataByTimeRange = Dictionary(uniqueKeysWithValues: PriceHistoryTimeRange.allCases.map {
+                ($0, MarketHistoryChartData(
+                    history: filteredHistory(for: history, timeRange: $0),
+                    fullHistory: history
+                ))
+            })
             marketHistory = history
         } catch {
             Logger.error("加载市场历史数据失败: \(error)")
@@ -572,15 +570,8 @@ struct MarketItemDetailView: View {
             return itemDate >= cutoffDate
         }
 
-        // 按日期排序，确保数据按时间顺序显示
-        return filtered.sorted { item1, item2 in
-            guard let date1 = dateFormatter.date(from: item1.date),
-                  let date2 = dateFormatter.date(from: item2.date)
-            else {
-                return false
-            }
-            return date1 < date2
-        }
+        // ESI dates use yyyy-MM-dd, whose string order is chronological.
+        return filtered.sorted { $0.date < $1.date }
     }
 
     /// 验证地点 ID 是否有效（星域 / 星系 / 建筑）

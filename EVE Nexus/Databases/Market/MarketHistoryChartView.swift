@@ -2,15 +2,32 @@ import Charts
 import SwiftUI
 import UIKit
 
+/// A width-based row size stays stable when scrolling changes the viewport or navigation bar.
+struct MarketHistoryChartLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews _: Subviews, cache _: inout ()) -> CGSize {
+        let proposedWidth = proposal.width ?? 360
+        let width = proposedWidth.isFinite ? max(0, proposedWidth) : 360
+        return CGSize(width: width, height: min(max(width * 0.55, 160), 300))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal _: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
+        for subview in subviews {
+            subview.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+        }
+    }
+}
+
 /// 市场历史图表视图
-struct MarketHistoryChartView: View {
-    let history: [MarketHistory]
-    let orders: [MarketOrder]
+struct MarketHistoryChartView: View, Equatable {
+    let chartData: MarketHistoryChartData
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.chartData === rhs.chartData
+    }
+
     @AppStorage("selectedLanguage") private var selectedLanguage = "en"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Keep axis labels in sync with the currently displayed history.
-    private let monthAxisDates: Set<String>
     private let priceColor = Color.blue
     private let volumeColor = Color.gray.opacity(0.8)
     private let axisLabelSpacing: CGFloat = 2
@@ -31,55 +48,6 @@ struct MarketHistoryChartView: View {
         }.max() ?? 0)
     }
 
-    /// 缓存图表相关的计算结果
-    private let chartData: ChartData
-    private let plottedHistory: [MarketHistory]
-    private let datePositions: [String: Double]
-    private let xDomain: ClosedRange<Double>
-
-    /// 图表数据结构
-    private struct ChartData {
-        let dates: [String]
-        let axisScale: MarketHistoryAxisScale
-    }
-
-    /// 初始化时计算月份第一天和图表数据
-    init(history: [MarketHistory], orders: [MarketOrder], fullHistory: [MarketHistory]? = nil) {
-        // 只取最新的360个数据点进行显示
-        let sortedHistory = history.sorted { $0.date < $1.date }
-        let displayHistory = Array(sortedHistory.suffix(360))
-
-        self.history = displayHistory
-        self.orders = orders
-
-        // 保留完整序列及稳定的横坐标，只缩放可见窗口，避免切换时重建折线。
-        let allHistory = Array((fullHistory ?? history).sorted { $0.date < $1.date }.suffix(360))
-        plottedHistory = allHistory
-        let positions = Dictionary(uniqueKeysWithValues: allHistory.enumerated().map {
-            ($0.element.date, Double($0.offset))
-        })
-        datePositions = positions
-        let firstPosition = displayHistory.first.flatMap { positions[$0.date] } ?? 0
-        let lastPosition = displayHistory.last.flatMap { positions[$0.date] } ?? firstPosition
-        xDomain = (firstPosition - 0.5) ... (lastPosition + 0.5)
-
-        // 计算图表数据
-        let dates = displayHistory.map { $0.date }
-        let priceValues = displayHistory.map { $0.average }
-        let volumeValues = displayHistory.map { Double($0.volume) }
-
-        // 初始化图表数据
-        chartData = ChartData(
-            dates: dates,
-            axisScale: MarketHistoryAxisScale(prices: priceValues, volumes: volumeValues)
-        )
-
-        let monthDates = Self.calculateFirstDaysOfMonth(in: dates).sorted()
-        monthAxisDates = Set(monthDates.enumerated().compactMap { index, date in
-            monthDates.count > 10 && !index.isMultiple(of: 2) ? nil : date
-        })
-    }
-
     /// 格式化日期显示（只显示月份）
     private func formatMonth(_ dateString: String) -> String {
         // Labels contain only the month, never an automatically formatted date or day.
@@ -96,34 +64,6 @@ struct MarketHistoryChartView: View {
         formatter.calendar = Calendar(identifier: .gregorian)
         let label = formatter.shortStandaloneMonthSymbols[month - 1]
         return selectedLanguage.hasPrefix("en") ? label.uppercased(with: locale) : label
-    }
-
-    /// 静态方法计算所有月份的第一个数据点
-    private static func calculateFirstDaysOfMonth(in dates: [String]) -> Set<String> {
-        let dateFormatter = DateFormatter()
-        Logger.info("提取横坐标月份点")
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        var result = Set<String>()
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.calendar = Calendar(identifier: .gregorian)
-        var lastMonth: String? = nil
-
-        // 按日期排序
-        let sortedDates = dates.sorted()
-
-        for dateString in sortedDates {
-            guard dateFormatter.date(from: dateString) != nil else { continue }
-            let currentMonth = String(dateString.prefix(7))
-
-            // Compare year and month together, including sparse history across years.
-            if currentMonth != lastMonth {
-                result.insert(dateString)
-            }
-
-            lastMonth = currentMonth
-        }
-
-        return result
     }
 
     private func formatAxisValue(_ value: Double, maxFractionDigits: Int = 1) -> String {
@@ -168,11 +108,13 @@ struct MarketHistoryChartView: View {
     }
 
     private var historyChart: some View {
-        // 使用缓存的图表数据
-        Chart {
-            ForEach(plottedHistory, id: \.date) { item in
+        // Measure once per chart update, rather than once for every overlay label.
+        let priceAxisLabelWidth = self.priceAxisLabelWidth
+        let volumeAxisLabelWidth = self.volumeAxisLabelWidth
+        return Chart {
+            ForEach(chartData.plottedHistory, id: \.date) { item in
                 AreaMark(
-                    x: .value("Date", datePositions[item.date] ?? 0),
+                    x: .value("Date", chartData.datePositions[item.date] ?? 0),
                     yStart: .value("PriceBaseline", 0.0),
                     yEnd: .value("Price", chartData.axisScale.normalizedPrice(item.average))
                 )
@@ -185,10 +127,10 @@ struct MarketHistoryChartView: View {
                 )
             }
 
-            ForEach(plottedHistory, id: \.date) { item in
+            ForEach(chartData.plottedHistory, id: \.date) { item in
                 // 成交量从数量轴的零点开始，与右侧刻度共用相同的比例。
                 // 每根柱占一个数据间隔的 80%，宽度随横轴窗口同步缩放。
-                let position = datePositions[item.date] ?? 0
+                let position = chartData.datePositions[item.date] ?? 0
                 RectangleMark(
                     xStart: .value("DateStart", position - 0.4),
                     xEnd: .value("DateEnd", position + 0.4),
@@ -201,17 +143,17 @@ struct MarketHistoryChartView: View {
                 .foregroundStyle(volumeColor)
             }
 
-            ForEach(plottedHistory, id: \.date) { item in
+            ForEach(chartData.plottedHistory, id: \.date) { item in
                 // 价格线
                 LineMark(
-                    x: .value("Date", datePositions[item.date] ?? 0),
+                    x: .value("Date", chartData.datePositions[item.date] ?? 0),
                     y: .value("Price", chartData.axisScale.normalizedPrice(item.average))
                 )
                 .foregroundStyle(priceColor)
                 .lineStyle(StrokeStyle(lineWidth: 1))
             }
         }
-        .chartXScale(domain: xDomain)
+        .chartXScale(domain: chartData.xDomain)
         .chartYScale(domain: 0.0 ... 1.0)
         .chartYAxis {
             AxisMarks(position: .leading, values: chartData.axisScale.gridPositions) { _ in
@@ -254,11 +196,11 @@ struct MarketHistoryChartView: View {
         }
         .chartXAxis {
             // 显式保留月份标签，连续坐标仅用于平滑缩放。
-            AxisMarks(values: monthAxisDates.sorted().compactMap { datePositions[$0] }) { value in
+            AxisMarks(values: chartData.monthAxisDates.compactMap { chartData.datePositions[$0] }) { value in
                 if let position = value.as(Double.self),
-                   plottedHistory.indices.contains(Int(position))
+                   chartData.plottedHistory.indices.contains(Int(position))
                 {
-                    let dateStr = plottedHistory[Int(position)].date
+                    let dateStr = chartData.plottedHistory[Int(position)].date
                     AxisValueLabel(anchor: .top) {
                         Text(formatMonth(dateStr))
                             .font(.system(size: 8))
@@ -270,6 +212,7 @@ struct MarketHistoryChartView: View {
         }
         .padding(.leading, priceAxisLabelWidth + axisLabelSpacing)
         .padding(.trailing, volumeAxisLabelWidth + axisLabelSpacing)
-        .frame(height: 200)
+        // The row supplies the total height; the chart fills the space below the legend.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

@@ -19,107 +19,18 @@ struct StorageChangeChartView: View {
     private let yAxisWidth: CGFloat = 40
     private let gridLines: Int = 6
 
-    // 缓存的图表数据（只在数据变化时计算一次）
-    @State private var cachedChartData: [(hour: Int, volume: Double)] = []
-    @State private var cachedMaxVolume: Double = 0
-    @State private var cachedDataKey: String = ""
-    @State private var cachedDynamicMaxVolume: Double = 0 // 动态上限
-    @State private var cachedFixedMaxVolume: Double = 0 // 固定上限（capacity * 1.2）
-    @State private var useDynamicMax: Bool = true // 是否使用动态上限（自动选择）
+    @State private var chartCache = StorageChartCache()
 
-    /// 计算数据键，用于判断是否需要重新计算
-    private func computeDataKey() -> String {
-        guard let pinCache = storageVolumeCache[pinId] else {
-            return "\(pinId)_empty"
-        }
-        let sortedHours = pinCache.keys.sorted().map { String($0) }.joined(separator: ",")
-        return "\(pinId)_\(sortedHours)"
+    private var cacheInput: StorageChartInput {
+        StorageChartInput(pinId: pinId, capacity: capacity, volumes: storageVolumeCache[pinId] ?? [:])
     }
 
-    /// 从缓存中获取图表数据（只在数据变化时计算一次）
-    private var chartData: [(hour: Int, volume: Double)] {
-        return cachedChartData
+    private var chartData: [StorageChartCache.Sample] {
+        chartCache.samples
     }
 
-    /// 获取最大体积（用于Y轴）
     private var maxVolume: Double {
-        return useDynamicMax ? cachedDynamicMaxVolume : cachedFixedMaxVolume
-    }
-
-    /// 将数值向上取整到整十位数（如 10, 20, 30, 100, 200, 1000, 2000 等）
-    private func roundUpToTens(_ value: Double) -> Double {
-        if value <= 0 {
-            return 10
-        }
-        // 计算数量级（10的幂次）
-        let magnitude = pow(10, floor(log10(value)))
-        // 计算需要多少个数量级单位
-        let units = ceil(value / magnitude)
-        // 如果单位数大于10，则使用更大的数量级（向上进位）
-        if units > 10 {
-            return roundUpToTens(magnitude * 10)
-        }
-        // 返回整十位数（units * magnitude 确保是整十的倍数）
-        return units * magnitude
-    }
-
-    /// 更新缓存数据（只在数据真正变化时调用）
-    private func updateCachedData() {
-        let newDataKey = computeDataKey()
-        if newDataKey != cachedDataKey {
-            let startTime = Date()
-            guard let pinCache = storageVolumeCache[pinId] else {
-                Logger.info("[图表-\(pinId)] chartData 计算: 未找到缓存数据")
-                cachedChartData = []
-                let fixedMax = capacity * 1.2
-                cachedDynamicMaxVolume = fixedMax
-                cachedFixedMaxVolume = fixedMax
-                cachedMaxVolume = fixedMax
-                cachedDataKey = newDataKey
-                return
-            }
-
-            // 按分钟数排序（只包含实际采样点，不包含每一分钟的数据）
-            let sortedMinutes = pinCache.keys.sorted()
-            let data = sortedMinutes.map { minutes in
-                (hour: minutes, volume: pinCache[minutes] ?? 0.0) // hour字段实际存储的是分钟数
-            }
-
-            // 计算固定上限：capacity * 1.2
-            let fixedMaxVol = capacity * 1.2
-
-            // 计算动态上限：找到最高点 a，计算 a * 1.2，然后向上取整到整十位数
-            // 但最终上限不能超过仓储设施自身上限 * 1.2
-            let maxData = data.map { $0.volume }.max() ?? 0
-            let baseMaxVol = maxData * 1.2
-            let calculatedMaxVol = roundUpToTens(baseMaxVol)
-            // 取两者中的较小值，确保不超过容量上限
-            let dynamicMaxVol = min(calculatedMaxVol, fixedMaxVol)
-
-            // 自动选择逻辑：如果大部分点都远低于容量上限（低于容量的10%），
-            // 使用固定上限会让数据都挤在底部，看起来很差，此时应使用动态上限
-            let lowThreshold = capacity * 0.1 // 容量的10%
-            let lowPointsCount = data.filter { $0.volume < lowThreshold }.count
-            let totalPointsCount = data.count
-            let lowPointsRatio = totalPointsCount > 0 ? Double(lowPointsCount) / Double(totalPointsCount) : 0.0
-
-            // 如果超过60%的点低于容量的10%，使用动态上限；否则使用固定上限
-            let shouldUseDynamic = lowPointsRatio > 0.6
-
-            let duration = Date().timeIntervalSince(startTime) * 1000 // 转换为毫秒
-            let minMinutes = sortedMinutes.min() ?? 0
-            let maxMinutes = sortedMinutes.max() ?? 0
-            let minHours = Double(minMinutes) / 60.0
-            let maxHours = Double(maxMinutes) / 60.0
-            Logger.info("[图表-\(pinId)] 缓存更新完成: \(data.count) 个数据点（\(String(format: "%.2f", minHours))小时到\(String(format: "%.2f", maxHours))小时），动态上限=\(String(format: "%.2f", dynamicMaxVol))，固定上限=\(String(format: "%.2f", fixedMaxVol))，低于容量10%的点比例=\(String(format: "%.1f", lowPointsRatio * 100))%，使用\(shouldUseDynamic ? "动态" : "固定")上限，耗时 \(String(format: "%.2f", duration))ms")
-
-            cachedChartData = data
-            cachedDynamicMaxVolume = dynamicMaxVol
-            cachedFixedMaxVolume = fixedMaxVol
-            useDynamicMax = shouldUseDynamic
-            cachedMaxVolume = shouldUseDynamic ? dynamicMaxVol : fixedMaxVol
-            cachedDataKey = newDataKey
-        }
+        chartCache.maxVolume
     }
 
     private func formatYAxisLabel(_ value: Double) -> String {
@@ -148,6 +59,14 @@ struct StorageChangeChartView: View {
     }
 
     var body: some View {
+        chartContent
+            .onChange(of: cacheInput, initial: true) { _, input in
+                chartCache.update(input)
+            }
+    }
+
+    @ViewBuilder
+    private var chartContent: some View {
         // 检查数据是否可用
         let pinCache = storageVolumeCache[pinId]
         let hasData = pinCache != nil && !pinCache!.isEmpty
@@ -350,22 +269,6 @@ struct StorageChangeChartView: View {
                     .border(Color.gray.opacity(0.2), width: 1)
                 }
                 .padding(.horizontal, 16)
-            }
-            .onAppear {
-                Logger.info("[图表-\(pinId)] 视图出现，检查数据并初始化缓存")
-                if let pinCache = storageVolumeCache[pinId], !pinCache.isEmpty {
-                    Logger.info("[图表-\(pinId)] 数据已准备好(\(pinCache.count)个时间点)，初始化缓存")
-                    updateCachedData()
-                } else {
-                    Logger.info("[图表-\(pinId)] 数据尚未准备好，storageVolumeCache[pinId]=\(storageVolumeCache[pinId] != nil ? "存在但为空" : "nil")")
-                }
-            }
-            // 使用 task 监听 storageVolumeCache 的变化（当数据准备好时触发）
-            .task(id: storageVolumeCache[pinId]?.count ?? 0) {
-                if let pinCache = storageVolumeCache[pinId], !pinCache.isEmpty {
-                    Logger.info("[图表-\(pinId)] task 触发，数据已准备好(\(pinCache.count)个时间点)，更新缓存")
-                    updateCachedData()
-                }
             }
         }
     }

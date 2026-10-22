@@ -12,6 +12,33 @@ private struct KMFittingSheetItem: Identifiable {
     let fitting: LocalFitting
 }
 
+/// Equal-width columns whose row grows to fit either the square fitting or its summary.
+private struct KillMailSummaryLayout: Layout {
+    private let spacing: CGFloat = 16
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
+        let width = max(0, proposal.width ?? 600)
+        let columnWidth = max(0, (width - spacing) / 2)
+        let summaryHeight = subviews.last?.sizeThatFits(
+            ProposedViewSize(width: columnWidth, height: nil)
+        ).height ?? 0
+        return CGSize(width: width, height: max(columnWidth, summaryHeight))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal _: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
+        guard subviews.count == 2 else { return }
+        let columnWidth = max(0, (bounds.width - spacing) / 2)
+        subviews[0].place(
+            at: bounds.origin,
+            proposal: ProposedViewSize(width: columnWidth, height: columnWidth)
+        )
+        subviews[1].place(
+            at: CGPoint(x: bounds.minX + columnWidth + spacing, y: bounds.minY),
+            proposal: ProposedViewSize(width: columnWidth, height: bounds.height)
+        )
+    }
+}
+
 struct BRKillMailDetailView: View {
     @Environment(\.timeZone) private var displayTimeZone
     let listEntity: KillMailListEntity
@@ -249,22 +276,13 @@ struct BRKillMailDetailView: View {
     private func compactLayout(detail: KillMailDetailData) -> some View {
         // 第一行：左侧装配视图 + 右侧基本信息
         Section {
-            GeometryReader { geometry in
-                let availableWidth = geometry.size.width
-                let fittingWidth = availableWidth * 0.5
-
-                HStack(alignment: .top, spacing: 16) {
-                    BRKillMailFittingView(detailData: detail)
-                        .frame(width: fittingWidth, height: fittingWidth)
-                        .cornerRadius(8)
-
-                    VStack(spacing: 0) {
-                        basicInfoList(detailData: detail)
-                    }
+            KillMailSummaryLayout {
+                BRKillMailFittingView(detailData: detail)
+                    .cornerRadius(8)
+                basicInfoList(detailData: detail)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .aspectRatio(2, contentMode: .fit) // 2:1的比例
             .padding(.vertical, 8)
             .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
         }

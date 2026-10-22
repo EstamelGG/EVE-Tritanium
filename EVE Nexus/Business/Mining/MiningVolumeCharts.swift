@@ -81,13 +81,14 @@ struct MiningSystemVolumeChartView: View {
     }
 
     var body: some View {
-        if systemData.isEmpty {
+        let data = systemData
+        if data.isEmpty {
             Text(NSLocalizedString("No_Chart_Data", comment: "无图表数据"))
                 .font(.caption)
                 .foregroundColor(.secondary)
         } else {
             Chart {
-                ForEach(Array(systemData.enumerated()), id: \.element.systemId) { _, item in
+                ForEach(Array(data.enumerated()), id: \.element.systemId) { _, item in
                     // 根据安全等级获取颜色并加深
                     let baseColor = item.security.map { getSecurityColor($0) } ?? .blue
                     let barColor = darkenColor(baseColor, factor: 0.7)
@@ -104,11 +105,6 @@ struct MiningSystemVolumeChartView: View {
                 }
             }
             .chartYScale(type: .category)
-            .chartPlotStyle { plotArea in
-                // 设置固定的绘图区域高度，确保每个柱子的宽度和间距固定
-                let categorySpacing: CGFloat = 40
-                plotArea.frame(height: CGFloat(dataCount) * categorySpacing)
-            }
             .chartXAxis {
                 AxisMarks(position: .bottom) { value in
                     if let val = value.as(Double.self) {
@@ -125,7 +121,7 @@ struct MiningSystemVolumeChartView: View {
                     if let systemName = value.as(String.self) {
                         AxisValueLabel {
                             // 查找对应的安全等级
-                            let systemInfo = systemData.first { $0.systemName == systemName }
+                            let systemInfo = data.first { $0.systemName == systemName }
                             if let security = systemInfo?.security {
                                 HStack(spacing: 4) {
                                     Text(formatSystemSecurity(security))
@@ -196,8 +192,9 @@ struct MiningCharacterVolumeChartView: View {
             )
         }
 
+        let characters = allCharacters
         return dataByCharacter.map { characterId, data in
-            let characterName = allCharacters.first(where: { $0.id == characterId })?.name ?? "Character \(characterId)"
+            let characterName = characters.first(where: { $0.id == characterId })?.name ?? "Character \(characterId)"
             let value: Double
             switch sortType {
             case .volume:
@@ -215,14 +212,15 @@ struct MiningCharacterVolumeChartView: View {
     }
 
     var body: some View {
+        let data = characterData
         Group {
-            if characterData.isEmpty {
+            if data.isEmpty {
                 Text(NSLocalizedString("No_Chart_Data", comment: "无图表数据"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             } else {
                 Chart {
-                    ForEach(Array(characterData.enumerated()), id: \.element.characterId) { _, item in
+                    ForEach(Array(data.enumerated()), id: \.element.characterId) { _, item in
                         // 使用浅蓝色并加深
                         let baseColor = Color(red: 115 / 255, green: 203 / 255, blue: 244 / 255) // 浅蓝色
                         let barColor = darkenColor(baseColor, factor: 0.7)
@@ -239,11 +237,6 @@ struct MiningCharacterVolumeChartView: View {
                     }
                 }
                 .chartYScale(type: .category)
-                .chartPlotStyle { plotArea in
-                    // 设置固定的绘图区域高度，确保每个柱子的宽度和间距固定
-                    let categorySpacing: CGFloat = 40
-                    plotArea.frame(height: CGFloat(dataCount) * categorySpacing)
-                }
                 .chartXAxis {
                     AxisMarks(position: .bottom) { value in
                         if let val = value.as(Double.self) {
@@ -260,7 +253,7 @@ struct MiningCharacterVolumeChartView: View {
                         if let characterName = value.as(String.self) {
                             AxisValueLabel {
                                 // 查找对应的角色ID和头像
-                                let characterInfo = characterData.first { $0.characterName == characterName }
+                                let characterInfo = data.first { $0.characterName == characterName }
                                 if let characterId = characterInfo?.characterId {
                                     HStack(spacing: 4) {
                                         // 显示角色头像
@@ -290,9 +283,9 @@ struct MiningCharacterVolumeChartView: View {
                 }
             }
         }
-        .task {
+        .task(id: data.map(\.characterId).sorted()) {
             // 加载所有角色的头像
-            let characterIds = Set(characterData.map { $0.characterId })
+            let characterIds = Set(data.map { $0.characterId })
             await loadCharacterPortraits(characterIds: Array(characterIds))
         }
     }
@@ -375,14 +368,15 @@ struct MiningOreTypeVolumeChartView: View {
     }
 
     var body: some View {
+        let data = oreTypeData
         Group {
-            if oreTypeData.isEmpty {
+            if data.isEmpty {
                 Text(NSLocalizedString("No_Chart_Data", comment: "无图表数据"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             } else {
                 Chart {
-                    ForEach(Array(oreTypeData.enumerated()), id: \.element.typeId) { _, item in
+                    ForEach(Array(data.enumerated()), id: \.element.typeId) { _, item in
                         // 从图标提取主题色，如果没有则使用默认绿色，并加深
                         let baseColor = itemColors[item.typeId] ?? .green
                         let barColor = darkenColor(baseColor, factor: 0.7)
@@ -399,11 +393,6 @@ struct MiningOreTypeVolumeChartView: View {
                     }
                 }
                 .chartYScale(type: .category)
-                .chartPlotStyle { plotArea in
-                    // 设置固定的绘图区域高度，确保每个柱子的宽度和间距固定
-                    let categorySpacing: CGFloat = 40
-                    plotArea.frame(height: CGFloat(dataCount) * categorySpacing)
-                }
                 .chartXAxis {
                     AxisMarks(position: .bottom) { value in
                         if let val = value.as(Double.self) {
@@ -420,7 +409,7 @@ struct MiningOreTypeVolumeChartView: View {
                         if let oreName = value.as(String.self) {
                             AxisValueLabel {
                                 // 查找对应的矿石ID和图标
-                                let oreInfo = oreTypeData.first { $0.name == oreName }
+                                let oreInfo = data.first { $0.name == oreName }
                                 if let typeId = oreInfo?.typeId {
                                     HStack(spacing: 4) {
                                         // 显示矿石图标

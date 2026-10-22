@@ -531,3 +531,7 @@ Fixes & Improvements:
 1. Fitting simulation: switched to manual saving, with unsaved changes indicators and confirmation prompts
 2. Fitting simulation: fittings are now grouped by ship, with multiple selection, select all per ship, and bulk deletion
 3. Added support for iPhone Duo
+
+# v1.14.10 October 22, 2026
+
+1. Fixed several UI-related performance issues

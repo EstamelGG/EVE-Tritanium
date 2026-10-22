@@ -869,7 +869,7 @@ struct DailyMiningDetailView: View {
     private func calculateChartHeight(dataCount: Int) -> CGFloat {
         let categorySpacing: CGFloat = 40 // 每个类别占用的固定空间（包括柱子和间距）
         // 严格按数据数量计算，确保每个柱子的宽度和间距都固定
-        return CGFloat(dataCount) * categorySpacing
+        return CGFloat(dataCount) * categorySpacing + 24 // 为横轴标签预留空间。
     }
 
     /// 获取星系数量

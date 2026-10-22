@@ -1,6 +1,10 @@
 import SwiftUI
 
 struct ItemBasicInfoView: View {
+    private enum WidthClass {
+        case narrow, wide, extraWide
+    }
+
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let itemDetails: ItemDetails
     @ObservedObject var databaseManager: DatabaseManager
@@ -8,7 +12,7 @@ struct ItemBasicInfoView: View {
 
     @StateObject private var skillsManager = SharedSkillsManager.shared
     @State private var renderImage: UIImage?
-    @State private var availableWidth: CGFloat = 0
+    @State private var widthClass: WidthClass = .narrow
     @State private var marketPath: String = ""
     @State private var showSaveSuccess = false
     @State private var showSaveError = false
@@ -27,11 +31,11 @@ struct ItemBasicInfoView: View {
 
     /// Use the list row's width, including when its navigation column is resized.
     private var shouldUseCompactLayout: Bool {
-        availableWidth >= 560
+        widthClass != .narrow
     }
 
     private var imageSize: CGFloat {
-        availableWidth >= 700 ? 256 : 128
+        widthClass == .extraWide ? 256 : 128
     }
 
     private var itemNameCanToggleEnglish: Bool {
@@ -103,7 +107,7 @@ struct ItemBasicInfoView: View {
     }
 
     var body: some View {
-        // masteryDisplayState 底层含 SQL 查询，单次渲染只求值一次
+        // 专精状态使用内存索引，单次渲染只求值一次。
         bodyContent(masteryState: masteryDisplayState)
     }
 
@@ -122,10 +126,11 @@ struct ItemBasicInfoView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .onGeometryChange(for: CGFloat.self) { geometry in
-                    geometry.size.width
-                } action: { width in
-                    availableWidth = width
+                .onGeometryChange(for: WidthClass.self) { geometry in
+                    let width = geometry.size.width
+                    return width >= 700 ? .extraWide : (width >= 560 ? .wide : .narrow)
+                } action: { newClass in
+                    widthClass = newClass
                 }
                 // Set insets on the actual list row, outside the geometry wrapper.
                 // Both render layouts share one border instead of stacking row and image padding.
