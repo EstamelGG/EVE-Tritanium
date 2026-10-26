@@ -48,12 +48,14 @@ struct MarketHistoryChartView: View, Equatable {
         }.max() ?? 0)
     }
 
-    /// 格式化日期显示（只显示月份）
-    private func formatMonth(_ dateString: String) -> String {
-        // Labels contain only the month, never an automatically formatted date or day.
+    /// 短时间范围显示月/日，较长范围只显示月份。
+    private func formatDateLabel(_ dateString: String) -> String {
         let components = dateString.split(separator: "-")
         guard components.count >= 2, let month = Int(components[1]), (1 ... 12).contains(month) else {
             return ""
+        }
+        if chartData.timeRange == .oneMonth, components.count == 3, let day = Int(components[2]) {
+            return "\(month)/\(day)"
         }
         if selectedLanguage.hasPrefix("zh") {
             return "\(month)月"
@@ -64,6 +66,20 @@ struct MarketHistoryChartView: View, Equatable {
         formatter.calendar = Calendar(identifier: .gregorian)
         let label = formatter.shortStandaloneMonthSymbols[month - 1]
         return selectedLanguage.hasPrefix("en") ? label.uppercased(with: locale) : label
+    }
+
+    private func dateLabelAnchor(for date: String) -> UnitPoint {
+        guard chartData.xAxisDates.count > 1 else {
+            // A lone month tick can still sit at the start of a multi-day series.
+            return chartData.dates.count > 1 ? .topLeading : .top
+        }
+        if date == chartData.xAxisDates.first {
+            return .topLeading
+        }
+        if date == chartData.xAxisDates.last {
+            return .topTrailing
+        }
+        return .top
     }
 
     private func formatAxisValue(_ value: Double, maxFractionDigits: Int = 1) -> String {
@@ -195,16 +211,23 @@ struct MarketHistoryChartView: View, Equatable {
                 .clipped()
         }
         .chartXAxis {
-            // 显式保留月份标签，连续坐标仅用于平滑缩放。
-            AxisMarks(values: chartData.monthAxisDates.compactMap { chartData.datePositions[$0] }) { value in
+            // Explicit date ticks keep density stable for each selected time range.
+            AxisMarks(values: chartData.xAxisDates.compactMap { chartData.datePositions[$0] }) { value in
                 if let position = value.as(Double.self),
                    chartData.plottedHistory.indices.contains(Int(position))
                 {
                     let dateStr = chartData.plottedHistory[Int(position)].date
-                    AxisValueLabel(anchor: .top) {
-                        Text(formatMonth(dateStr))
+                    // Align the outer labels inward so full dates stay inside the plot bounds.
+                    AxisValueLabel(
+                        anchor: dateLabelAnchor(for: dateStr),
+                        collisionResolution: .greedy,
+                        orientation: .horizontal
+                    ) {
+                        Text(formatDateLabel(dateStr))
                             .font(.system(size: 8))
                             .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                     AxisGridLine()
                 }

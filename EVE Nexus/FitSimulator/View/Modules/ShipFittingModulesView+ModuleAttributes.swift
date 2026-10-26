@@ -11,6 +11,7 @@ extension ShipFittingModulesView {
         probeStrengthRow(module: module)
         energyNeutralizerRow(module: module)
         stasisWebifierRow(module: module)
+        shipVelocityRow(module: module)
         warpScrambleRow(module: module)
         powerTransferRow(module: module)
         shieldRepairRow(module: module)
@@ -203,6 +204,33 @@ extension ShipFittingModulesView {
                     .font(.caption)
                     .foregroundColor(.secondary)
                     Text("\(formatNumber(speedFactor, digits: 0))%")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - 推进装备飞船速度
+
+    @ViewBuilder
+    private func shipVelocityRow(module: SimModule) -> some View {
+        if module.groupID == 46,
+           module.status == 2 || module.status == 3,
+           let maxVelocity = viewModel.simulationOutput?.ship.attributesByName["maxVelocity"]
+        {
+            HStack(spacing: 4) {
+                IconManager.shared.loadImage(for: "velocity")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 20, height: 20)
+
+                HStack(spacing: 0) {
+                    Text("\(NSLocalizedString("Fitting_velocity", comment: "速度")): ")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("\(formatNumber(maxVelocity, digits: 2)) m/s")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(.secondary)

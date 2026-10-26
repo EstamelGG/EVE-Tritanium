@@ -7,10 +7,12 @@ final class MarketHistoryChartData {
     let plottedHistory: [MarketHistory]
     let datePositions: [String: Double]
     let xDomain: ClosedRange<Double>
-    let monthAxisDates: [String]
+    let timeRange: PriceHistoryTimeRange
+    let xAxisDates: [String]
 
     /// 初始化时计算月份第一天和图表数据
-    init(history: [MarketHistory], fullHistory: [MarketHistory]? = nil) {
+    init(history: [MarketHistory], fullHistory: [MarketHistory]? = nil, timeRange: PriceHistoryTimeRange = .oneYear) {
+        self.timeRange = timeRange
         // 只取最新的360个数据点进行显示
         let sortedHistory = history.sorted { $0.date < $1.date }
         let displayHistory = Array(sortedHistory.suffix(360))
@@ -35,9 +37,18 @@ final class MarketHistoryChartData {
         self.dates = dates
         axisScale = MarketHistoryAxisScale(prices: priceValues, volumes: volumeValues)
 
-        let monthDates = Self.calculateFirstDaysOfMonth(in: dates).sorted()
-        monthAxisDates = monthDates.enumerated().compactMap { index, date in
-            monthDates.count > 10 && !index.isMultiple(of: 2) ? nil : date
+        switch timeRange {
+        case .oneMonth:
+            // Show the actual start, midpoint and end, even when trading days are sparse.
+            let indices = Set([0, dates.count / 2, dates.count - 1]).sorted()
+            xAxisDates = indices.compactMap { dates.indices.contains($0) ? dates[$0] : nil }
+        case .threeMonths:
+            xAxisDates = Self.calculateFirstDaysOfMonth(in: dates).sorted()
+        case .oneYear:
+            let monthDates = Self.calculateFirstDaysOfMonth(in: dates).sorted()
+            xAxisDates = monthDates.enumerated().compactMap { index, date in
+                index.isMultiple(of: 2) ? date : nil
+            }
         }
     }
 

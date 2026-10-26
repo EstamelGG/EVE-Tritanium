@@ -535,3 +535,7 @@ Fixes & Improvements:
 # v1.14.10 October 22, 2026
 
 1. Fixed several UI-related performance issues
+
+# v1.14.11 October 26, 2026
+
+1. UI bug fixes

@@ -528,7 +528,8 @@ struct MarketItemDetailView: View {
             chartDataByTimeRange = Dictionary(uniqueKeysWithValues: PriceHistoryTimeRange.allCases.map {
                 ($0, MarketHistoryChartData(
                     history: filteredHistory(for: history, timeRange: $0),
-                    fullHistory: history
+                    fullHistory: history,
+                    timeRange: $0
                 ))
             })
             marketHistory = history

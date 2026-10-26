@@ -29,7 +29,7 @@ concurrency:
 jobs:
   upload:
     name: Archive and Upload
-    runs-on: macos-26
+    runs-on: xcode-27
     environment: APP_STORE_CONNECT
     timeout-minutes: 60
 
@@ -64,6 +64,32 @@ jobs:
           exit "${missing}"
       - name: Check out repository
         uses: actions/checkout@v7
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Show Xcode and iOS SDK versions
+        run: |
+          set -euo pipefail
+          xcode_version="$(xcodebuild -version)"
+          printf '%s\n' "${xcode_version}"
+          if ! printf '%s\n' "${xcode_version}" | awk '
+            NR == 1 {
+              if ($1 != "Xcode" || $2 !~ /^[0-9]+\.[0-9]+(\.[0-9]+)?$/) exit 1
+              split($2, version, ".")
+              exit !(version[1] > 27 || (version[1] == 27 && version[2] >= 1))
+            }
+          '; then
+            echo "Xcode 27.1 or later is required." >&2
+            exit 1
+          fi
+          developer_dir="${DEVELOPER_DIR:-$(xcode-select -p)}"
+          echo "Developer directory: ${developer_dir}"
+          ios_sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "iOS SDK version: ${ios_sdk_version}"
+          echo "iOS SDK path: $(xcrun --sdk iphoneos --show-sdk-path)"
+          echo "EXPECTED_IOS_SDK_VERSION=${ios_sdk_version}" >> "${GITHUB_ENV}"
 
       - name: Set output paths
         run: |
@@ -129,15 +155,6 @@ jobs:
           echo "Marketing version: ${MARKETING_VERSION}"
           echo "Build number: ${BUILD_NUMBER}"
           echo "Export options: ${EXPORT_OPTIONS_PLIST}"
-      - name: Select newest installed Xcode
-        run: |
-          set -euo pipefail
-          xcode_path="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
-          echo "DEVELOPER_DIR=${xcode_path}/Contents/Developer" >> "${GITHUB_ENV}"
-          sudo xcode-select -s "${xcode_path}"
-      - name: Show Xcode version
-        run: xcodebuild -version
-
       - name: Resolve Swift packages
         run: |
           set -euo pipefail
@@ -162,6 +179,33 @@ jobs:
             DEVELOPMENT_TEAM="${TEAM_ID}" \
             CURRENT_PROJECT_VERSION="${BUILD_NUMBER}" \
             archive
+      - name: Verify archived app SDK before upload
+        run: |
+          set -euo pipefail
+          app_relative_path="$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:ApplicationPath' "${ARCHIVE_PATH}/Info.plist")"
+          app_path="${ARCHIVE_PATH}/Products/${app_relative_path}"
+          app_sdk_name="$(/usr/libexec/PlistBuddy -c 'Print :DTSDKName' "${app_path}/Info.plist")"
+          app_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "${app_path}/Info.plist")"
+          expected_sdk_name="iphoneos${EXPECTED_IOS_SDK_VERSION}"
+          echo "Expected iOS SDK: ${expected_sdk_name}"
+          echo "Archived app DTSDKName: ${app_sdk_name}"
+          if [[ "${app_sdk_name}" != "${expected_sdk_name}" ]]; then
+            echo "Archived app SDK differs from the SDK recorded at build start. Upload blocked." >&2
+            exit 1
+          fi
+          binary_sdk_versions="$(xcrun vtool -show-build "${app_path}/${app_executable}" | awk '$1 == "sdk" { print $2 }')"
+          if [[ -z "${binary_sdk_versions}" ]]; then
+            echo "Could not read the archived executable SDK version. Upload blocked." >&2
+            exit 1
+          fi
+          while IFS= read -r binary_sdk_version; do
+            echo "Archived executable SDK: ${binary_sdk_version}"
+            if [[ "${binary_sdk_version}" != "${EXPECTED_IOS_SDK_VERSION}" ]]; then
+              echo "Archived executable SDK differs from the SDK recorded at build start. Upload blocked." >&2
+              exit 1
+            fi
+          done <<< "${binary_sdk_versions}"
+          echo "Archived app SDK verification passed."
       - name: Upload to App Store Connect
         run: |
           set -euo pipefail
