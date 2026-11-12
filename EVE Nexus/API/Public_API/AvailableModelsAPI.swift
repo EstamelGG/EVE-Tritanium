@@ -1,20 +1,15 @@
 import Foundation
 
-// MARK: - 可用模型数据模型
-
-struct AvailableModelsResponse: Codable {
-    let available: [Int]
-}
-
 // MARK: - 可用模型API
 
 actor AvailableModelsAPI {
     static let shared = AvailableModelsAPI()
 
-    private let urlString = "https://estamelgg.github.io/EVE_Model_Gallery/statics/available_models.json"
+    private let urlString =
+        "https://carbon-models.vanquisher.online/res/available_typeids.json"
 
     /// 临时内存缓存（不持久化，app运行期间有效）
-    private var available_models: [Int]?
+    private var availableModels: [Int]?
 
     private init() {}
 
@@ -25,7 +20,7 @@ actor AvailableModelsAPI {
     /// - Returns: 可用模型ID数组
     func fetchAvailableModels(forceRefresh: Bool = false) async throws -> [Int] {
         // 检查内存缓存（app运行期间有效）
-        if !forceRefresh, let cached = available_models {
+        if !forceRefresh, let cached = availableModels {
             Logger.debug("使用缓存的可用模型列表，共\(cached.count)个模型")
             return cached
         }
@@ -39,18 +34,21 @@ actor AvailableModelsAPI {
         let data = try await NetworkManager.shared.fetchData(from: url)
 
         do {
-            let decoder = JSONDecoder()
-            let response = try decoder.decode(AvailableModelsResponse.self, from: data)
+            let models = try Self.decodeAvailableModels(from: data)
 
             // 保存到内存缓存（app运行期间有效）
-            available_models = response.available
+            availableModels = models
 
-            Logger.success("可用模型列表获取完成，共\(response.available.count)个模型")
-            return response.available
+            Logger.success("可用模型列表获取完成，共\(models.count)个模型")
+            return models
         } catch {
             Logger.error("解析可用模型列表失败: \(error)")
             throw NetworkError.decodingError(error)
         }
+    }
+
+    static func decodeAvailableModels(from data: Data) throws -> [Int] {
+        try JSONDecoder().decode([Int].self, from: data)
     }
 
     /// 检查指定模型ID是否在可用列表中

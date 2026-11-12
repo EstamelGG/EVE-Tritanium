@@ -89,15 +89,20 @@ class NotificationManager: ObservableObject {
         }
     }
 
+    /// 页面打开或从系统设置返回时重新读取授权结果。
+    @MainActor
+    func refreshAuthorizationStatus() async {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        authorizationStatus = settings.authorizationStatus
+    }
+
     /// 请求通知权限
     func requestPermission() async -> Bool {
         do {
             let granted = try await UNUserNotificationCenter.current().requestAuthorization(
                 options: [.alert, .badge, .sound]
             )
-            await MainActor.run {
-                updateAuthorizationStatus()
-            }
+            await refreshAuthorizationStatus()
             return granted
         } catch {
             Logger.error("请求通知权限失败: \(error)")
@@ -463,6 +468,8 @@ class NotificationManager: ObservableObject {
         content.userInfo = [
             "type": "skillQueue",
             "characterId": characterId,
+            "characterName": characterName,
+            "reminder": isDueDay ? "dueDay" : "threeDaysBefore",
             "finishDate": finishDate.timeIntervalSince1970,
         ]
 
@@ -490,6 +497,7 @@ class NotificationManager: ObservableObject {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         formatter.locale = FormatUtil.appLocale
+        formatter.timeZone = FormatUtil.appTimeZone
         return formatter.string(from: date)
     }
 

@@ -280,13 +280,18 @@ struct EntityExternalLinkButtons: View {
             }
         }) {
             HStack {
-                Text("Eve Who")
-                    .foregroundColor(.primary)
+                VStack(alignment: .leading) {
+                    Text("Eve Who").foregroundColor(.primary)
+                    Text(NSLocalizedString("Open_In_Browser", comment: ""))
+                        .font(.caption)
+                        .foregroundStyle(Color(uiColor: .secondaryLabel))
+                }
                 Spacer()
                 Image(systemName: "arrow.up.right.square")
                     .foregroundColor(.blue)
             }
         }
+        .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
 
         Button(action: {
             if let url = URL(string: "https://zkillboard.com/\(linkType.rawValue)/\(entityId)/") {
@@ -294,13 +299,18 @@ struct EntityExternalLinkButtons: View {
             }
         }) {
             HStack {
-                Text("zKillboard")
-                    .foregroundColor(.primary)
+                VStack(alignment: .leading) {
+                    Text("zKillboard").foregroundColor(.primary)
+                    Text(NSLocalizedString("Open_In_Browser", comment: ""))
+                        .font(.caption)
+                        .foregroundStyle(Color(uiColor: .secondaryLabel))
+                }
                 Spacer()
                 Image(systemName: "arrow.up.right.square")
                     .foregroundColor(.blue)
             }
         }
+        .listRowInsets(EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18))
     }
 }
 

@@ -243,7 +243,7 @@ struct ItemBasicInfoView: View {
                         Button {
                             if let url = URL(
                                 string:
-                                "https://estamelgg.github.io/EVE_Model_Gallery/#typeid=\(itemDetails.typeId)&tiny"
+                                "https://eve.vanquisher.online/hull#\(itemDetails.typeId)"
                             ) {
                                 UIApplication.shared.open(url)
                             }

@@ -1,193 +1,278 @@
 import SwiftUI
 import UserNotifications
 
-/// 统一通知管理视图
-/// 显示应用所有类别的待发送通知（EVE 事件、技能队列到期等），支持单条取消
-/// 通过设置页 NavigationLink push 进入，标题显示在导航栏中
+/// 通知偏好与实际待发送提醒分开呈现，技能队列按角色合并。
 struct NotificationsManagerView: View {
-    @Environment(\.locale) private var displayLocale
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     @Environment(\.timeZone) private var displayTimeZone
     @StateObject private var notificationManager = NotificationManager.shared
-
-    /// 按类别分组后的通知
     @State private var groupedNotifications: [NotificationManager.NotificationCategory: [UNNotificationRequest]] = [:]
     @State private var isLoading = true
-    /// 技能队列通知开关（与 NotificationManager 共享 UserDefaults key）
+    @State private var isUpdating = false
     @AppStorage("SkillQueueNotificationEnabled") private var isSkillQueueEnabled = true
-    @State private var showSkillQueueInfo = false
+
+    private var skillQueueGroups: [SkillQueueNotificationGroup] {
+        SkillQueueNotificationGroup.group(groupedNotifications[.skillQueue] ?? [])
+    }
+
+    private var authorizationLabel: String {
+        switch notificationManager.authorizationStatus {
+        case .authorized: return NSLocalizedString("Notifications_Permission_Allowed", comment: "")
+        case .provisional, .ephemeral: return NSLocalizedString("Notifications_Permission_Quiet", comment: "")
+        case .denied: return NSLocalizedString("Notifications_Permission_Denied", comment: "")
+        default: return NSLocalizedString("Notifications_Permission_NotRequested", comment: "")
+        }
+    }
 
     var body: some View {
         Group {
             if isLoading {
-                ProgressView(NSLocalizedString("Calendar_Loading", comment: "Loading"))
+                ProgressView(NSLocalizedString("Calendar_Loading", comment: ""))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // 始终显示 List：技能队列 Section（含 Toggle）始终可见，
-                // 其他类别仅在有通知时显示
                 notificationListView
             }
         }
-        .navigationTitle(NSLocalizedString("Notifications_Title", comment: "Notifications"))
+        .navigationTitle(NSLocalizedString("Notifications_Settings_Title", comment: ""))
         .navigationBarTitleDisplayMode(.inline)
-        .task {
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
             await loadNotifications()
         }
-        .sheet(isPresented: $showSkillQueueInfo) {
-            skillQueueInfoSheet
-        }
-    }
-
-    // MARK: - 子视图
-
-    private var skillQueueInfoSheet: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(NSLocalizedString("Notifications_SkillQueue_Info_Title", comment: ""))
-                    .font(.headline)
-                Spacer()
-                Button {
-                    showSkillQueueInfo = false
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-            Text(NSLocalizedString("Notifications_SkillQueue_Info_Body", comment: ""))
-                .font(.body)
-                .foregroundColor(.secondary)
-            Spacer()
-        }
-        .padding()
-        .presentationDetents([.height(280)])
     }
 
     private var notificationListView: some View {
         List {
-            ForEach(NotificationManager.NotificationCategory.allCases, id: \.rawValue) { category in
-                let notifications = groupedNotifications[category] ?? []
-                // 技能队列 Section 始终显示（Toggle 始终可用），其他类别仅在有通知时显示
-                if category == .skillQueue || !notifications.isEmpty {
-                    categorySection(category: category, notifications: notifications)
+            Section {
+                Button {
+                    if notificationManager.authorizationStatus == .notDetermined {
+                        Task {
+                            _ = await notificationManager.requestPermission()
+                            if isSkillQueueEnabled {
+                                await updateSkillQueueNotifications()
+                            }
+                        }
+                    } else if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                        openURL(url)
+                    }
+                } label: {
+                    HStack {
+                        Text(NSLocalizedString("Notifications_System", comment: ""))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Text(authorizationLabel).foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .disabled(isUpdating)
+            } footer: {
+                if notificationManager.authorizationStatus == .denied {
+                    Text(NSLocalizedString("Notifications_Permission_Hint", comment: ""))
                 }
             }
-        }
-        .listStyle(InsetGroupedListStyle())
-    }
 
-    /// 单个类别的 Section：展示该类别下所有通知
-    private func categorySection(
-        category: NotificationManager.NotificationCategory,
-        notifications: [UNNotificationRequest]
-    ) -> some View {
-        let sorted = sortedByTriggerTime(notifications)
-        return Section {
-            // 技能队列 Section 第一行：启用开关
-            if category == .skillQueue {
-                Toggle(
-                    NSLocalizedString("Notifications_SkillQueue_Enable", comment: "Enable skill queue notifications"),
-                    isOn: $isSkillQueueEnabled
-                )
-                .onChange(of: isSkillQueueEnabled) { _, newValue in
-                    Task {
-                        if newValue {
-                            await notificationManager.rescheduleAllSkillQueueNotificationsFromCache()
-                        } else {
-                            await notificationManager.cancelAllNotifications(category: .skillQueue)
-                        }
-                        // 仅刷新技能队列 Section，不触发全屏 isLoading
-                        let pending = await notificationManager.getPendingNotifications(category: .skillQueue)
-                        await MainActor.run {
-                            withAnimation {
-                                groupedNotifications[.skillQueue] = pending.isEmpty ? nil : pending
+            Section {
+                Toggle(NSLocalizedString("Notifications_SkillQueue_Toggle", comment: ""), isOn: $isSkillQueueEnabled)
+                    .disabled(isUpdating)
+                    .onChange(of: isSkillQueueEnabled) { _, _ in
+                        Task { await updateSkillQueueNotifications() }
+                    }
+                if isUpdating {
+                    ProgressView().frame(maxWidth: .infinity)
+                }
+            }
+
+            if isSkillQueueEnabled {
+                if skillQueueGroups.isEmpty {
+                    Section {
+                        Text(NSLocalizedString("Notifications_SkillQueue_Empty", comment: ""))
+                            .foregroundStyle(.secondary)
+                    } header: { pendingHeader } footer: { skillQueueFooter }
+                } else {
+                    ForEach(Array(skillQueueGroups.enumerated()), id: \.element.id) { index, group in
+                        Section {
+                            skillQueueCard(group)
+                        } header: {
+                            if index == 0 {
+                                pendingHeader
+                            }
+                        } footer: {
+                            if index == skillQueueGroups.count - 1 {
+                                skillQueueFooter
                             }
                         }
                     }
                 }
+            } else {
+                Section {
+                    Text(NSLocalizedString("Notifications_SkillQueue_Disabled", comment: ""))
+                        .foregroundStyle(.secondary)
+                } footer: { skillQueueFooter }
             }
 
-            ForEach(sorted, id: \.identifier) { notification in
-                NotificationRow(notification: notification, category: category) {
-                    cancelNotification(notification)
+            let events = sortedByTriggerTime(groupedNotifications[.eveEvent] ?? [])
+            if !events.isEmpty {
+                Section(NotificationManager.NotificationCategory.eveEvent.displayName) {
+                    ForEach(events, id: \.identifier) { notification in
+                        NotificationRow(notification: notification, category: .eveEvent) {
+                            cancelNotification(notification)
+                        }
+                    }
                 }
             }
-        } header: {
+        }
+        .listStyle(.insetGrouped)
+        .refreshable { await loadNotifications() }
+    }
+
+    private var skillQueueFooter: some View {
+        Text(NSLocalizedString("Notifications_SkillQueue_Footer_Hint", comment: ""))
+    }
+
+    private var pendingHeader: some View {
+        HStack {
+            Text(NSLocalizedString("Notifications_Pending", comment: ""))
+            Spacer()
+            Text(UserDefaults.standard.string(forKey: "selectedTimeZone") == "utc"
+                ? "UTC" : NSLocalizedString("Notifications_LocalTime", comment: ""))
+                .font(.caption2)
+        }
+        .textCase(nil)
+    }
+
+    private func skillQueueCard(_ group: SkillQueueNotificationGroup) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Image(category.themedIconName)
+                Image("skills")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 20, height: 20)
-                Text(category.displayName)
-                    .fontWeight(.semibold)
-                    .font(.system(size: 16))
-                Spacer()
-                if category == .skillQueue {
-                    Button {
-                        showSkillQueueInfo = true
-                    } label: {
-                        Image(systemName: "info.circle")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    .frame(width: 18, height: 18)
+                Text(characterName(for: group)).font(.headline)
+            }
+            if let finishDate = group.finishDate {
+                Text(String(format: NSLocalizedString("Notifications_ExpectedFinish", comment: ""),
+                            FormatUtil.formatDate(finishDate, timeZone: displayTimeZone)))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(group.notifications, id: \.identifier) { notification in
+                Divider()
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text(SkillQueueNotificationGroup.reminderLabel(for: notification))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    if let date = notification.scheduledTriggerDate {
+                        Text(FormatUtil.formatDate(date, timeZone: displayTimeZone))
+                            .multilineTextAlignment(.trailing)
                     }
-                    .buttonStyle(.plain)
                 }
-                Text("\(notifications.count)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.secondary.opacity(0.15)))
-            }
-            .textCase(nil)
-        } footer: {
-            // 技能队列：提示文本
-            if category == .skillQueue {
-                Text(NSLocalizedString("Notifications_SkillQueue_Footer_Hint", comment: "Skill queue footer hint"))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .contextMenu {
+                    Button(NSLocalizedString("Calendar_Cancel_Notification", comment: ""), role: .destructive) {
+                        cancelNotification(notification)
+                    }
+                }
             }
         }
+        .padding(.vertical, 6)
     }
 
-    // MARK: - 数据加载与处理
+    private func characterName(for group: SkillQueueNotificationGroup) -> String {
+        if let characterId = group.characterId,
+           let auth = EVELogin.shared.loadCharacters().first(where: { $0.character.CharacterID == characterId })
+        {
+            return auth.character.CharacterName
+        }
+        if let name = group.notifications.first?.content.userInfo["characterName"] as? String {
+            return name
+        }
+        return group.characterId.map(String.init) ?? NSLocalizedString("Notifications_UnknownCharacter", comment: "")
+    }
 
-    /// 加载所有支持类别的待发送通知
+    @MainActor
+    private func updateSkillQueueNotifications() async {
+        guard !isUpdating else { return }
+        isUpdating = true
+        defer { isUpdating = false }
+        if isSkillQueueEnabled {
+            await notificationManager.rescheduleAllSkillQueueNotificationsFromCache()
+        } else {
+            await notificationManager.cancelAllNotifications(category: .skillQueue)
+        }
+        await loadNotifications()
+    }
+
+    @MainActor
     private func loadNotifications() async {
-        isLoading = true
-        let grouped = await notificationManager.getPendingNotificationsGroupedByCategory()
-        await MainActor.run {
-            // 仅保留有通知的类别，避免空字典导致 isEmpty 误判
-            groupedNotifications = grouped.filter { _, value in !value.isEmpty }
-            isLoading = false
-        }
+        await notificationManager.refreshAuthorizationStatus()
+        groupedNotifications = await notificationManager.getPendingNotificationsGroupedByCategory()
+        isLoading = false
     }
 
-    /// 取消单条通知
     private func cancelNotification(_ notification: UNNotificationRequest) {
         notificationManager.cancelNotification(notification)
-
-        // 从对应类别中移除
         for (category, list) in groupedNotifications {
-            if list.contains(where: { $0.identifier == notification.identifier }) {
-                var newList = list
-                newList.removeAll { $0.identifier == notification.identifier }
-                groupedNotifications[category] = newList.isEmpty ? nil : newList
-                break
-            }
+            groupedNotifications[category] = list.filter { $0.identifier != notification.identifier }
         }
     }
 
-    /// 按触发时间升序排序
     private func sortedByTriggerTime(_ notifications: [UNNotificationRequest]) -> [UNNotificationRequest] {
-        notifications.sorted { lhs, rhs in
-            guard let l = lhs.trigger as? UNCalendarNotificationTrigger,
-                  let r = rhs.trigger as? UNCalendarNotificationTrigger,
-                  let ld = l.nextTriggerDate(),
-                  let rd = r.nextTriggerDate()
-            else { return false }
-            return ld < rd
+        notifications.sorted {
+            ($0.scheduledTriggerDate ?? .distantFuture) < ($1.scheduledTriggerDate ?? .distantFuture)
         }
+    }
+}
+
+private extension UNNotificationRequest {
+    var scheduledTriggerDate: Date? {
+        if let trigger = trigger as? UNCalendarNotificationTrigger {
+            return trigger.nextTriggerDate()
+        }
+        if let trigger = trigger as? UNTimeIntervalNotificationTrigger {
+            return trigger.nextTriggerDate()
+        }
+        return nil
+    }
+}
+
+/// 用稳定的角色 ID 合并提醒，兼容未保存角色名及规则字段的旧通知。
+struct SkillQueueNotificationGroup: Identifiable {
+    let id: String
+    let characterId: Int?
+    let notifications: [UNNotificationRequest]
+
+    var finishDate: Date? {
+        notifications.compactMap { $0.content.userInfo["finishDate"] as? TimeInterval }
+            .max().map { Date(timeIntervalSince1970: $0) }
+    }
+
+    static func group(_ notifications: [UNNotificationRequest]) -> [Self] {
+        Dictionary(grouping: notifications) { request in
+            (request.content.userInfo["characterId"] as? Int).map(String.init) ?? request.identifier
+        }.map { id, requests in
+            Self(id: id, characterId: requests.first?.content.userInfo["characterId"] as? Int,
+                 notifications: requests.sorted {
+                     ($0.scheduledTriggerDate ?? .distantFuture) < ($1.scheduledTriggerDate ?? .distantFuture)
+                 })
+        }.sorted {
+            let lhs = $0.notifications.first?.scheduledTriggerDate ?? .distantFuture
+            let rhs = $1.notifications.first?.scheduledTriggerDate ?? .distantFuture
+            return lhs == rhs ? $0.id < $1.id : lhs < rhs
+        }
+    }
+
+    static func reminderLabel(for request: UNNotificationRequest) -> String {
+        let reminder = request.content.userInfo["reminder"] as? String
+        if reminder == "threeDaysBefore" || (reminder == nil && request.identifier.hasSuffix("_3day")) {
+            return NSLocalizedString("Notifications_Reminder_ThreeDays", comment: "")
+        }
+        if reminder == "dueDay" || (reminder == nil && request.identifier.hasSuffix("_due")) {
+            return NSLocalizedString("Notifications_Reminder_DueDay", comment: "")
+        }
+        return NSLocalizedString("Notifications_Reminder", comment: "")
     }
 }
 

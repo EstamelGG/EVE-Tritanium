@@ -237,6 +237,16 @@ struct CharacterDetailView: View {
                         EntityFactionRow(factionInfo: faction)
                     }
 
+                    NavigationLink {
+                        BRKillMailSearchView(characterId: character.CharacterID, initialResult: SearchResult(
+                            id: characterId, name: characterInfo.name, category: .character,
+                            imageURL: "https://images.evetech.net/characters/\(characterId)/portrait?size=64",
+                            icon: portrait
+                        ))
+                    } label: {
+                        Text(NSLocalizedString("KillMail_View_Title", comment: ""))
+                    }
+
                     EntityExternalLinkButtons(entityId: characterId, linkType: .character)
                 }
 
@@ -281,6 +291,7 @@ struct CharacterDetailView: View {
         .listStyle(.insetGrouped)
         .navigationBarTitleDisplayMode(.inline)
         .task {
+            guard characterInfo == nil || isLoading else { return }
             await loadCharacterDetails()
         }
     }

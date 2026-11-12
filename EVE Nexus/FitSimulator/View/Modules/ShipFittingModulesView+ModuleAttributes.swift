@@ -5,8 +5,8 @@ import SwiftUI
 extension ShipFittingModulesView {
     /// 模块特殊属性行总入口：按固定顺序展示各特殊属性
     @ViewBuilder
-    func moduleSpecialAttributeRows(module: SimModule) -> some View {
-        moduleDPSRow(module: module)
+    func moduleSpecialAttributeRows(module: SimModule, damageModules: [SimModule]? = nil) -> some View {
+        moduleDPSRow(modules: damageModules ?? [module])
         missileMaxRangeRow(module: module)
         probeStrengthRow(module: module)
         energyNeutralizerRow(module: module)
@@ -30,10 +30,14 @@ extension ShipFittingModulesView {
 
     // MARK: - 装备DPS/DPH
 
-    /// 装备DPS/DPH行：DPS = 总伤害/周期（不含装填），DPH = 单发总伤害；非武器或未激活时不显示
+    /// 装备DPS/DPH行：逐件计算后汇总，DPS 不含装填，DPH 为齐射总伤害；非武器或未激活时不显示
     @ViewBuilder
-    private func moduleDPSRow(module: SimModule) -> some View {
-        let damage = calculateModuleDamage(module: module)
+    private func moduleDPSRow(modules: [SimModule]) -> some View {
+        let damage = modules.reduce(into: (dps: 0.0, dph: 0.0)) { total, module in
+            let damage = calculateModuleDamage(module: module)
+            total.dps += damage.dps
+            total.dph += damage.dph
+        }
         if damage.dps > 0 {
             HStack(spacing: 4) {
                 IconManager.shared.loadImage(for: "dps")

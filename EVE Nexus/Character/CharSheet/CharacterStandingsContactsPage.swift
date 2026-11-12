@@ -1,22 +1,25 @@
 import SwiftUI
 
 /// 人物表单子页面：声望与联系人
-/// - segmented Picker 切换 Standings / Contacts，切 tab 懒加载
 /// - Standings：势力 → 军团 → 代理人，组内名称排序，行含类型标签与声望着色
 /// - Contacts：faction → alliance → corporation → character，组内名称排序，
 ///   行尾 is_blocked → restriction / is_watched → contacts 图标
 struct CharacterStandingsContactsPage: View {
     let character: EVECharacterInfo
 
-    @State private var selectedTab = 0 // 0 = Standings, 1 = Contacts
+    private enum Tab: Hashable {
+        case standings, contacts
+    }
+
+    @State private var selectedTab = Tab.standings
     @State private var standingsLoaded = false
     @State private var contactsLoaded = false
 
     @State private var standingsRows: [StandingRowItem] = []
-    @State private var isLoadingStandings = true
+    @State private var isLoadingStandings = false
 
     @State private var contactsRows: [ContactRowItem] = []
-    @State private var isLoadingContacts = true
+    @State private var isLoadingContacts = false
 
     /// 军团/联盟归属与 logo 的页面级缓存（同实体去重，避免行级重复请求）
     @StateObject private var entityCache = ContactEntityCache()
@@ -52,15 +55,21 @@ struct CharacterStandingsContactsPage: View {
         List {
             Section {
                 Picker(selection: $selectedTab) {
-                    Text(NSLocalizedString("Standings", comment: "")).tag(0)
-                    Text(NSLocalizedString("Contacts", comment: "")).tag(1)
+                    Text(NSLocalizedString("Standings", comment: "")).tag(Tab.standings)
+                    Text(NSLocalizedString("Contacts", comment: "")).tag(Tab.contacts)
                 } label: {
                     EmptyView()
                 }
                 .pickerStyle(.segmented)
 
-                if selectedTab == 0 {
-                    if isLoadingStandings {
+                Text(selectedTab == .standings
+                    ? NSLocalizedString("Standing_Incoming_Hint", comment: "")
+                    : NSLocalizedString("Standing_Outgoing_Hint", comment: ""))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                if selectedTab == .standings {
+                    if isLoadingStandings && !standingsLoaded {
                         ProgressView()
                             .frame(maxWidth: .infinity, alignment: .center)
                     } else {
@@ -70,7 +79,7 @@ struct CharacterStandingsContactsPage: View {
                         }
                     }
                 } else {
-                    if isLoadingContacts {
+                    if isLoadingContacts && !contactsLoaded {
                         ProgressView()
                             .frame(maxWidth: .infinity, alignment: .center)
                     } else if filteredContacts.isEmpty {
@@ -88,9 +97,8 @@ struct CharacterStandingsContactsPage: View {
         }
         .navigationTitle(NSLocalizedString("Character_Standings_Contacts", comment: "声望与联系人"))
         .toolbar {
-            // 仅 Contacts 标签显示筛选菜单
             ToolbarItem(placement: .navigationBarTrailing) {
-                if selectedTab == 1 {
+                if selectedTab != .standings {
                     Menu {
                         // .inline 避免在 macOS 上被折叠为子菜单；数字项用 verbatim 不进本地化
                         Picker(selection: $standingFilter, label: Text("")) {
@@ -122,22 +130,18 @@ struct CharacterStandingsContactsPage: View {
                 }
             }
         }
-        .task {
-            if !standingsLoaded {
-                await loadStandings()
-            }
-        }
-        .onChange(of: selectedTab) { _, tab in
-            if tab == 1, !contactsLoaded {
-                Task { await loadContacts() }
-            }
+        .task(id: selectedTab) {
+            await loadSelectedTab()
         }
         .refreshable {
-            if selectedTab == 0 {
-                await loadStandings(forceRefresh: true)
-            } else {
-                await loadContacts(forceRefresh: true)
-            }
+            await loadSelectedTab(forceRefresh: true)
+        }
+    }
+
+    private func loadSelectedTab(forceRefresh: Bool = false) async {
+        switch selectedTab {
+        case .standings: await loadStandings(forceRefresh: forceRefresh)
+        case .contacts: await loadContacts(forceRefresh: forceRefresh)
         }
     }
 
@@ -145,8 +149,9 @@ struct CharacterStandingsContactsPage: View {
 
     /// 声望：faction/npc_corp 名称走 SDE（零网络），agent 名称走本地库优先的批量解析
     private func loadStandings(forceRefresh: Bool = false) async {
+        guard !isLoadingStandings, forceRefresh || !standingsLoaded else { return }
         isLoadingStandings = true
-        defer { standingsLoaded = true }
+        defer { isLoadingStandings = false }
 
         guard
             let data = try? await CharacterStandingsAPI.shared.fetchStandings(
@@ -159,9 +164,11 @@ struct CharacterStandingsContactsPage: View {
 
         // agent 名称单独批量解析（agents 表本地优先，未命中才走网络）
         let agentIds = data.filter { $0.from_type == "agent" }.map { $0.from_id }
-        var agentNames: [Int: String] = [:]
-        if !agentIds.isEmpty,
-           let namesMap = try? await UniverseAPI.shared.getNamesWithFallback(ids: agentIds)
+        let agents = await UniverseAPI.shared.getAgentsFromDatabase(ids: agentIds)
+        var agentNames = agents.mapValues { $0.name }
+        let missingIDs = agentIds.filter { agents[$0] == nil }
+        if !missingIDs.isEmpty,
+           let namesMap = try? await UniverseAPI.shared.getNamesWithFallback(ids: missingIDs)
         {
             for (id, info) in namesMap {
                 agentNames[id] = info.name
@@ -171,6 +178,7 @@ struct CharacterStandingsContactsPage: View {
         let rows = data.compactMap { standing -> StandingRowItem? in
             let name: String
             var iconFileName: String?
+            var affiliations: [(name: String, icon: String)] = []
             var sortOrder: Int
             switch standing.from_type {
             case "faction":
@@ -186,9 +194,20 @@ struct CharacterStandingsContactsPage: View {
                 }
                 name = corp.name
                 iconFileName = corp.iconFilename.isEmpty ? "corporation_default" : corp.iconFilename
+                if let id = corp.factionID, let faction = SDEMemoryStore.faction(for: id) {
+                    affiliations.append((faction.name, faction.iconName))
+                }
                 sortOrder = 1
             case "agent":
                 name = agentNames[standing.from_id] ?? "Unknown (\(standing.from_id))"
+                if let id = agents[standing.from_id]?.corporationID,
+                   let corp = SDEMemoryStore.npcCorporation(for: id)
+                {
+                    affiliations.append((corp.name, corp.iconFilename.isEmpty ? "corporation_default" : corp.iconFilename))
+                    if let factionID = corp.factionID, let faction = SDEMemoryStore.faction(for: factionID) {
+                        affiliations.append((faction.name, faction.iconName))
+                    }
+                }
                 sortOrder = 2
             default:
                 return nil
@@ -199,6 +218,7 @@ struct CharacterStandingsContactsPage: View {
                 type: standing.from_type,
                 name: name,
                 iconFileName: iconFileName,
+                affiliations: affiliations,
                 standing: standing.standing,
                 sortOrder: sortOrder
             )
@@ -212,14 +232,15 @@ struct CharacterStandingsContactsPage: View {
 
         withAnimation(.easeInOut(duration: 0.3)) {
             standingsRows = rows
-            isLoadingStandings = false
+            standingsLoaded = true
         }
     }
 
     /// 联系人：faction 名称优先 SDE，其余批量解析（本地库优先，分批 ≤1000）
     private func loadContacts(forceRefresh: Bool = false) async {
+        guard !isLoadingContacts, forceRefresh || !contactsLoaded else { return }
         isLoadingContacts = true
-        defer { contactsLoaded = true }
+        defer { isLoadingContacts = false }
 
         guard
             let data = try? await GetCharContacts.shared.fetchContacts(
@@ -230,14 +251,19 @@ struct CharacterStandingsContactsPage: View {
             return
         }
 
+        let agents = await UniverseAPI.shared.getAgentsFromDatabase(
+            ids: data.filter { $0.contact_type == "character" }.map { $0.contact_id }
+        )
+        let contacts = data.filter { agents[$0.contact_id] == nil }
+
         var names: [Int: String] = [:]
-        for contact in data where contact.contact_type == "faction" {
+        for contact in contacts where contact.contact_type == "faction" {
             if let faction = SDEMemoryStore.faction(for: contact.contact_id) {
                 names[contact.contact_id] = faction.name
             }
         }
 
-        let missingIds = data.map { $0.contact_id }.filter { names[$0] == nil }
+        let missingIds = contacts.map { $0.contact_id }.filter { names[$0] == nil }
         if !missingIds.isEmpty,
            let namesMap = try? await UniverseAPI.shared.getNamesWithFallback(ids: missingIds)
         {
@@ -247,7 +273,7 @@ struct CharacterStandingsContactsPage: View {
         }
 
         let typeOrder = ["faction": 0, "alliance": 1, "corporation": 2, "character": 3]
-        let rows = data.compactMap { contact -> ContactRowItem? in
+        let rows = contacts.compactMap { contact -> ContactRowItem? in
             // faction 联系人无法解析名称时跳过（SDE 缺失）
             if contact.contact_type == "faction", names[contact.contact_id] == nil {
                 return nil
@@ -271,7 +297,7 @@ struct CharacterStandingsContactsPage: View {
 
         withAnimation(.easeInOut(duration: 0.3)) {
             contactsRows = rows
-            isLoadingContacts = false
+            contactsLoaded = true
         }
 
         // 归属与 logo 批量预载（同军团/联盟去重，刷新时强制重载）
@@ -297,6 +323,7 @@ private struct StandingRowItem: Identifiable {
     let type: String // faction / npc_corp / agent
     let name: String
     let iconFileName: String? // faction/npc_corp 本地图标；agent 为 nil（用头像）
+    let affiliations: [(name: String, icon: String)]
     let standing: Double
     let sortOrder: Int // faction = 0, npc_corp = 1, agent = 2
 }
@@ -492,10 +519,30 @@ private struct StandingEntryRow: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.name)
-                    .lineLimit(1)
-
-                typeTag
+                HStack(spacing: 4) {
+                    Text(item.name)
+                        .lineLimit(1)
+                    typeTag.fixedSize()
+                }
+                if !item.affiliations.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(item.affiliations.indices, id: \.self) { index in
+                            let affiliation = item.affiliations[index]
+                            if index > 0 {
+                                Text(verbatim: "/")
+                            }
+                            IconManager.shared.loadImage(for: affiliation.icon)
+                                .resizable()
+                                .frame(width: 16, height: 16)
+                                .cornerRadius(2)
+                                .accessibilityHidden(true)
+                            Text(affiliation.name)
+                                .lineLimit(1)
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
             }
 
             Spacer()
@@ -546,6 +593,10 @@ private struct ContactRowView: View {
     /// 人物联系人头像（行级按需，数量与联系人数一致不适合全量预载）
     @State private var iconImage: Image?
 
+    private var affiliations: [AffiliationEntry] {
+        return cache.affiliations[item.id] ?? []
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             leadingIcon
@@ -568,7 +619,7 @@ private struct ContactRowView: View {
                     }
                 }
 
-                ForEach(cache.affiliations[item.id] ?? []) { entry in
+                ForEach(affiliations) { entry in
                     HStack(spacing: 4) {
                         if let logo = cache.logos[entry.id] {
                             Image(uiImage: logo)
@@ -630,7 +681,7 @@ private struct ContactRowView: View {
             }
 
             // 归属跳转（人物 → 军团/联盟；军团 → 联盟），与雇佣历史菜单设计一致
-            ForEach(cache.affiliations[item.id] ?? []) { entry in
+            ForEach(affiliations) { entry in
                 if entry.isAlliance {
                     NavigationLink {
                         AllianceDetailView(allianceId: entry.id, character: character)

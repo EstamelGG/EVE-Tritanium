@@ -57,7 +57,13 @@ private enum KillMailKeywordSearchHistory {
 
 struct BRKillMailSearchView: View {
     let characterId: Int
-    @StateObject private var viewModel = BRKillMailSearchViewModel()
+    @StateObject private var viewModel: BRKillMailSearchViewModel
+
+    init(characterId: Int, initialResult: SearchResult? = nil) {
+        self.characterId = characterId
+        _viewModel = StateObject(wrappedValue: BRKillMailSearchViewModel(initialResult: initialResult))
+    }
+
     @State private var searchFieldText = ""
     @State private var hasSubmittedKeywordSearch = false
     @State private var recentKeywords: [String] = []
@@ -735,6 +741,10 @@ class BRKillMailSearchViewModel: ObservableObject {
     // 关键词不足 3 字时未请求 zkill 联网补全，在结果顶部提示
     @Published var skippedOnlineSearchNotice: String?
     private var lastSearchText: String = ""
+
+    init(initialResult: SearchResult? = nil) {
+        selectedResult = initialResult
+    }
 
     let categories: [SearchResultCategory] = [
         .inventory_type, .character, .corporation, .alliance,

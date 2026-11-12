@@ -86,13 +86,13 @@ class UniverseAPI {
 
     /// 从内置数据库的agents表批量获取NPC角色信息
     /// - Parameter ids: 要查询的ID数组
-    /// - Returns: ID到名称和类型的映射（类别固定为"character"）
-    private func getAgentNamesFromDatabase(ids: [Int]) -> [Int: (name: String, category: String)] {
+    /// - Returns: ID到名称和所属军团的映射
+    func getAgentsFromDatabase(ids: [Int]) -> [Int: (name: String, corporationID: Int?)] {
         guard !ids.isEmpty else { return [:] }
 
         let placeholders = String(repeating: "?,", count: ids.count).dropLast()
         let query = """
-            SELECT agent_id, COALESCE(agent_name, 'Unknown') as name
+            SELECT agent_id, corporationID, COALESCE(agent_name, 'Unknown') as name
             FROM agents
             WHERE agent_id IN (\(placeholders))
         """
@@ -101,13 +101,12 @@ class UniverseAPI {
 
         switch result {
         case let .success(rows):
-            var agentMap: [Int: (name: String, category: String)] = [:]
+            var agentMap: [Int: (name: String, corporationID: Int?)] = [:]
             for row in rows {
                 if let agentId = row["agent_id"] as? Int,
                    let name = row["name"] as? String
                 {
-                    // NPC agents 的类别固定为 "character"
-                    agentMap[agentId] = (name: name, category: "character")
+                    agentMap[agentId] = (name: name, corporationID: row["corporationID"] as? Int)
                 }
             }
             if !agentMap.isEmpty {
@@ -227,7 +226,7 @@ class UniverseAPI {
     /// - Returns: ID到名称和类型的映射
     func getNamesWithFallback(ids: [Int]) async throws -> [Int: (name: String, category: String)] {
         // 首先从内置数据库的agents表查询NPC角色（优先级最高）
-        let agentNamesMap = getAgentNamesFromDatabase(ids: ids)
+        let agentNamesMap = getAgentsFromDatabase(ids: ids).mapValues { (name: $0.name, category: "character") }
 
         // 从角色数据库获取所有可用的名称（包括不在有效范围内的ID，因为它们可能已经在数据库中）
         Logger.debug("Fetch from DB. Total IDs: \(ids.count)")

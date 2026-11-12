@@ -116,10 +116,18 @@ class Step3 {
                         sourceInstanceId: updatedInput.ship.instanceId
                     )
 
-                case let .locationRequiredSkillModifier(skillTypeId),
-                     let .ownerRequiredSkillModifier(skillTypeId):
+                case let .locationRequiredSkillModifier(skillTypeId):
                     // 应用到需要特定技能的物品
-                    applyRequiredSkillModifier(
+                    applyLocationRequiredSkillModifier(
+                        input: &updatedInput,
+                        modifier: modifier,
+                        skillTypeId: skillTypeId,
+                        sourceInstanceId: updatedInput.ship.instanceId
+                    )
+
+                case let .ownerRequiredSkillModifier(skillTypeId):
+                    // 仅作用于弹药、无人机和舰载机
+                    applyOwnerRequiredSkillModifier(
                         input: &updatedInput,
                         modifier: modifier,
                         skillTypeId: skillTypeId,
@@ -159,10 +167,18 @@ class Step3 {
                         sourceInstanceId: updatedInput.character.instanceId
                     )
 
-                case let .locationRequiredSkillModifier(skillTypeId),
-                     let .ownerRequiredSkillModifier(skillTypeId):
+                case let .locationRequiredSkillModifier(skillTypeId):
                     // 应用到需要特定技能的物品
-                    applyRequiredSkillModifier(
+                    applyLocationRequiredSkillModifier(
+                        input: &updatedInput,
+                        modifier: modifier,
+                        skillTypeId: skillTypeId,
+                        sourceInstanceId: updatedInput.character.instanceId
+                    )
+
+                case let .ownerRequiredSkillModifier(skillTypeId):
+                    // 仅作用于弹药、无人机和舰载机
+                    applyOwnerRequiredSkillModifier(
                         input: &updatedInput,
                         modifier: modifier,
                         skillTypeId: skillTypeId,
@@ -205,10 +221,18 @@ class Step3 {
                             sourceInstanceId: module.instanceId
                         )
 
-                    case let .locationRequiredSkillModifier(skillTypeId),
-                         let .ownerRequiredSkillModifier(skillTypeId):
+                    case let .locationRequiredSkillModifier(skillTypeId):
                         // 应用到需要特定技能的物品
-                        applyRequiredSkillModifier(
+                        applyLocationRequiredSkillModifier(
+                            input: &updatedInput,
+                            modifier: modifier,
+                            skillTypeId: skillTypeId,
+                            sourceInstanceId: module.instanceId
+                        )
+
+                    case let .ownerRequiredSkillModifier(skillTypeId):
+                        // 仅作用于弹药、无人机和舰载机
+                        applyOwnerRequiredSkillModifier(
                             input: &updatedInput,
                             modifier: modifier,
                             skillTypeId: skillTypeId,
@@ -260,10 +284,18 @@ class Step3 {
                             sourceInstanceId: sourceInstanceId
                         )
 
-                    case let .locationRequiredSkillModifier(skillTypeId),
-                         let .ownerRequiredSkillModifier(skillTypeId):
+                    case let .locationRequiredSkillModifier(skillTypeId):
                         // 应用到需要特定技能的物品
-                        applyRequiredSkillModifier(
+                        applyLocationRequiredSkillModifier(
+                            input: &updatedInput,
+                            modifier: modifier,
+                            skillTypeId: skillTypeId,
+                            sourceInstanceId: sourceInstanceId
+                        )
+
+                    case let .ownerRequiredSkillModifier(skillTypeId):
+                        // 仅作用于弹药、无人机和舰载机
+                        applyOwnerRequiredSkillModifier(
                             input: &updatedInput,
                             modifier: modifier,
                             skillTypeId: skillTypeId,
@@ -305,10 +337,18 @@ class Step3 {
                             sourceInstanceId: drone.instanceId
                         )
 
-                    case let .locationRequiredSkillModifier(skillTypeId),
-                         let .ownerRequiredSkillModifier(skillTypeId):
+                    case let .locationRequiredSkillModifier(skillTypeId):
                         // 应用到需要特定技能的物品
-                        applyRequiredSkillModifier(
+                        applyLocationRequiredSkillModifier(
+                            input: &updatedInput,
+                            modifier: modifier,
+                            skillTypeId: skillTypeId,
+                            sourceInstanceId: drone.instanceId
+                        )
+
+                    case let .ownerRequiredSkillModifier(skillTypeId):
+                        // 仅作用于弹药、无人机和舰载机
+                        applyOwnerRequiredSkillModifier(
                             input: &updatedInput,
                             modifier: modifier,
                             skillTypeId: skillTypeId,
@@ -351,10 +391,18 @@ class Step3 {
                                 sourceInstanceId: fighter.instanceId
                             )
 
-                        case let .locationRequiredSkillModifier(skillTypeId),
-                             let .ownerRequiredSkillModifier(skillTypeId):
+                        case let .locationRequiredSkillModifier(skillTypeId):
                             // 应用到需要特定技能的物品
-                            applyRequiredSkillModifier(
+                            applyLocationRequiredSkillModifier(
+                                input: &updatedInput,
+                                modifier: modifier,
+                                skillTypeId: skillTypeId,
+                                sourceInstanceId: fighter.instanceId
+                            )
+
+                        case let .ownerRequiredSkillModifier(skillTypeId):
+                            // 仅作用于弹药、无人机和舰载机
+                            applyOwnerRequiredSkillModifier(
                                 input: &updatedInput,
                                 modifier: modifier,
                                 skillTypeId: skillTypeId,
@@ -407,10 +455,18 @@ class Step3 {
                             sourceInstanceId: implant.instanceId
                         )
 
-                    case let .locationRequiredSkillModifier(skillTypeId),
-                         let .ownerRequiredSkillModifier(skillTypeId):
+                    case let .locationRequiredSkillModifier(skillTypeId):
                         // 应用到需要特定技能的物品
-                        applyRequiredSkillModifier(
+                        applyLocationRequiredSkillModifier(
+                            input: &updatedInput,
+                            modifier: modifier,
+                            skillTypeId: skillTypeId,
+                            sourceInstanceId: implant.instanceId
+                        )
+
+                    case let .ownerRequiredSkillModifier(skillTypeId):
+                        // 仅作用于弹药、无人机和舰载机
+                        applyOwnerRequiredSkillModifier(
                             input: &updatedInput,
                             modifier: modifier,
                             skillTypeId: skillTypeId,
@@ -448,9 +504,16 @@ class Step3 {
                             sourceInstanceId: effect.instanceId
                         )
 
-                    case let .locationRequiredSkillModifier(skillTypeId),
-                         let .ownerRequiredSkillModifier(skillTypeId):
-                        applyRequiredSkillModifier(
+                    case let .locationRequiredSkillModifier(skillTypeId):
+                        applyLocationRequiredSkillModifier(
+                            input: &updatedInput,
+                            modifier: modifier,
+                            skillTypeId: skillTypeId,
+                            sourceInstanceId: effect.instanceId
+                        )
+
+                    case let .ownerRequiredSkillModifier(skillTypeId):
+                        applyOwnerRequiredSkillModifier(
                             input: &updatedInput,
                             modifier: modifier,
                             skillTypeId: skillTypeId,
@@ -492,10 +555,18 @@ class Step3 {
                             sourceInstanceId: skill.instanceId
                         )
 
-                    case let .locationRequiredSkillModifier(skillTypeId),
-                         let .ownerRequiredSkillModifier(skillTypeId):
+                    case let .locationRequiredSkillModifier(skillTypeId):
                         // 应用到需要特定技能的物品
-                        applyRequiredSkillModifier(
+                        applyLocationRequiredSkillModifier(
+                            input: &updatedInput,
+                            modifier: modifier,
+                            skillTypeId: skillTypeId,
+                            sourceInstanceId: skill.instanceId
+                        )
+
+                    case let .ownerRequiredSkillModifier(skillTypeId):
+                        // 仅作用于弹药、无人机和舰载机
+                        applyOwnerRequiredSkillModifier(
                             input: &updatedInput,
                             modifier: modifier,
                             skillTypeId: skillTypeId,
@@ -821,58 +892,135 @@ class Step3 {
         return implant.groupID
     }
 
-    /// 应用RequiredSkillModifier (作用于需要特定技能的物品)
-    private func applyRequiredSkillModifier(
+    /// LocationRequiredSkillModifier 按 domain 限定目标位置。
+    private func applyLocationRequiredSkillModifier(
         input: inout SimulationInput,
         modifier: AttributeModifier,
         skillTypeId: Int,
         sourceInstanceId: UUID? = nil
     ) {
-        // 获取实际的技能ID（处理-1特殊情况）
         let actualSkillTypeId = skillTypeId == -1 ? modifier.sourceTypeId : skillTypeId
 
-        // 检查船体是否需要该技能
-        if input.ship.requiredSkills.contains(actualSkillTypeId) {
-            addModifierToShip(
-                ship: &input.ship,
+        switch modifier.domain {
+        case .shipID:
+            // 舰船位置上的模块和弹药
+            for i in skillTargets[.module]?[actualSkillTypeId] ?? [] {
+                if input.modules[i].requiredSkills.contains(actualSkillTypeId) {
+                    addModifierToModule(
+                        module: &input.modules[i],
+                        modifier: modifier,
+                        sourceInstanceId: sourceInstanceId
+                    )
+                }
+                applyRequiredSkillToCharge(
+                    input: &input,
+                    moduleIndex: i,
+                    modifier: modifier,
+                    skillTypeId: actualSkillTypeId,
+                    sourceInstanceId: sourceInstanceId
+                )
+            }
+
+        case .charID:
+            // 角色位置上的植入体和增效剂
+            for i in skillTargets[.implant]?[actualSkillTypeId] ?? [] {
+                if input.implants[i].requiredSkills.contains(actualSkillTypeId) {
+                    addModifierToImplant(
+                        implant: &input.implants[i],
+                        modifier: modifier,
+                        sourceInstanceId: sourceInstanceId
+                    )
+                }
+            }
+
+        case .targetID, .target:
+            // 当前模拟没有目标舰船
+            return
+
+        case .itemID, .otherID, .structureID:
+            return
+        }
+    }
+
+    /// OwnerRequiredSkillModifier 只允许作用于弹药、无人机和舰载机。
+    private func applyOwnerRequiredSkillModifier(
+        input: inout SimulationInput,
+        modifier: AttributeModifier,
+        skillTypeId: Int,
+        sourceInstanceId: UUID? = nil
+    ) {
+        let actualSkillTypeId = skillTypeId == -1 ? modifier.sourceTypeId : skillTypeId
+
+        applyRequiredSkillToCharges(
+            input: &input,
+            modifier: modifier,
+            skillTypeId: actualSkillTypeId,
+            sourceInstanceId: sourceInstanceId
+        )
+        applyRequiredSkillToDrones(
+            input: &input,
+            modifier: modifier,
+            skillTypeId: actualSkillTypeId,
+            sourceInstanceId: sourceInstanceId
+        )
+        applyRequiredSkillToFighters(
+            input: &input,
+            modifier: modifier,
+            skillTypeId: actualSkillTypeId,
+            sourceInstanceId: sourceInstanceId
+        )
+    }
+
+    private func applyRequiredSkillToCharges(
+        input: inout SimulationInput,
+        modifier: AttributeModifier,
+        skillTypeId: Int,
+        sourceInstanceId: UUID?
+    ) {
+        for i in skillTargets[.module]?[skillTypeId] ?? [] {
+            applyRequiredSkillToCharge(
+                input: &input,
+                moduleIndex: i,
                 modifier: modifier,
+                skillTypeId: skillTypeId,
                 sourceInstanceId: sourceInstanceId
             )
         }
+    }
 
-        // 检查模块是否需要该技能
-        for i in skillTargets[.module]?[actualSkillTypeId] ?? [] {
-            if input.modules[i].requiredSkills.contains(actualSkillTypeId) {
-                addModifierToModule(
-                    module: &input.modules[i],
-                    modifier: modifier,
-                    sourceInstanceId: sourceInstanceId
-                )
-            }
-
-            // 检查弹药是否需要该技能
-            if let charge = input.modules[i].charge,
-               charge.requiredSkills.contains(actualSkillTypeId)
-            {
-                // 创建带有修饰器的新弹药，传入模块状态
-                let modifiedCharge = addModifierToCharge(
-                    charge: charge,
-                    modifier: modifier,
-                    moduleStatus: input.modules[i].status,
-                    sourceInstanceId: sourceInstanceId
-                )
-
-                // 创建包含新弹药的新模块
-                input.modules[i] = createModuleWithUpdatedCharge(
-                    originalModule: input.modules[i],
-                    updatedCharge: modifiedCharge
-                )
-            }
+    private func applyRequiredSkillToCharge(
+        input: inout SimulationInput,
+        moduleIndex: Int,
+        modifier: AttributeModifier,
+        skillTypeId: Int,
+        sourceInstanceId: UUID?
+    ) {
+        guard let charge = input.modules[moduleIndex].charge,
+              charge.requiredSkills.contains(skillTypeId)
+        else {
+            return
         }
 
-        // 检查无人机是否需要该技能
-        for i in skillTargets[.drone]?[actualSkillTypeId] ?? [] {
-            if input.drones[i].requiredSkills.contains(actualSkillTypeId) {
+        let modifiedCharge = addModifierToCharge(
+            charge: charge,
+            modifier: modifier,
+            moduleStatus: input.modules[moduleIndex].status,
+            sourceInstanceId: sourceInstanceId
+        )
+        input.modules[moduleIndex] = createModuleWithUpdatedCharge(
+            originalModule: input.modules[moduleIndex],
+            updatedCharge: modifiedCharge
+        )
+    }
+
+    private func applyRequiredSkillToDrones(
+        input: inout SimulationInput,
+        modifier: AttributeModifier,
+        skillTypeId: Int,
+        sourceInstanceId: UUID?
+    ) {
+        for i in skillTargets[.drone]?[skillTypeId] ?? [] {
+            if input.drones[i].requiredSkills.contains(skillTypeId) {
                 addModifierToDrone(
                     drone: &input.drones[i],
                     modifier: modifier,
@@ -880,36 +1028,19 @@ class Step3 {
                 )
             }
         }
+    }
 
-        // 检查舰载机是否需要该技能
-        if let fighters = input.fighters {
-            for i in skillTargets[.fighter]?[actualSkillTypeId] ?? [] {
-                if fighters[i].requiredSkills.contains(actualSkillTypeId) {
-                    addModifierToFighter(
-                        fighter: &input.fighters![i],
-                        modifier: modifier,
-                        sourceInstanceId: sourceInstanceId
-                    )
-                }
-            }
-        }
-
-        // 检查植入体是否需要该技能
-        for i in skillTargets[.implant]?[actualSkillTypeId] ?? [] {
-            if input.implants[i].requiredSkills.contains(actualSkillTypeId) {
-                addModifierToImplant(
-                    implant: &input.implants[i],
-                    modifier: modifier,
-                    sourceInstanceId: sourceInstanceId
-                )
-            }
-        }
-
-        // 检查技能是否需要该技能（技能可能有前置技能要求）
-        for i in skillTargets[.skill]?[actualSkillTypeId] ?? [] {
-            if input.skills[i].requiredSkills.contains(actualSkillTypeId) {
-                addModifierToSkill(
-                    skill: &input.skills[i],
+    private func applyRequiredSkillToFighters(
+        input: inout SimulationInput,
+        modifier: AttributeModifier,
+        skillTypeId: Int,
+        sourceInstanceId: UUID?
+    ) {
+        guard let fighters = input.fighters else { return }
+        for i in skillTargets[.fighter]?[skillTypeId] ?? [] {
+            if fighters[i].requiredSkills.contains(skillTypeId) {
+                addModifierToFighter(
+                    fighter: &input.fighters![i],
                     modifier: modifier,
                     sourceInstanceId: sourceInstanceId
                 )

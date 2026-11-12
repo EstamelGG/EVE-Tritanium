@@ -22,6 +22,15 @@ struct CharacterSheetView: View {
             basicInfoSection
             fatigueSection
             detailPagesSection
+            Section {
+                detailPageLink(
+                    title: NSLocalizedString("KillMail_View_Title", comment: ""),
+                    icon: "combatlog"
+                ) {
+                    BRKillMailView(characterId: viewModel.character.CharacterID)
+                }
+            }
+            .listRowInsets(EdgeInsets(top: 8, leading: 18, bottom: 8, trailing: 18))
         }
         .navigationTitle(NSLocalizedString("Main_Character_Sheet", comment: ""))
         .onAppear {

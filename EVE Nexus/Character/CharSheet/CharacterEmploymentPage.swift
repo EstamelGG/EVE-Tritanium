@@ -10,7 +10,7 @@ struct CharacterEmploymentPage: View {
     /// 玩家军团名是否仍在加载（NPC 军团已通过 SDE 同步就绪）
     @State private var isLoadingCorpNames = false
     @State private var npcCorporationIds: Set<Int> = []
-    private let allianceCache = EmploymentAllianceCache()
+    @StateObject private var allianceCache = EmploymentAllianceCache()
 
     var body: some View {
         List {
@@ -32,16 +32,16 @@ struct CharacterEmploymentPage: View {
             await load()
         }
         .refreshable {
-            await load()
+            await load(forceRefresh: true)
         }
     }
 
     /// 加载雇佣历史：拿到记录即返回，section 立即显示，军团名/图标/联盟信息由 row 异步加载
-    private func load() async {
+    private func load(forceRefresh: Bool = false) async {
         isLoading = true
 
         let history = try? await CharacterAPI.shared.fetchEmploymentHistory(
-            characterId: character.CharacterID
+            characterId: character.CharacterID, forceRefresh: forceRefresh
         )
         employmentHistory = history ?? []
 

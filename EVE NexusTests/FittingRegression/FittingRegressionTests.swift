@@ -103,6 +103,101 @@ final class FittingRegressionTests: XCTestCase {
         try check("S05")
     }
 
+    func testDroneOwnerBonusesStayOffDamageModules() throws {
+        let data = try data()
+        let fitting = LocalFitting(
+            description: "",
+            fitting_id: UUID(),
+            items: [
+                LocalFittingItem(
+                    flag: .hiSlot0, quantity: 1, type_id: 3146, status: 2,
+                    charge_type_id: 12789, charge_quantity: 80
+                ),
+                LocalFittingItem(flag: .loSlot0, quantity: 1, type_id: 94020, status: 1),
+                LocalFittingItem(flag: .loSlot1, quantity: 1, type_id: 94020, status: 1),
+                LocalFittingItem(flag: .loSlot2, quantity: 1, type_id: 10190, status: 1),
+            ],
+            name: "Drone owner bonus target regression",
+            ship_type_id: 641,
+            drones: [Drone(type_id: 2185, quantity: 5, active_count: 5, muta: nil)]
+        )
+        let input = FitConvert.localFittingToSimulationInput(
+            localFitting: fitting,
+            databaseManager: data.db,
+            characterSkills: [3436: 5, 3442: 5]
+        )
+        let output = AttributeCalculator(databaseManager: data.db)
+            .calculateAndGenerateOutput(input: input)
+
+        let khryseos = output.modules.filter { $0.typeId == 94020 }
+        XCTAssertEqual(khryseos.count, 2)
+        for module in khryseos {
+            XCTAssertEqual(try XCTUnwrap(module.attributes[64]), 1.1, accuracy: 1e-10)
+        }
+        let standardStabilizer = try XCTUnwrap(output.modules.first { $0.typeId == 10190 })
+        XCTAssertEqual(try XCTUnwrap(standardStabilizer.attributes[64]), 1.1, accuracy: 1e-10)
+
+        let drone = try XCTUnwrap(output.drones.first)
+        XCTAssertEqual(try XCTUnwrap(drone.attributes[64]), 3.743778806461637, accuracy: 1e-9)
+
+        let blaster = try XCTUnwrap(output.modules.first { $0.typeId == 3146 })
+        XCTAssertEqual(try XCTUnwrap(blaster.attributes[64]), 5.5734563473759025, accuracy: 1e-9)
+    }
+
+    func testLocationSkillBonusStaysOffMiningDrone() throws {
+        let data = try data()
+        let fitting = LocalFitting(
+            description: "",
+            fitting_id: UUID(),
+            items: [
+                LocalFittingItem(flag: .hiSlot0, quantity: 1, type_id: 482, status: 2)
+            ],
+            name: "Location skill mining drone regression",
+            ship_type_id: 587,
+            drones: [Drone(type_id: 10250, quantity: 1, active_count: 1, muta: nil)]
+        )
+        let input = FitConvert.localFittingToSimulationInput(
+            localFitting: fitting,
+            databaseManager: data.db,
+            characterSkills: [3386: 5]
+        )
+        let output = AttributeCalculator(databaseManager: data.db)
+            .calculateAndGenerateOutput(input: input)
+
+        let miner = try XCTUnwrap(output.modules.first { $0.typeId == 482 })
+        XCTAssertEqual(try XCTUnwrap(miner.attributes[77]), 18.75, accuracy: 1e-9)
+
+        let drone = try XCTUnwrap(output.drones.first)
+        XCTAssertEqual(try XCTUnwrap(drone.attributes[77]), 33, accuracy: 1e-9)
+    }
+
+    func testLocationSkillBonusStaysOffTargetPainterDrone() throws {
+        let data = try data()
+        let fitting = LocalFitting(
+            description: "",
+            fitting_id: UUID(),
+            items: [
+                LocalFittingItem(flag: .hiSlot0, quantity: 1, type_id: 19806, status: 2)
+            ],
+            name: "Location skill target painter drone regression",
+            ship_type_id: 587,
+            drones: [Drone(type_id: 23512, quantity: 1, active_count: 1, muta: nil)]
+        )
+        let input = FitConvert.localFittingToSimulationInput(
+            localFitting: fitting,
+            databaseManager: data.db,
+            characterSkills: [19759: 5, 19921: 5]
+        )
+        let output = AttributeCalculator(databaseManager: data.db)
+            .calculateAndGenerateOutput(input: input)
+
+        let painter = try XCTUnwrap(output.modules.first { $0.typeId == 19806 })
+        XCTAssertEqual(try XCTUnwrap(painter.attributes[54]), 54000, accuracy: 1e-9)
+
+        let drone = try XCTUnwrap(output.drones.first)
+        XCTAssertEqual(try XCTUnwrap(drone.attributes[54]), 10000, accuracy: 1e-9)
+    }
+
     func testS06ImplantsAndEnvironment() throws {
         try check("S06")
     }

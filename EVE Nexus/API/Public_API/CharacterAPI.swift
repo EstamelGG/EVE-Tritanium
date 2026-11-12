@@ -248,17 +248,36 @@ final class CharacterAPI: @unchecked Sendable {
     }
 
     /// 获取角色雇佣历史
-    func fetchEmploymentHistory(characterId: Int) async throws -> [CharacterEmploymentHistory] {
+    func fetchEmploymentHistory(characterId: Int, forceRefresh: Bool = false) async throws -> [CharacterEmploymentHistory] {
+        let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("EmploymentHistory", isDirectory: true)
+        let file = directory.appendingPathComponent("\(characterId).json")
+        if !forceRefresh,
+           let modified = try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+           Date().timeIntervalSince(modified) < 24 * 3600,
+           let data = try? Data(contentsOf: file),
+           let history = try? JSONDecoder().decode([CharacterEmploymentHistory].self, from: data)
+        {
+            return history
+        }
+
         let urlString =
             "https://esi.evetech.net/characters/\(characterId)/corporationhistory/?datasource=tranquility"
         guard let url = URL(string: urlString) else {
             throw NetworkError.invalidURL
         }
 
-        let data = try await NetworkManager.shared.fetchData(from: url)
+        let data = try await NetworkManager.shared.fetchData(from: url, forceRefresh: forceRefresh)
         let history = try JSONDecoder().decode([CharacterEmploymentHistory].self, from: data)
 
         // 按开始日期降序排序（最新的在前）
-        return history.sorted { $0.start_date > $1.start_date }
+        let sorted = history.sorted { $0.start_date > $1.start_date }
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try JSONEncoder().encode(sorted).write(to: file, options: .atomic)
+        } catch {
+            Logger.error("无法缓存雇佣历史: \(error)")
+        }
+        return sorted
     }
 }
