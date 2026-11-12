@@ -177,13 +177,17 @@ public class CharacterSkillsAPI {
         characterSkillsDirectory().appendingPathComponent("\(characterId)_skill_queue.json")
     }
 
-    private func isCacheFileValid(at path: URL) -> Bool {
+    /// Keep this check on scalar timestamps: Date's Comparable dispatch is on the
+    /// zero-address crash path seen in the iOS 27.2 TestFlight reports.
+    /// `now` is injectable so expiry boundaries can be tested without sleeping.
+    func isCacheFileValid(at path: URL, now: Date = Date()) -> Bool {
         guard FileManager.default.fileExists(atPath: path.path) else { return false }
         do {
             let attributes = try FileManager.default.attributesOfItem(atPath: path.path)
             if let modificationDate = attributes[.modificationDate] as? Date {
-                let expiry = modificationDate.addingTimeInterval(Self.pairedCacheValiditySeconds)
-                return Date() <= expiry
+                let expiry = modificationDate.timeIntervalSinceReferenceDate
+                    + Self.pairedCacheValiditySeconds
+                return now.timeIntervalSinceReferenceDate <= expiry
             }
         } catch {
             Logger.error("获取文件属性失败: \(error)")

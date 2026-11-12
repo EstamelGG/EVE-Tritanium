@@ -38944,8 +38944,247 @@
         }
       }
     },
+    "Notifications_ExpectedFinish" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expected completion · %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预计完成 · %@"
+          }
+        }
+      }
+    },
+    "Notifications_LocalTime" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Device Local Time"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设备当地时间"
+          }
+        }
+      }
+    },
+    "Notifications_Pending" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pending Reminders"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待发送提醒"
+          }
+        }
+      }
+    },
+    "Notifications_Permission_Allowed" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allowed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已允许"
+          }
+        }
+      }
+    },
+    "Notifications_Permission_Denied" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Allowed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未允许"
+          }
+        }
+      }
+    },
+    "Notifications_Permission_Hint" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow notifications in system settings to receive reminders."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在系统设置中允许通知，以接收提醒。"
+          }
+        }
+      }
+    },
+    "Notifications_Permission_NotRequested" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Requested"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未授权"
+          }
+        }
+      }
+    },
+    "Notifications_Permission_Quiet" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quiet Delivery"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "静默通知"
+          }
+        }
+      }
+    },
+    "Notifications_Reminder" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminder"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提醒"
+          }
+        }
+      }
+    },
+    "Notifications_Reminder_DueDay" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Completion Day"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成当天"
+          }
+        }
+      }
+    },
+    "Notifications_Reminder_ThreeDays" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3 Days Before"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提前 3 天"
+          }
+        }
+      }
+    },
+    "Notifications_Settings_Title" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notification Settings"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通知设置"
+          }
+        }
+      }
+    },
+    "Notifications_SkillQueue_Disabled" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skill queue reminders are off."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "技能队列提醒已关闭"
+          }
+        }
+      }
+    },
+    "Notifications_SkillQueue_Empty" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No pending skill queue reminders. Refresh your skill queue to update reminders."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无待发送提醒。刷新技能队列后会更新提醒。"
+          }
+        }
+      }
+    },
     "Notifications_SkillQueue_Enable" : {
       "comment" : "Enable skill queue notifications",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -38967,19 +39206,20 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Calculated from cached skill queue data fetched by the app; may differ from in-game real-time data."
+            "value" : "Reminders use the most recently fetched queue. After changing your queue in-game, refresh it in this app."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "基于应用拉取的技能队列数据计算，与游戏内实时数据可能不一致。"
+            "value" : "根据最近获取的队列安排。在游戏内调整队列后，请返回应用刷新。"
           }
         }
       }
     },
     "Notifications_SkillQueue_Info_Body" : {
       "comment" : "Skill queue notification info sheet body",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -38997,6 +39237,7 @@
     },
     "Notifications_SkillQueue_Info_Title" : {
       "comment" : "Skill queue notification info sheet title",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -39012,8 +39253,43 @@
         }
       }
     },
+    "Notifications_SkillQueue_Toggle" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skill Queue Reminders"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "技能队列提醒"
+          }
+        }
+      }
+    },
+    "Notifications_System" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System Notifications"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统通知"
+          }
+        }
+      }
+    },
     "Notifications_Title" : {
       "comment" : "Notifications",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -39025,6 +39301,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "通知管理"
+          }
+        }
+      }
+    },
+    "Notifications_UnknownCharacter" : {
+      "comment" : "Notification settings",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown Character"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知角色"
           }
         }
       }

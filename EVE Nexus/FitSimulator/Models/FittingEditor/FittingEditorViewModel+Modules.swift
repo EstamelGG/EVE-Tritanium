@@ -2,6 +2,47 @@ import Foundation
 import SwiftUI
 
 extension FittingEditorViewModel {
+    /// 按槽位显示顺序，以每组第一件装备的原始输入同步弹药和状态。
+    /// 突变装备与列表分组规则一致，不参与堆叠；同组限制仍由计算后的校验处理。
+    @discardableResult
+    static func synchronizeStackedModules(
+        _ modules: inout [SimModule], slotTypes: [FittingSlotType]
+    ) -> Bool {
+        var changed = false
+        for slotType in slotTypes {
+            var firstModules: [Int: SimModule] = [:]
+            for flag in slotType.flags {
+                guard let index = modules.firstIndex(where: { $0.flag == flag }),
+                      modules[index].mutatedAttributes.isEmpty else { continue }
+                let module = modules[index]
+                guard let first = firstModules[module.typeId] else {
+                    firstModules[module.typeId] = module
+                    continue
+                }
+                if module.status != first.status {
+                    modules[index] = module.withStatus(first.status)
+                    changed = true
+                }
+                if module.charge?.typeId != first.charge?.typeId
+                    || module.charge?.chargeQuantity != first.charge?.chargeQuantity
+                {
+                    // 每件装备的弹药保留独立实例，避免修饰器来源混用。
+                    modules[index].charge = first.charge.map { charge in
+                        SimCharge(
+                            typeId: charge.typeId, attributes: charge.attributes,
+                            attributesByName: charge.attributesByName, effects: charge.effects,
+                            groupID: charge.groupID, chargeQuantity: charge.chargeQuantity,
+                            requiredSkills: charge.requiredSkills, name: charge.name,
+                            iconFileName: charge.iconFileName
+                        )
+                    }
+                    changed = true
+                }
+            }
+        }
+        return changed
+    }
+
     // MARK: - 私有辅助方法
 
     /// 复制模块并更新状态（保留突变数据与instanceId）

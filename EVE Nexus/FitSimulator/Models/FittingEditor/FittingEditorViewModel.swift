@@ -55,11 +55,38 @@ class FittingEditorViewModel: ObservableObject {
     @Published var errorMessage: String? // 添加错误消息
     @Published var invalidModules: [(module: SimModule, reason: String)] = [] // 无效的模块列表
 
-    // 每次打开装配按用户偏好初始化；section 按钮仅改变本次查看的状态。
-    @Published var hiSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault
-    @Published var medSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault
-    @Published var loSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault
-    @Published var rigSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault
+    /// 每次打开装配按用户偏好初始化；进入堆叠时同步装备，展开后保留修改。
+    @Published var hiSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault {
+        didSet {
+            if hiSlotsCollapsed, !oldValue {
+                calculateAttributes()
+            }
+        }
+    }
+
+    @Published var medSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault {
+        didSet {
+            if medSlotsCollapsed, !oldValue {
+                calculateAttributes()
+            }
+        }
+    }
+
+    @Published var loSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault {
+        didSet {
+            if loSlotsCollapsed, !oldValue {
+                calculateAttributes()
+            }
+        }
+    }
+
+    @Published var rigSlotsCollapsed = AppConfiguration.Fitting.collapseIdenticalModulesByDefault {
+        didSet {
+            if rigSlotsCollapsed, !oldValue {
+                calculateAttributes()
+            }
+        }
+    }
 
     // 计算器和数据库
     private let attributeCalculator: AttributeCalculator
@@ -419,6 +446,17 @@ class FittingEditorViewModel: ObservableObject {
     /// 重新计算属性
     func calculateAttributes() {
         Logger.info("【calculateAttributes】开始重新计算属性")
+
+        let collapsedSlots: [FittingSlotType] = [
+            hiSlotsCollapsed ? .hiSlots : nil,
+            medSlotsCollapsed ? .medSlots : nil,
+            loSlotsCollapsed ? .loSlots : nil,
+            rigSlotsCollapsed ? .rigSlots : nil,
+        ].compactMap { $0 }
+        var modules = simulationInput.modules
+        if Self.synchronizeStackedModules(&modules, slotTypes: collapsedSlots) {
+            simulationInput.modules = modules
+        }
 
         // 记录输入中的舰载机信息（仅在调试模式下）
         if AppConfiguration.Fitting.showDebug {

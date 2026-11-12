@@ -539,3 +539,11 @@ Fixes & Improvements:
 # v1.14.11 October 26, 2026
 
 1. UI bug fixes
+
+# v1.14.12 November 2, 2026
+
+1. Fitting simulation: fixed stacked weapons showing only one module's DPS and DPH; stacked rows now display totals for the entire group
+2. Fitting simulation: stacking now synchronizes the group's ammunition and status to the first module in slot order
+3. Improved notification settings: view system notification permission status and access settings; skill queue reminders are grouped by character with expected training completion and reminder times, and individual reminders can be canceled
+4. Notification times now follow the app's time zone setting, and permission status refreshes automatically when returning from system settings
+5. Fixed a potential crash when checking skill cache expiration

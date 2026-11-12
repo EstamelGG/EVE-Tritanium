@@ -235,6 +235,7 @@ extension ShipFittingModulesView {
         charge: SimCharge? = nil,
         moduleForCapacity: SimModule? = nil,
         module: SimModule? = nil,
+        damageModules: [SimModule]? = nil,
         rightContent: AnyView? = nil,
         onTap: @escaping () -> Void
     ) -> some View {
@@ -318,7 +319,7 @@ extension ShipFittingModulesView {
 
                 if let module = module {
                     // 特殊属性展示（射程/维修/加成/指挥脉冲等）见 ShipFittingModulesView+ModuleAttributes.swift
-                    moduleSpecialAttributeRows(module: module)
+                    moduleSpecialAttributeRows(module: module, damageModules: damageModules)
                 }
             }
 
@@ -358,6 +359,7 @@ extension ShipFittingModulesView {
             charge: group.typeId != -1 ? group.modules.first?.charge : nil,
             moduleForCapacity: group.modules.first,
             module: group.typeId != -1 ? group.modules.first : nil,
+            damageModules: group.modules,
             rightContent: group.typeId != -1 && group.modules.first != nil
                 ? AnyView(getStatusIcon(status: group.modules.first!.status)) : nil
         ) {
