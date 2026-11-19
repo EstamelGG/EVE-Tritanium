@@ -198,6 +198,39 @@ final class FittingRegressionTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(drone.attributes[54]), 10000, accuracy: 1e-9)
     }
 
+    func testLocationSkillBonusStaysOffECMDrone() throws {
+        let data = try data()
+        let fitting = LocalFitting(
+            description: "",
+            fitting_id: UUID(),
+            items: [
+                LocalFittingItem(flag: .hiSlot0, quantity: 1, type_id: 2567, status: 2),
+                LocalFittingItem(flag: .rigSlot0, quantity: 1, type_id: 26352, status: 1),
+            ],
+            name: "Location skill ECM drone regression",
+            ship_type_id: 640,
+            drones: [Drone(type_id: 23707, quantity: 5, active_count: 5, muta: nil)]
+        )
+        let input = FitConvert.localFittingToSimulationInput(
+            localFitting: fitting,
+            databaseManager: data.db,
+            characterSkills: [3427: 5]
+        )
+        let output = AttributeCalculator(databaseManager: data.db)
+            .calculateAndGenerateOutput(input: input)
+
+        let ecm = try XCTUnwrap(output.modules.first { $0.typeId == 2567 })
+        for attributeID in 238 ... 241 {
+            // Scorpion hull 和 rig 各提供 15%，模块应同时吃到两者。
+            XCTAssertEqual(try XCTUnwrap(ecm.attributes[attributeID]), 3.4385, accuracy: 1e-9)
+        }
+
+        let drone = try XCTUnwrap(output.drones.first)
+        for attributeID in 238 ... 241 {
+            XCTAssertEqual(try XCTUnwrap(drone.attributes[attributeID]), 1.0, accuracy: 1e-9)
+        }
+    }
+
     func testS06ImplantsAndEnvironment() throws {
         try check("S06")
     }
