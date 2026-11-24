@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 // MARK: - 数据库语言数据模型
 
@@ -129,6 +130,9 @@ struct SelectLanguageView: View {
 
     private func applyLanguageChange(code: String) {
         selectedLanguage = code
+        WidgetMarketWatchlist.defaults?.set(code, forKey: WidgetLocalization.languageKey)
+        WidgetCenter.shared.reloadAllTimelines()
+        WidgetShortcutAppDelegate.updateShortcut(in: .shared)
         UserDefaults.standard.set([code], forKey: "AppleLanguages")
         UserDefaults.standard.synchronize()
 
@@ -156,6 +160,7 @@ struct SelectLanguageView: View {
             selectedDatabaseLanguage = code
             databaseManager.clearCache()
             databaseManager.loadDatabase()
+            await WidgetRefreshService.shared.relocalize()
             switchingDatabaseLanguage = nil
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {

@@ -1009,7 +1009,7 @@ struct CharacterRowView: View {
                         .font(.caption)
 
                         // 钱包信息占位
-                        Text("\(NSLocalizedString("Account_Wallet_value", comment: "")): 0.00 ISK")
+                        Text("\(NSLocalizedString("Account_Wallet_value", comment: "")): \(FormatUtil.formatISK(0))")
                             .font(.caption)
                             .foregroundColor(.gray)
                             .redacted(reason: .placeholder)

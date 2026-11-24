@@ -244,7 +244,7 @@ struct GroupItemRowView: View {
                 Spacer()
 
                 HStack(spacing: 4) {
-                    Text(FormatUtil.formatPreciseISK(structurePrice))
+                    Text(FormatUtil.formatISKAmount(structurePrice))
                         .font(.system(.body, design: .monospaced))
                         .foregroundColor(.blue)
 
@@ -268,7 +268,7 @@ struct GroupItemRowView: View {
 
             if let jitaPrice = item.jitaPrice {
                 HStack(spacing: 4) {
-                    Text(FormatUtil.formatPreciseISK(jitaPrice))
+                    Text(FormatUtil.formatISKAmount(jitaPrice))
                         .font(.system(.body, design: .monospaced))
                         .foregroundColor(.blue)
 

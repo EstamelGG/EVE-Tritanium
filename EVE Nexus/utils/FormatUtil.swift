@@ -88,17 +88,6 @@ enum FormatUtil {
         return formatter
     }()
 
-    /// 用于UI显示的 NumberFormatter 实例（不使用千位分隔符）
-    private static let uiFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 1 // UI显示最多1位小数
-        formatter.groupingSeparator = "" // 不使用千位分隔符
-        formatter.decimalSeparator = "."
-        return formatter
-    }()
-
     /// 通用的数字格式化函数
     /// - Parameters:
     ///   - value: 要格式化的数值
@@ -121,32 +110,6 @@ enum FormatUtil {
         formatter.maximumFractionDigits = maxFractionDigits
         return formatter.string(from: NSNumber(value: value))
             ?? String(format: "%.\(maxFractionDigits)f", value)
-    }
-
-    /// 通用的单位格式化函数
-    /// - Parameters:
-    ///   - value: 要格式化的数值
-    ///   - unit: 单位符号
-    ///   - threshold: 单位阈值
-    ///   - maxFractionDigits: 最大小数位数
-    /// - Returns: 格式化后的字符串
-    /// - Example:
-    ///   ```
-    ///   formatWithUnit(1500, unit: "K", threshold: 1000, maxFractionDigits: 1)  // "1.5K"
-    ///   formatWithUnit(1200, unit: "K", threshold: 1000, maxFractionDigits: 1)  // "1.2K"
-    ///   formatWithUnit(1000, unit: "K", threshold: 1000, maxFractionDigits: 1)  // "1K"
-    ///   ```
-    private static func formatWithUnit(
-        _ value: Double, unit: String, threshold: Double, maxFractionDigits: Int
-    ) -> String {
-        if value >= threshold {
-            let formatted = value / threshold
-            if formatted.truncatingRemainder(dividingBy: 1) == 0 {
-                return String(format: "%.0f\(unit)", formatted)
-            }
-            return String(format: "%.\(maxFractionDigits)f\(unit)", formatted)
-        }
-        return formatNumber(value, maxFractionDigits: 0)
     }
 
     /// 格式化数字：支持千位分隔符，最多3位有效小数
@@ -217,49 +180,12 @@ enum FormatUtil {
         return "\(formattedSize) \(units[unitIndex])"
     }
 
-    /// 格式化 ISK 货币
-    /// - Parameter value: ISK 数值
-    /// - Returns: 格式化后的 ISK 字符串
-    /// - Example:
-    ///   ```
-    ///   formatISK(1200)     // "1.2K ISK"
-    ///   formatISK(1200000)  // "1.2M ISK"
-    ///   formatISK(1200000000) // "1.2B ISK"
-    ///   formatISK(1200000000000) // "1.2T ISK"
-    ///   formatISK(999)      // "999 ISK"
-    ///   ```
+    static func formatISKAmount(_ value: Double, maxFractionDigits: Int = 2) -> String {
+        CurrencyUnitStyle.current.format(value, locale: appLocale, maxFractionDigits: maxFractionDigits)
+    }
+
     static func formatISK(_ value: Double) -> String {
-        let trillion = 1_000_000_000_000.0
-        let billion = 1_000_000_000.0
-        let million = 1_000_000.0
-        let thousand = 1000.0
-
-        // 处理负数：转为正数格式化，然后添加负号
-        let isNegative = value < 0
-        let absoluteValue = abs(value)
-
-        let formattedValue: String
-        if absoluteValue >= trillion {
-            formattedValue = formatWithUnit(
-                absoluteValue, unit: "T ISK", threshold: trillion, maxFractionDigits: 2
-            )
-        } else if absoluteValue >= billion {
-            formattedValue = formatWithUnit(
-                absoluteValue, unit: "B ISK", threshold: billion, maxFractionDigits: 2
-            )
-        } else if absoluteValue >= million {
-            formattedValue = formatWithUnit(
-                absoluteValue, unit: "M ISK", threshold: million, maxFractionDigits: 2
-            )
-        } else if absoluteValue >= thousand {
-            formattedValue = formatWithUnit(
-                absoluteValue, unit: "K ISK", threshold: thousand, maxFractionDigits: 2
-            )
-        } else {
-            formattedValue = formatNumber(absoluteValue, maxFractionDigits: 1) + " ISK"
-        }
-
-        return isNegative ? "-\(formattedValue)" : formattedValue
+        formatISKAmount(value) + " ISK"
     }
 
     /// 格式化时间（保留毫秒精度）
@@ -314,45 +240,7 @@ enum FormatUtil {
     ///   formatForUI(1234.567, maxFractionDigits: 2)  // "1234.57"
     ///   ```
     static func formatForUI(_ value: Double, maxFractionDigits: Int = 1) -> String {
-        // 临时设置formatter的小数位数
-        let originalMaxFractionDigits = uiFormatter.maximumFractionDigits
-        uiFormatter.maximumFractionDigits = maxFractionDigits
-
-        defer {
-            // 恢复原始设置
-            uiFormatter.maximumFractionDigits = originalMaxFractionDigits
-        }
-
-        if value == 0 {
-            return "0"
-        } else if value >= 1_000_000_000_000 {
-            let formattedValue = value / 1_000_000_000_000
-            let numberString =
-                uiFormatter.string(from: NSNumber(value: formattedValue))
-                    ?? String(format: "%.\(maxFractionDigits)f", formattedValue)
-            return numberString + "T"
-        } else if value >= 1_000_000_000 {
-            let formattedValue = value / 1_000_000_000
-            let numberString =
-                uiFormatter.string(from: NSNumber(value: formattedValue))
-                    ?? String(format: "%.\(maxFractionDigits)f", formattedValue)
-            return numberString + "B"
-        } else if value >= 1_000_000 {
-            let formattedValue = value / 1_000_000
-            let numberString =
-                uiFormatter.string(from: NSNumber(value: formattedValue))
-                    ?? String(format: "%.\(maxFractionDigits)f", formattedValue)
-            return numberString + "M"
-        } else if value >= 10000 {
-            let formattedValue = value / 1000
-            let numberString =
-                uiFormatter.string(from: NSNumber(value: formattedValue))
-                    ?? String(format: "%.\(maxFractionDigits)f", formattedValue)
-            return numberString + "k"
-        } else {
-            return uiFormatter.string(from: NSNumber(value: value))
-                ?? String(format: "%.\(maxFractionDigits)f", value)
-        }
+        CompactNumber.format(value, maxFractionDigits: maxFractionDigits)
     }
 
     // MARK: - 日期格式化功能
@@ -560,24 +448,12 @@ enum FormatUtil {
 
     // MARK: - 市场价格
 
-    /// 市场价格：`1.23B (1,234,567,890.00 ISK)` 或完整 ISK
+    /// 百万及以上的市场价格同时显示缩写和完整金额。
     static func formatMarketPrice(_ price: Double) -> String {
-        let billion = 1_000_000_000.0
-        let million = 1_000_000.0
-        let formattedFullPrice = formatDecimal(price)
-
-        if price >= billion {
-            return String(format: "%.2fB (%@ ISK)", price / billion, formattedFullPrice)
+        if abs(price) >= 1_000_000 {
+            return "\(formatISKAmount(price)) (\(formatDecimal(price)) ISK)"
         }
-        if price >= million {
-            return String(format: "%.2fM (%@ ISK)", price / million, formattedFullPrice)
-        }
-        return "\(formattedFullPrice) ISK"
-    }
-
-    /// 精确 ISK 价格（2 位小数 + 千位分隔）
-    static func formatPreciseISK(_ price: Double) -> String {
-        formatDecimal(price)
+        return formatISK(price)
     }
 
     // MARK: - 履历 / 搜索详情
@@ -650,47 +526,14 @@ enum FormatUtil {
 
     // MARK: - 紧凑式时长
 
-    enum CompactDurationRounding {
-        /// 截断到秒。
-        case truncate
-        /// 向上取整到显示的最小单位（技能剩余/队列）。
-        case ceil
-    }
+    typealias CompactDurationRounding = CompactDuration.Rounding
 
     /// 显示最高的两个相邻单位，不补前导零；不足一分钟只显示秒。
     static func formatCompactDuration(
         _ interval: TimeInterval,
         rounding: CompactDurationRounding = .truncate
     ) -> String {
-        guard interval.isFinite else { return compactDurationText(seconds: 0) }
-        var seconds = max(0, interval).rounded(.down)
-        if rounding == .ceil {
-            seconds = ceil(max(0, interval))
-            if seconds >= 86400 {
-                seconds = ceil(seconds / 3600) * 3600
-            } else if seconds >= 3600 {
-                seconds = ceil(seconds / 60) * 60
-            }
-        }
-        // 避免异常时长转换为 Int 时溢出。
-        let total = Int(min(seconds, Double(Int.max / 2)))
-        return compactDurationText(seconds: total)
-    }
-
-    private static func compactDurationText(seconds: Int) -> String {
-        let values = [seconds / 86400, seconds / 3600 % 24, seconds / 60 % 60, seconds % 60]
-        let templates = [
-            NSLocalizedString("Time_Compact_Days", comment: "Compact duration days"),
-            NSLocalizedString("Time_Compact_Hours", comment: "Compact duration hours"),
-            NSLocalizedString("Time_Compact_Minutes", comment: "Compact duration minutes"),
-            NSLocalizedString("Time_Compact_Seconds", comment: "Compact duration seconds"),
-        ]
-        let first = values.firstIndex(where: { $0 > 0 }) ?? 3
-        // 保留相邻低位的零，避免 8时0分17秒跳成 8时17秒。
-        let indices = first ... min(first + 1, 3)
-        let parts = indices.map { String(format: templates[$0], Int64(values[$0])) }
-        let joinTemplate = NSLocalizedString("Time_Compact_Join", comment: "Join duration components")
-        return parts.dropFirst().reduce(parts[0]) { String(format: joinTemplate, $0, $1) }
+        CompactDuration.format(interval, rounding: rounding)
     }
 
     /// PI 周期/剩余（同 `formatCompactDuration`）

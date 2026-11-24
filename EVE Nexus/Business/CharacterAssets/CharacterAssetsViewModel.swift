@@ -28,6 +28,25 @@ struct AssetLocationWithOwner: Identifiable {
     }
 }
 
+struct AssetRegion: Hashable {
+    let id: Int?
+    let name: String
+}
+
+struct AssetRegionGroup: Identifiable {
+    let region: AssetRegion
+    let locations: [AssetLocationWithOwner]
+    let itemCount: Int
+
+    var id: Int? {
+        region.id
+    }
+
+    var ownerIds: [Int] {
+        Set(locations.map(\.ownerId)).sorted()
+    }
+}
+
 /// 合并后的地点（多人物聚合模式下，按 location_id 去重）
 /// entries 只包含有匹配物品的人物（过滤器激活时），并按人物 ID 升序排列
 struct MergedAssetLocation: Identifiable {
@@ -177,6 +196,7 @@ struct AssetSearchNavigationContext {
     let ownerName: (Int) -> String?
     let ownerPortrait: (Int) -> UIImage?
     let typeFilterContext: AssetTypeFilterContext
+    var showsSectionVolume = true
 }
 
 /// 物品信息结构体
@@ -263,6 +283,27 @@ struct AssetTypeItemFilter: Identifiable {
     let isOwned: Bool
 }
 
+struct AssetSystemFilterOption: Identifiable {
+    let id: Int
+    let name: String
+    let security: Double?
+    let regionName: String
+}
+
+struct AssetFilters: Equatable {
+    var systemIds: Set<Int> = []
+    var typeIds: Set<Int> = []
+
+    var isActive: Bool {
+        !systemIds.isEmpty || !typeIds.isEmpty
+    }
+
+    func matchesSystem(at location: AssetTreeNode) -> Bool {
+        guard !systemIds.isEmpty else { return true }
+        return location.system_id.map { systemIds.contains($0) } ?? false
+    }
+}
+
 /// 资产类型过滤上下文（主列表筛选后传入详情页）
 struct AssetTypeFilterContext {
     let selectedTypeIds: Set<Int>
@@ -277,12 +318,7 @@ struct AssetTypeFilterContext {
         selectedTypeIds.isEmpty || selectedTypeIds.contains(typeId)
     }
 
-    func filterNodesForDisplay(_ nodes: [AssetTreeNode]) -> [AssetTreeNode] {
-        guard isActive else { return nodes }
-        return nodes.compactMap { filterNodeForDisplay($0) }
-    }
-
-    private func filterNodeForDisplay(_ node: AssetTreeNode) -> AssetTreeNode? {
+    func filterNodeForDisplay(_ node: AssetTreeNode) -> AssetTreeNode? {
         guard isActive else { return node }
 
         if let items = node.items, !items.isEmpty {
@@ -318,6 +354,18 @@ struct AssetTypeFilterContext {
         return typeIds.count
     }
 
+    func matchingItemCount(in location: AssetTreeNode) -> Int {
+        var count = 0
+        func walk(_ node: AssetTreeNode) {
+            if matches(node.type_id) {
+                count += node.quantity
+            }
+            node.items?.forEach(walk)
+        }
+        location.items?.forEach(walk)
+        return count
+    }
+
     /// 进入匹配过滤条件的容器后，展示其全部内容
     func containerContext(for node: AssetTreeNode) -> AssetTypeFilterContext {
         if isActive, matches(node.type_id) {
@@ -343,14 +391,14 @@ class CharacterAssetsViewModel: ObservableObject {
     @Published var stationNameCache: [Int64: String] = [:]
     @Published var solarSystemNameCache: [Int: String] = [:]
     @Published var dataLoadTime: Date?
-    @Published private(set) var unpinnedLocationsByRegion:
-        [(region: String, locations: [AssetLocationWithOwner])] = []
+    @Published private(set) var unpinnedLocationsByRegion: [AssetRegionGroup] = []
 
     @Published var multiCharacterMode = false {
         didSet {
             UserDefaults.standard.set(multiCharacterMode, forKey: "multiCharacterMode_assets")
             // 切换模式优先使用各角色缓存，保证即时响应；下拉刷新才强制走网络
             if initialLoadDone {
+                rebuildRegionGroups()
                 Task { await loadAssets() }
             }
         }
@@ -359,6 +407,17 @@ class CharacterAssetsViewModel: ObservableObject {
     @Published var mergeLocations = false {
         didSet {
             UserDefaults.standard.set(mergeLocations, forKey: "mergeLocations_assets")
+            rebuildRegionGroups()
+        }
+    }
+
+    @Published var groupByRegion = false {
+        didSet {
+            UserDefaults.standard.set(groupByRegion, forKey: "groupByRegion_assets")
+            rebuildRegionGroups()
+            if groupByRegion, initialLoadDone, !multiCharacterMode {
+                Task { await loadOwnerPortraits(for: [characterId]) }
+            }
         }
     }
 
@@ -376,7 +435,7 @@ class CharacterAssetsViewModel: ObservableObject {
 
     @Published var availableCharacters: [(id: Int, name: String)] = []
     @Published private(set) var ownerPortraits: [Int: UIImage] = [:]
-    @Published private(set) var selectedTypeIds: Set<Int> = []
+    @Published private(set) var filters = AssetFilters()
     /// 过滤命中的物品件数总和（过滤徽标第二行"共 x 件"）
     @Published private(set) var activeFilterItemCount = 0
 
@@ -387,6 +446,7 @@ class CharacterAssetsViewModel: ObservableObject {
     private var initialLoadDone = false
     private(set) var itemInfoCache: [Int: ItemInfo] = [:]
     private(set) var dynamicResultingTypeIds: Set<Int> = []
+    private(set) var regionSecurityDistributions: [Int: RegionSecurityDistribution] = [:]
     private var searchIndexByTypeId: [Int: [AssetSearchEntry]] = [:]
     /// 筛选徽标：资产内持有的物品种类集合
     private var ownedTypeIds: Set<Int> = []
@@ -417,21 +477,29 @@ class CharacterAssetsViewModel: ObservableObject {
         return [characterId]
     }
 
-    var isTypeFilterActive: Bool {
-        typeFilterContext.isActive
+    var mergesAssetLocations: Bool {
+        multiCharacterMode && mergeLocations
     }
 
-    var activeFilterLabel: String? {
-        guard isTypeFilterActive else { return nil }
+    var activeTypeFilterLabel: String? {
+        guard typeFilterContext.isActive else { return nil }
         return String.localizedStringWithFormat(
             NSLocalizedString("Assets_Filter_Active_Types_Format", comment: ""),
-            selectedTypeIds.count
+            filters.typeIds.count
+        )
+    }
+
+    var activeSystemFilterLabel: String? {
+        guard !filters.systemIds.isEmpty else { return nil }
+        return String.localizedStringWithFormat(
+            NSLocalizedString("Assets_Filter_Active_Systems_Format", comment: ""),
+            filters.systemIds.count
         )
     }
 
     /// 过滤命中件数文案（过滤徽标第二行）
     var activeFilterItemCountLabel: String? {
-        guard isTypeFilterActive else { return nil }
+        guard filters.isActive else { return nil }
         return String.localizedStringWithFormat(
             NSLocalizedString("Assets_Filter_Active_Item_Count_Format", comment: ""),
             activeFilterItemCount
@@ -439,7 +507,30 @@ class CharacterAssetsViewModel: ObservableObject {
     }
 
     var typeFilterContext: AssetTypeFilterContext {
-        AssetTypeFilterContext(selectedTypeIds: selectedTypeIds)
+        AssetTypeFilterContext(selectedTypeIds: filters.typeIds)
+    }
+
+    var availableFilterSystems: [AssetSystemFilterOption] {
+        let locationsBySystem = Dictionary(grouping: assetLocations) { $0.location.system_id }
+        let unknownRegion = NSLocalizedString("Assets_Unknown_Region", comment: "")
+        return locationsBySystem.compactMap { id, entries -> AssetSystemFilterOption? in
+            guard let id else { return nil }
+            let info = systemInfoCache[id]
+            let universe = SDEMemoryStore.universeSystems[id]
+            let regionId = info?.regionId ?? universe?.regionID
+                ?? entries.lazy.compactMap { $0.location.region_id }.first
+            return AssetSystemFilterOption(
+                id: id,
+                name: solarSystemNameCache[id] ?? SDEMemoryStore.solarSystemName(for: id) ?? String(id),
+                security: info?.security ?? universe?.security
+                    ?? entries.lazy.compactMap { $0.location.security_status }.first,
+                regionName: regionId.flatMap { regionNames[$0] ?? SDEMemoryStore.regionName(for: $0) }
+                    ?? unknownRegion
+            )
+        }.sorted {
+            let order = $0.name.localizedStandardCompare($1.name)
+            return order == .orderedSame ? $0.id < $1.id : order == .orderedAscending
+        }
     }
 
     // MARK: - 筛选目录（市场视图）
@@ -520,13 +611,17 @@ class CharacterAssetsViewModel: ObservableObject {
     }
 
     var pinnedLocations: [AssetLocationWithOwner] {
-        assetLocations.filter { isLocationPinned($0) && typeFilterContext.subtreeContainsMatch($0.location) }
-            .sorted {
-                if $0.location.location_id != $1.location.location_id {
-                    return $0.location.location_id < $1.location.location_id
-                }
-                return $0.ownerId < $1.ownerId
+        let context = typeFilterContext
+        return assetLocations.filter {
+            isLocationPinned($0) && filters.matchesSystem(at: $0.location)
+                && context.subtreeContainsMatch($0.location)
+        }
+        .sorted {
+            if $0.location.location_id != $1.location.location_id {
+                return $0.location.location_id < $1.location.location_id
             }
+            return $0.ownerId < $1.ownerId
+        }
     }
 
     // MARK: - 合并地点（多人物聚合 + mergeLocations 模式）
@@ -541,7 +636,9 @@ class CharacterAssetsViewModel: ObservableObject {
         let merged = Dictionary(grouping: assetLocations) { $0.location.location_id }
         return pinnedLocationIds.compactMap { locId in
             let entries = (merged[locId] ?? [])
-                .filter { context.subtreeContainsMatch($0.location) }
+                .filter {
+                    filters.matchesSystem(at: $0.location) && context.subtreeContainsMatch($0.location)
+                }
                 .sorted { $0.ownerId < $1.ownerId }
             guard !entries.isEmpty else { return nil }
             return MergedAssetLocation(
@@ -554,57 +651,17 @@ class CharacterAssetsViewModel: ObservableObject {
         .sorted { $0.locationId < $1.locationId }
     }
 
-    /// 合并模式下的非置顶地点：按 location_id 去重，按星域分组
-    /// entries 只包含有匹配物品的人物；totalTypeCount 按过滤器预计算
-    var mergedUnpinnedLocationsByRegion:
-        [(region: String, locations: [MergedAssetLocation])]
-    {
-        let pinnedLocationIds = Set(
-            assetLocations.filter { isLocationPinned($0) }.map { $0.location.location_id }
-        )
-        let context = typeFilterContext
-        let grouped = Dictionary(grouping: assetLocations) { $0.location.location_id }
-        let unknownRegion = NSLocalizedString("Assets_Unknown_Region", comment: "")
-
-        var regionDict: [String: [MergedAssetLocation]] = [:]
-
-        for (locId, entries) in grouped {
-            let filtered = entries
-                .filter {
-                    !pinnedLocationIds.contains($0.location.location_id)
-                        && context.subtreeContainsMatch($0.location)
-                }
-                .sorted { $0.ownerId < $1.ownerId }
-            guard !filtered.isEmpty else { continue }
-
-            let regionName: String
-            if let regionId = filtered[0].location.region_id,
-               let name = regionNames[regionId]
-            {
-                regionName = name
-            } else {
-                regionName = unknownRegion
-            }
-
-            let merged = MergedAssetLocation(
-                locationId: locId,
-                representativeLocation: filtered[0].location,
-                entries: filtered,
-                totalTypeCount: mergedTypeCount(for: filtered)
+    func mergedLocations(in group: AssetRegionGroup) -> [MergedAssetLocation] {
+        let locations = Dictionary(grouping: group.locations) { $0.location.location_id }
+        return sortMergedLocations(locations.map { locationId, entries in
+            let sortedEntries = entries.sorted { $0.ownerId < $1.ownerId }
+            return MergedAssetLocation(
+                locationId: locationId,
+                representativeLocation: sortedEntries[0].location,
+                entries: sortedEntries,
+                totalTypeCount: mergedTypeCount(for: sortedEntries)
             )
-            regionDict[regionName, default: []].append(merged)
-        }
-
-        return regionDict.map { (region: $0.key, locations: sortMergedLocations($0.value)) }
-            .sorted { pair1, pair2 in
-                if pair1.region == unknownRegion {
-                    return false
-                }
-                if pair2.region == unknownRegion {
-                    return true
-                }
-                return pair1.region < pair2.region
-            }
+        })
     }
 
     /// 合并地点的多人物物品种类数（跨人物去重，不含地点节点本身，按过滤器）
@@ -657,6 +714,7 @@ class CharacterAssetsViewModel: ObservableObject {
 
         multiCharacterMode = UserDefaults.standard.bool(forKey: "multiCharacterMode_assets")
         mergeLocations = UserDefaults.standard.bool(forKey: "mergeLocations_assets")
+        groupByRegion = UserDefaults.standard.bool(forKey: "groupByRegion_assets")
         let savedIds =
             UserDefaults.standard.array(forKey: "selectedCharacterIds_assets") as? [Int] ?? []
         selectedCharacterIds = Set(savedIds)
@@ -801,9 +859,14 @@ class CharacterAssetsViewModel: ObservableObject {
         }
     }
 
-    /// 应用物品多选筛选（筛选面板"完成"时调用）
-    func applyTypeFilter(_ typeIds: Set<Int>) {
-        selectedTypeIds = typeIds
+    func applyFilters(_ selection: AssetFilters) {
+        var selection = selection
+        if !selection.systemIds.isEmpty {
+            selection.systemIds.formIntersection(assetLocations.lazy.compactMap { $0.location.system_id })
+        }
+        if filters != selection {
+            filters = selection
+        }
         rebuildRegionGroups()
     }
 
@@ -893,49 +956,61 @@ class CharacterAssetsViewModel: ObservableObject {
 
     private func rebuildRegionGroups() {
         let context = typeFilterContext
-        let unpinnedLocations = assetLocations.filter {
-            !isLocationPinned($0) && (!context.isActive || context.subtreeContainsMatch($0.location))
-        }
-
-        let unknownRegion = NSLocalizedString("Assets_Unknown_Region", comment: "")
-        let grouped = Dictionary(grouping: unpinnedLocations) { entry in
-            if let regionId = entry.location.region_id,
-               let regionName = regionNames[regionId]
-            {
-                return regionName
+        let locationsInSelectedSystems = assetLocations.filter { filters.matchesSystem(at: $0.location) }
+        let pinnedLocationIds = mergesAssetLocations
+            ? Set(assetLocations.filter { isLocationPinned($0) }.map { $0.location.location_id })
+            : []
+        let unpinnedLocations = locationsInSelectedSystems.filter {
+            let pinned = mergesAssetLocations
+                ? pinnedLocationIds.contains($0.location.location_id) : isLocationPinned($0)
+            guard !pinned else { return false }
+            if groupByRegion {
+                return $0.location.items?.contains(where: context.subtreeContainsMatch) ?? false
             }
-            return unknownRegion
+            return context.subtreeContainsMatch($0.location)
         }
 
-        unpinnedLocationsByRegion = grouped.filter { !$0.value.isEmpty }
-            .map { (region: $0.key, locations: sortLocations($0.value)) }
-            .sorted { pair1, pair2 in
-                if pair1.region == unknownRegion {
+        let grouped: [Int?: [AssetLocationWithOwner]]
+        if mergesAssetLocations {
+            let byLocation = Dictionary(grouping: unpinnedLocations) { $0.location.location_id }
+            grouped = Dictionary(grouping: byLocation.values) { entries in
+                entries.min { $0.ownerId < $1.ownerId }?.location.region_id
+            }.mapValues { $0.flatMap { $0 } }
+        } else {
+            grouped = Dictionary(grouping: unpinnedLocations) { $0.location.region_id }
+        }
+        let unknownRegion = NSLocalizedString("Assets_Unknown_Region", comment: "")
+        if groupByRegion, !grouped.isEmpty, regionSecurityDistributions.isEmpty {
+            regionSecurityDistributions = RegionSecurityDistribution.byRegion()
+        }
+
+        unpinnedLocationsByRegion = grouped.map { regionId, locations in
+            let name = regionId.flatMap { regionNames[$0] ?? SDEMemoryStore.regionName(for: $0) }
+                ?? unknownRegion
+            let itemCount = groupByRegion
+                ? locations.reduce(0) { $0 + context.matchingItemCount(in: $1.location) } : 0
+            return AssetRegionGroup(
+                region: AssetRegion(id: regionId, name: name),
+                locations: sortLocations(locations),
+                itemCount: itemCount
+            )
+        }.sorted {
+            if $0.region.name != $1.region.name {
+                if $0.region.name == unknownRegion {
                     return false
                 }
-                if pair2.region == unknownRegion {
+                if $1.region.name == unknownRegion {
                     return true
                 }
-                return pair1.region < pair2.region
+                return $0.region.name < $1.region.name
             }
+            return ($0.region.id ?? 0) < ($1.region.id ?? 0)
+        }
 
         // 同步过滤命中物品件数（资产加载与过滤变更后均会重建）
-        activeFilterItemCount = matchingItemCount(context: context)
-    }
-
-    /// 过滤命中的物品件数总和：递归累加命中节点的 quantity（不含地点节点本身）
-    private func matchingItemCount(context: AssetTypeFilterContext) -> Int {
-        var count = 0
-        func walk(_ node: AssetTreeNode) {
-            if context.matches(node.type_id) {
-                count += node.quantity
-            }
-            node.items?.forEach(walk)
+        activeFilterItemCount = locationsInSelectedSystems.reduce(0) {
+            $0 + context.matchingItemCount(in: $1.location)
         }
-        for entry in assetLocations {
-            entry.location.items?.forEach(walk)
-        }
-        return count
     }
 
     private func buildSearchIndex() {
@@ -991,7 +1066,7 @@ class CharacterAssetsViewModel: ObservableObject {
             if !Task.isCancelled {
                 assetLocations = []
                 error = nil
-                rebuildRegionGroups()
+                applyFilters(filters)
                 isLoading = false
                 loadingProgress = nil
                 characterLoadingProgress = nil
@@ -1152,9 +1227,11 @@ class CharacterAssetsViewModel: ObservableObject {
         await fillNodeNamesInMemory()
         buildSearchIndex()
         buildTypeFilterIndex()
-        rebuildRegionGroups()
+        applyFilters(filters)
         if multiCharacterMode {
             await loadOwnerPortraits(for: availableCharacters.map(\.id))
+        } else if groupByRegion {
+            await loadOwnerPortraits(for: [characterId])
         }
     }
 
@@ -1235,7 +1312,7 @@ class CharacterAssetsViewModel: ObservableObject {
 
     /// 搜索资产
     func searchAssets(query: String) async {
-        guard !query.isEmpty else {
+        guard !query.isEmpty, !assetLocations.isEmpty else {
             searchItemGroups = []
             return
         }
@@ -1257,6 +1334,8 @@ class CharacterAssetsViewModel: ObservableObject {
             guard context.matches(typeId) else { continue }
             guard let entries = searchIndexByTypeId[typeId] else { continue }
             for entry in entries {
+                guard let location = entry.locationPath.first, filters.matchesSystem(at: location)
+                else { continue }
                 let updatedItemInfo = itemInfo.withIconFileName(
                     entry.node.resolvedIconName(itemInfo: itemInfo)
                 )

@@ -264,7 +264,7 @@ struct MarketOrdersView: View {
                     HStack {
                         Text(
                             order.price < 1_000_000
-                                ? "\(FormatUtil.format(order.price, maxFractionDigits: 2)) ISK"
+                                ? "\(FormatUtil.formatISKAmount(order.price, maxFractionDigits: 2)) ISK"
                                 : FormatUtil.formatISK(order.price)
                         )
                         .font(.system(.headline, design: .monospaced))

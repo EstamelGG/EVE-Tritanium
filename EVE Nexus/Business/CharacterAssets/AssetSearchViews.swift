@@ -156,7 +156,8 @@ struct AssetSearchItemLocationsView: View {
                 ownerId: occurrence.ownerId,
                 ownerName: context.ownerName(occurrence.ownerId),
                 ownerPortrait: context.ownerPortrait(occurrence.ownerId),
-                typeFilterContext: context.typeFilterContext
+                typeFilterContext: context.typeFilterContext,
+                showsSectionVolume: context.showsSectionVolume
             )
         } else {
             SubLocationAssetsView(
@@ -167,7 +168,8 @@ struct AssetSearchItemLocationsView: View {
                 dynamicResultingTypeIds: context.dynamicResultingTypeIds,
                 typeFilterContext: context.typeFilterContext.containerContext(
                     for: occurrence.containerNode
-                )
+                ),
+                showsSectionVolume: context.showsSectionVolume
             )
         }
     }

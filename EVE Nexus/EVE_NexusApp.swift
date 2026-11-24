@@ -1,9 +1,24 @@
 import Foundation
 import SwiftUI
 import UserNotifications
+import WidgetKit
 
 @main
 struct EVE_NexusApp: App {
+    @UIApplicationDelegateAdaptor private var appDelegate: WidgetShortcutAppDelegate
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var widgetDestination: WidgetDestination?
+
+    private struct WidgetDestination: Identifiable {
+        enum Screen {
+            case settings(NexusWidgetKind?)
+            case content(WidgetContentRoute)
+        }
+
+        let id = UUID()
+        let screen: Screen
+    }
+
     @AppStorage("selectedLanguage") private var selectedLanguage: String?
     @AppStorage("selectedDatabaseLanguage") private var selectedDatabaseLanguage: String?
     @AppStorage("selectedTimeZone") private var selectedTimeZone = "local"
@@ -140,6 +155,10 @@ struct EVE_NexusApp: App {
 
         // 激活自定义 Bundle 以支持运行时语言切换及回退英文
         let langToUse = selectedLanguage ?? "en"
+        if WidgetLocalization.language != langToUse {
+            WidgetMarketWatchlist.defaults?.set(langToUse, forKey: WidgetLocalization.languageKey)
+            WidgetCenter.shared.reloadAllTimelines()
+        }
         if Bundle.main.path(forResource: langToUse, ofType: "lproj") != nil {
             Bundle.setLanguage(langToUse)
         }
@@ -160,47 +179,7 @@ struct EVE_NexusApp: App {
     }
 
     private func validateRefreshTokens() {
-        // 获取所有有效的 token
-        let characterIdsWithValidRefreshToken = SecureStorage.shared.listValidRefreshTokens()
-        Logger.info("App初始化: 找到 \(characterIdsWithValidRefreshToken.count) 个不为空的 refresh token")
-
-        // 获取当前保存的所有角色
-        let characters = EVELogin.shared.loadCharacters()
-        let characterIds = characters.map { $0.character.CharacterID }
-        Logger.info("App初始化: UserDefaults 中保存了 \(characters.count) 个角色，ID列表: \(characterIds)")
-
-        // 清理不存在于角色列表中的 token（孤儿 token）
-        let validCharacterIds = Set(characterIds)
-        for tokenCharacterId in characterIdsWithValidRefreshToken {
-            if !validCharacterIds.contains(tokenCharacterId) {
-                Logger.warning("App初始化: 发现孤儿 token (角色ID: \(tokenCharacterId))，该角色已不在登录列表，正在清理...")
-                Task {
-                    await AuthTokenManager.shared.clearAllTokens(for: tokenCharacterId)
-                }
-            }
-        }
-
-        // 打印详细信息
-        for character in characters {
-            let characterId = character.character.CharacterID
-            let hasValidRefreshToken = characterIdsWithValidRefreshToken.contains(characterId)
-            Logger.info(
-                "App初始化: 角色 \(character.character.CharacterName) (\(characterId)) - \(hasValidRefreshToken ? "有 refresh token" : "无 refresh token")"
-            )
-
-            // 如果没有有效的 token，标记为过期
-            if !hasValidRefreshToken {
-                Logger.info(
-                    "App初始化: 标记角色token过期 - \(character.character.CharacterName) (\(characterId))"
-                )
-                let characterToUpdate = character.character
-                Task {
-                    var updatedCharacter = characterToUpdate
-                    updatedCharacter.refreshTokenExpired = true
-                    try? await EVELogin.shared.saveCharacterInfo(updatedCharacter)
-                }
-            }
-        }
+        Task { await AuthTokenManager.shared.validateStoredCredentials() }
     }
 
     private func checkAndPrepareStaticResources() async {
@@ -464,6 +443,9 @@ struct EVE_NexusApp: App {
                 fittingNavigationUITestRoot
             } else {
                 normalAppRoot
+                    .modifier(OpenWidgetSettingsShortcut {
+                        widgetDestination = WidgetDestination(screen: .settings(nil))
+                    })
             }
         }
     }
@@ -497,6 +479,38 @@ struct EVE_NexusApp: App {
             } else if isInitialized {
                 ContentView(databaseManager: databaseManager)
                     .transition(.opacity)
+                    .task(id: scenePhase == .active) {
+                        guard scenePhase == .active else { return }
+                        while !Task.isCancelled {
+                            await WidgetRefreshService.shared.refresh(foreground: true)
+                            try? await Task.sleep(for: .seconds(WidgetSyncSource.quotes.interval))
+                        }
+                    }
+                    .onChange(of: scenePhase) { _, phase in
+                        if phase == .background {
+                            BackgroundTaskManager.shared.scheduleDataRefresh()
+                        }
+                    }
+                    .sheet(item: $widgetDestination) { destination in
+                        NavigationStack {
+                            widgetScreen(destination.screen)
+                                .id(destination.id)
+                                .toolbar {
+                                    ToolbarItem(placement: .cancellationAction) {
+                                        Button {
+                                            widgetDestination = nil
+                                        } label: {
+                                            if case .settings = destination.screen {
+                                                Image(systemName: "xmark")
+                                                    .accessibilityLabel(Text("Widget_Close", tableName: "Widgets"))
+                                            } else {
+                                                Text("Common_Done")
+                                            }
+                                        }
+                                    }
+                                }
+                        }
+                    }
             } else {
                 StartupSplashView(
                     stage: startupStage,
@@ -515,6 +529,15 @@ struct EVE_NexusApp: App {
         }
         // 初始化完成后开屏与主界面交叉淡入淡出
         .animation(.easeInOut(duration: 0.5), value: isInitialized)
+        .onOpenURL { url in
+            if url == WidgetSnapshot.settingsURL {
+                widgetDestination = WidgetDestination(screen: .settings(nil))
+            } else if let kind = NexusWidgetKind(settingsURL: url) {
+                widgetDestination = WidgetDestination(screen: .settings(kind))
+            } else if let route = WidgetContentRoute(url: url) {
+                widgetDestination = WidgetDestination(screen: .content(route))
+            }
+        }
         // 主题统一在根视图生效，开屏页与主界面共享同一份映射（@AppStorage 变化即时刷新）
         .preferredColorScheme(preferredColorScheme)
         .environment(\.locale, Locale(identifier: selectedLanguage ?? "en"))
@@ -524,6 +547,50 @@ struct EVE_NexusApp: App {
             Button(NSLocalizedString("RateLimit_Alert_OK", comment: "")) {}
         } message: {
             Text(NSLocalizedString("RateLimit_Alert_Message", comment: ""))
+        }
+    }
+
+    @ViewBuilder
+    private func widgetScreen(_ screen: WidgetDestination.Screen) -> some View {
+        switch screen {
+        case let .settings(kind):
+            if let kind {
+                WidgetConfigurationView(kind: kind)
+            } else {
+                WidgetSettingsView()
+            }
+        case let .content(.market(id)):
+            MarketItemDetailView(
+                databaseManager: databaseManager,
+                itemID: id,
+                selectedLocation: id == MarketManager.plexTypeID
+                    ? MarketManager.theForgeRegionID : WidgetMarketWatchlist.jitaSystemID
+            )
+        case let .content(.skills(id)):
+            if EVELogin.shared.getCharacterByID(id) != nil {
+                CharacterSkillsView(characterId: id, databaseManager: databaseManager)
+            } else {
+                WidgetConfigurationView(kind: .skills)
+            }
+        case let .content(.industry(id)):
+            let currentID = UserDefaults.standard.integer(forKey: "currentCharacterId")
+            if let character = id.flatMap({ EVELogin.shared.getCharacterByID($0) })
+                ?? EVELogin.shared.getCharacterByID(currentID) ?? EVELogin.shared.loadCharacters().first
+            {
+                CharacterIndustryView(
+                    characterId: character.character.CharacterID,
+                    databaseManager: databaseManager,
+                    focusSingleCharacter: id != nil
+                )
+            } else {
+                WidgetConfigurationView(kind: .industryList)
+            }
+        case let .content(.planets(id)):
+            if EVELogin.shared.getCharacterByID(id) != nil {
+                CharacterPlanetaryView(characterId: id, focusSingleCharacter: true)
+            } else {
+                WidgetConfigurationView(kind: .planets)
+            }
         }
     }
 

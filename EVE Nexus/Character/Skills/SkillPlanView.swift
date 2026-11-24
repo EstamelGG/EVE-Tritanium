@@ -1,40 +1,18 @@
 import Foundation
 import SwiftUI
 
-struct SkillPlan: Identifiable, Hashable {
+struct SkillPlan: Identifiable {
     let id: UUID
     var name: String
     var skills: [PlannedSkill]
-    var totalTrainingTime: TimeInterval
-    var totalSkillPoints: Int
     var lastUpdated: Date
-
-    /// 判等必须覆盖列表行展示的内容：SwiftUI 会用 Equatable 判断数组元素是否变化来决定是否刷新行，
-    /// 只比 id 会导致详情页编辑后回到列表时“技能数/更新时间”停留在旧值。
-    /// 哈希仍只用 id，保证 navigationDestination(item:) 的导航身份稳定。
-    static func == (lhs: SkillPlan, rhs: SkillPlan) -> Bool {
-        lhs.id == rhs.id
-            && lhs.name == rhs.name
-            && lhs.skills.count == rhs.skills.count
-            && lhs.lastUpdated == rhs.lastUpdated
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
 }
 
 struct PlannedSkill: Identifiable {
     let id: UUID
     let skillID: Int
     let skillName: String
-    let currentLevel: Int
     let targetLevel: Int
-    var trainingTime: TimeInterval
-    var requiredSP: Int
-    var prerequisites: [PlannedSkill]
-    var currentSkillPoints: Int?
-    var isCompleted: Bool
 }
 
 struct SkillPlanData: Codable {
@@ -47,17 +25,21 @@ struct SkillPlanData: Codable {
 class SkillPlanFileManager {
     static let shared = SkillPlanFileManager()
 
-    private init() {
+    private convenience init() {
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+        self.init(directory: paths[0].appendingPathComponent("SkillPlans", isDirectory: true))
+    }
+
+    init(directory: URL) {
+        skillPlansDirectory = directory
         createSkillPlansDirectory()
     }
 
-    private var skillPlansDirectory: URL {
-        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-        return paths[0].appendingPathComponent("SkillPlans", isDirectory: true)
-    }
+    private let skillPlansDirectory: URL
 
     /// UUID -> 文件URL的映射缓存
     private var planFileMapping: [UUID: URL] = [:]
+    private let saveLock = NSLock()
 
     private func createSkillPlansDirectory() {
         do {
@@ -70,10 +52,18 @@ class SkillPlanFileManager {
     }
 
     @discardableResult
-    func saveSkillPlan(characterId _: Int, plan: SkillPlan, databaseManager _: DatabaseManager) -> SkillPlan {
+    func saveSkillPlan(characterId _: Int, plan: SkillPlan, databaseManager _: DatabaseManager) throws -> SkillPlan {
+        saveLock.lock()
+        defer { saveLock.unlock() }
+        let existingPlans = try loadPlanRecords().map(\.data)
+        try SkillPlanNaming.validate(
+            plan.name, planID: plan.id, existingPlans: existingPlans.map { ($0.id, $0.name) }
+        )
+
         let inputSkills = plan.skills.map { (skillId: $0.skillID, level: $0.targetLevel) }
         let correctedSkills = SkillQueueCorrector().correctSkillQueue(inputSkills: inputSkills)
         var correctedPlan = plan
+        correctedPlan.name = SkillPlanNaming.normalized(plan.name)
         correctedPlan.skills = SkillPlanHelper.rebuildSkills(
             corrected: correctedSkills, existing: plan.skills
         )
@@ -132,6 +122,7 @@ class SkillPlanFileManager {
             Logger.debug("保存技能计划成功: \(fileURL.lastPathComponent)")
         } catch {
             Logger.error("保存技能计划失败: \(fileURL.lastPathComponent) - \(error)")
+            throw error
         }
 
         return correctedPlan
@@ -141,6 +132,8 @@ class SkillPlanFileManager {
         characterId: Int,
         learnedSkills _: [Int: CharacterSkill] = [:]
     ) -> [SkillPlan] {
+        saveLock.lock()
+        defer { saveLock.unlock() }
         let fileManager = FileManager.default
 
         // 清空之前的映射
@@ -155,6 +148,7 @@ class SkillPlanFileManager {
 
             // 预处理：迁移和清理旧文件
             preprocessFiles(files)
+            try renameDuplicatePlans()
 
             // 预处理后重新扫描目录，获取迁移后的新文件
             let updatedFiles = try fileManager.contentsOfDirectory(
@@ -201,13 +195,7 @@ class SkillPlanFileManager {
                             id: UUID(),
                             skillID: typeId,
                             skillName: skillName,
-                            currentLevel: level - 1,
-                            targetLevel: level,
-                            trainingTime: 0,
-                            requiredSP: 0,
-                            prerequisites: [],
-                            currentSkillPoints: nil,
-                            isCompleted: false
+                            targetLevel: level
                         )
                     }
 
@@ -215,8 +203,6 @@ class SkillPlanFileManager {
                         id: validPlanId,
                         name: planData.name,
                         skills: skills,
-                        totalTrainingTime: 0,
-                        totalSkillPoints: 0,
                         lastUpdated: planData.lastUpdated
                     )
 
@@ -251,6 +237,48 @@ class SkillPlanFileManager {
         } catch {
             Logger.error("读取技能计划目录失败: \(error.localizedDescription)")
             return []
+        }
+    }
+
+    func loadPlanNames() -> [(id: UUID?, name: String)] {
+        saveLock.lock()
+        defer { saveLock.unlock() }
+        do {
+            try renameDuplicatePlans()
+            return try loadPlanRecords().map { ($0.data.id, $0.data.name) }
+        } catch {
+            Logger.error("读取技能计划名称失败: \(error)")
+            return []
+        }
+    }
+
+    private func loadPlanRecords() throws -> [(url: URL, data: SkillPlanData)] {
+        let files = try FileManager.default.contentsOfDirectory(
+            at: skillPlansDirectory, includingPropertiesForKeys: nil
+        ).filter { $0.pathExtension == "json" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .formatted(DateFormatter.iso8601Full)
+        return files.compactMap { url in
+            guard let data = try? Data(contentsOf: url),
+                  let plan = try? decoder.decode(SkillPlanData.self, from: data)
+            else { return nil }
+            return (url, plan)
+        }
+    }
+
+    private func renameDuplicatePlans() throws {
+        let records = try loadPlanRecords()
+        let names = SkillPlanNaming.uniqueNames(for: records.map { $0.data.name })
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .formatted(DateFormatter.iso8601Full)
+        for (record, name) in zip(records, names) where record.data.name != name {
+            let renamed = SkillPlanData(
+                id: record.data.id, name: name,
+                lastUpdated: record.data.lastUpdated, skills: record.data.skills
+            )
+            try encoder.encode(renamed).write(to: record.url, options: .atomic)
+            Logger.info("技能计划重名，自动重命名: \(record.data.name) → \(name)")
         }
     }
 
@@ -383,7 +411,22 @@ struct SkillPlanView: View {
     @State private var renamePlan: SkillPlan?
     @State private var renamePlanName = ""
     /// 手动新建计划后自动进入的详情页
-    @State private var newPlanToOpen: SkillPlan?
+    @State private var newPlanToOpen: UUID?
+    @State private var showSaveError = false
+    @State private var saveErrorMessage = ""
+
+    private var newPlanNameError: SkillPlanNaming.ValidationError? {
+        SkillPlanNaming.validationError(
+            for: newPlanName, existingPlans: skillPlans.map { ($0.id, $0.name) }
+        )
+    }
+
+    private var renamePlanNameError: SkillPlanNaming.ValidationError? {
+        SkillPlanNaming.validationError(
+            for: renamePlanName, excludingPlanID: renamePlan?.id,
+            existingPlans: skillPlans.map { ($0.id, $0.name) }
+        )
+    }
 
     /// 添加过滤后的计划列表计算属性
     private var filteredPlans: [SkillPlan] {
@@ -458,13 +501,15 @@ struct SkillPlanView: View {
             }
         }
         .navigationTitle(NSLocalizedString("Main_Skills_Plan", comment: ""))
-        .navigationDestination(item: $newPlanToOpen) { plan in
-            SkillPlanDetailView(
-                plan: plan,
-                characterId: characterId,
-                databaseManager: databaseManager,
-                skillPlans: $skillPlans
-            )
+        .navigationDestination(item: $newPlanToOpen) { planID in
+            if let plan = skillPlans.first(where: { $0.id == planID }) {
+                SkillPlanDetailView(
+                    plan: plan,
+                    characterId: characterId,
+                    databaseManager: databaseManager,
+                    skillPlans: $skillPlans
+                )
+            }
         }
         .searchable(
             text: $searchText,
@@ -492,28 +537,30 @@ struct SkillPlanView: View {
                         id: UUID(),
                         name: newPlanName,
                         skills: [],
-                        totalTrainingTime: 0,
-                        totalSkillPoints: 0,
                         lastUpdated: Date()
                     )
-                    skillPlans.append(newPlan)
-                    if let index = skillPlans.indices.last {
-                        skillPlans[index] = SkillPlanFileManager.shared.saveSkillPlan(
+                    do {
+                        let savedPlan = try SkillPlanFileManager.shared.saveSkillPlan(
                             characterId: characterId, plan: newPlan, databaseManager: databaseManager
                         )
-                        // 自动进入新计划详情页（传入修正后的计划）
-                        newPlanToOpen = skillPlans[index]
+                        skillPlans.append(savedPlan)
+                        newPlanToOpen = savedPlan.id
+                        newPlanName = ""
+                    } catch {
+                        saveErrorMessage = error.localizedDescription
+                        showSaveError = true
                     }
-                    newPlanName = ""
                 }
             }
-            .disabled(newPlanName.isEmpty)
+            .disabled(newPlanNameError != nil)
 
             Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
                 newPlanName = ""
             }
         } message: {
-            Text(NSLocalizedString("Main_Skills_Plan_Name", comment: ""))
+            Text(newPlanNameError == .duplicateName
+                ? (newPlanNameError?.localizedDescription ?? "")
+                : NSLocalizedString("Main_Skills_Plan_Name", comment: ""))
         }
         .alert(NSLocalizedString("Misc_Rename", comment: ""), isPresented: $isShowingRenameAlert) {
             TextField(NSLocalizedString("Misc_Name", comment: ""), text: $renamePlanName)
@@ -521,23 +568,38 @@ struct SkillPlanView: View {
             Button(NSLocalizedString("Misc_Done", comment: "")) {
                 if let plan = renamePlan, !renamePlanName.isEmpty {
                     if let index = skillPlans.firstIndex(where: { $0.id == plan.id }) {
-                        skillPlans[index].name = renamePlanName
-                        skillPlans[index] = SkillPlanFileManager.shared.saveSkillPlan(
-                            characterId: characterId,
-                            plan: skillPlans[index],
-                            databaseManager: databaseManager
-                        )
+                        var updatedPlan = skillPlans[index]
+                        updatedPlan.name = renamePlanName
+                        do {
+                            skillPlans[index] = try SkillPlanFileManager.shared.saveSkillPlan(
+                                characterId: characterId,
+                                plan: updatedPlan,
+                                databaseManager: databaseManager
+                            )
+                        } catch {
+                            saveErrorMessage = error.localizedDescription
+                            showSaveError = true
+                        }
                     }
                 }
                 renamePlan = nil
                 renamePlanName = ""
             }
-            .disabled(renamePlanName.isEmpty)
+            .disabled(renamePlanNameError != nil)
 
             Button(NSLocalizedString("Main_EVE_Mail_Cancel", comment: ""), role: .cancel) {
                 renamePlan = nil
                 renamePlanName = ""
             }
+        } message: {
+            if renamePlanNameError == .duplicateName {
+                Text(renamePlanNameError?.localizedDescription ?? "")
+            }
+        }
+        .alert(NSLocalizedString("Main_Skills_Plan_Name", comment: ""), isPresented: $showSaveError) {
+            Button(NSLocalizedString("Misc_Done", comment: ""), role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage)
         }
         .task {
             // 先加载角色已学习的技能

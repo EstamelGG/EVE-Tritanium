@@ -12,6 +12,7 @@ private enum SkillPlanNetworkLoadingPhase: Equatable {
     case fetchingInjectorPrices
 }
 
+@MainActor
 struct SkillPlanDetailView: View {
     @Environment(\.locale) private var displayLocale
     @State private var plan: SkillPlan
@@ -22,7 +23,6 @@ struct SkillPlanDetailView: View {
     @State private var errorMessage = ""
     @State private var characterAttributes: CharacterAttributes?
     @State private var implantBonuses: ImplantAttributes?
-    @State private var trainingRates: [Int: Int] = [:] // [skillId: pointsPerHour]
     @State private var injectorCalculation: InjectorCalculation?
     @State private var injectorPrices: InjectorPriceManager.InjectorPrices =
         .init(large: nil, small: nil)
@@ -32,9 +32,7 @@ struct SkillPlanDetailView: View {
     @AppStorage(kShowCompletedSkillsKey) private var showCompletedSkills = true
     @State private var freshQueueMode = false
     @State private var isFreshQueueTransitioning = false
-    @State private var displayedRequiredSkillPoints = 0
-    @State private var displayedRequiredTrainingTime: TimeInterval = 0
-    @State private var displayedAllSkillPoints = 0
+    @State private var metricsRevision = UUID()
     @State private var showAddSkillSheet = false
     @State private var showAddItemSheet = false
     @State private var showExportSuccessAlert = false
@@ -241,7 +239,7 @@ struct SkillPlanDetailView: View {
             HStack {
                 Text(NSLocalizedString("Main_Skills_To_Learn", comment: "需要学习"))
                 Spacer()
-                Text("\(FormatUtil.format(Double(displayedRequiredSkillPoints))) SP")
+                Text(displayedRequiredSkillPoints.map { "\(FormatUtil.format(Double($0))) SP" } ?? calculationUnavailableText)
                     .foregroundColor(.secondary)
                     .monospacedDigit()
                     .contentTransition(.numericText())
@@ -251,7 +249,7 @@ struct SkillPlanDetailView: View {
             HStack {
                 Text(NSLocalizedString("Main_Skills_Required_Time", comment: "需要时间"))
                 Spacer()
-                Text(FormatUtil.formatCompactDuration(displayedRequiredTrainingTime))
+                Text(displayedRequiredTrainingTime.map { FormatUtil.formatCompactDuration($0) } ?? calculationUnavailableText)
                     .fontDesign(.monospaced)
                     .foregroundColor(.secondary)
                     .contentTransition(.interpolate)
@@ -261,7 +259,7 @@ struct SkillPlanDetailView: View {
             HStack {
                 Text(NSLocalizedString("Main_Skills_All_Points", comment: "全部点数"))
                 Spacer()
-                Text("\(FormatUtil.format(Double(displayedAllSkillPoints))) SP")
+                Text(displayedAllSkillPoints.map { "\(FormatUtil.format(Double($0))) SP" } ?? calculationUnavailableText)
                     .foregroundColor(.secondary)
                     .monospacedDigit()
                     .contentTransition(.numericText())
@@ -465,7 +463,7 @@ struct SkillPlanDetailView: View {
     }
 
     private var allSkillsCompleted: Bool {
-        !plan.skills.isEmpty && plan.skills.allSatisfy(\.isCompleted)
+        !plan.skills.isEmpty && plan.skills.allSatisfy { trainingEntry(for: $0).isCompleted }
     }
 
     private var freshQueueToggleBinding: Binding<Bool> {
@@ -489,48 +487,37 @@ struct SkillPlanDetailView: View {
         return freshQueue || !allSkillsCompleted
     }
 
-    private func attributesBaselineForOptimal(freshQueue _: Bool) -> CharacterAttributes? {
-        characterAttributes
+    private func attributesBaselineForOptimal(freshQueue: Bool) -> CharacterAttributes? {
+        freshQueue ? Self.freshQueueBaselineAttributes() : characterAttributes
     }
 
-    private func requiredSkillPoints(freshQueue: Bool) -> Int {
-        freshQueue ? freshQueueTotalSkillPoints() : plan.totalSkillPoints
+    private var calculationUnavailableText: String {
+        NSLocalizedString("Main_Skills_Plan_Calculation_Unavailable", comment: "")
     }
 
-    private func requiredTrainingTime(freshQueue: Bool) -> TimeInterval {
-        freshQueue ? freshQueueTotalTrainingTime() : plan.totalTrainingTime
+    private var displayedRequiredSkillPoints: Int? {
+        trainingSummary(freshQueue: freshQueueMode).requiredSP
     }
 
-    private func allSkillPoints(freshQueue: Bool) -> Int {
-        freshQueue ? freshQueueTotalSkillPoints() : calculateAllSkillPoints()
+    private var displayedRequiredTrainingTime: TimeInterval? {
+        trainingSummary(freshQueue: freshQueueMode).trainingTime
     }
 
-    @MainActor
-    private func syncDisplayedMetrics(freshQueue: Bool, animated: Bool) {
-        let sp = requiredSkillPoints(freshQueue: freshQueue)
-        let time = requiredTrainingTime(freshQueue: freshQueue)
-        let all = allSkillPoints(freshQueue: freshQueue)
+    private var displayedAllSkillPoints: Int? {
+        trainingSummary(freshQueue: freshQueueMode).fullSkillPoints
+    }
 
-        if animated {
-            withAnimation(.easeInOut(duration: 0.35)) {
-                displayedRequiredSkillPoints = sp
-                displayedRequiredTrainingTime = time
-                displayedAllSkillPoints = all
-            }
-        } else {
-            displayedRequiredSkillPoints = sp
-            displayedRequiredTrainingTime = time
-            displayedAllSkillPoints = all
-        }
+    private func trainingSummary(freshQueue: Bool) -> SkillPlanTrainingCalculation.Summary {
+        SkillPlanTrainingCalculation.summary(plan.skills.map { trainingEntry(for: $0, freshQueue: freshQueue) })
     }
 
     private func transitionFreshQueueMode(to newValue: Bool) async {
-        await MainActor.run { isFreshQueueTransitioning = true }
-        await recalculatePlanMetrics(freshQueue: newValue, animated: true)
-        await MainActor.run {
+        isFreshQueueTransitioning = true
+        withAnimation(.easeInOut(duration: 0.35)) {
             freshQueueMode = newValue
-            isFreshQueueTransitioning = false
         }
+        await recalculatePlanMetrics()
+        isFreshQueueTransitioning = false
     }
 
     private static func freshQueueBaselineAttributes() -> CharacterAttributes {
@@ -546,42 +533,32 @@ struct SkillPlanDetailView: View {
         )
     }
 
-    private func skillRequiredSPFromZero(_ skill: PlannedSkill) -> Int {
-        let timeMultiplier = getSkillTimeMultiplier(skill.skillID)
-        let startSP = (getBaseSkillPointsForLevel(skill.targetLevel - 1) ?? 0) * timeMultiplier
-        let endSP = (getBaseSkillPointsForLevel(skill.targetLevel) ?? 0) * timeMultiplier
-        return endSP - startSP
-    }
-
-    private func freshQueueTotalSkillPoints() -> Int {
-        plan.skills.reduce(0) { $0 + skillRequiredSPFromZero($1) }
-    }
-
-    private func trainingTime(forSkill skill: PlannedSkill, requiredSP: Int, attributes: CharacterAttributes) -> TimeInterval {
-        guard let (primary, secondary) = SkillTrainingCalculator.getSkillAttributes(
-            skillId: skill.skillID, databaseManager: databaseManager
-        ),
-            let rate = SkillTrainingCalculator.calculateTrainingRate(
-                primaryAttrId: primary,
-                secondaryAttrId: secondary,
-                attributes: attributes
-            ),
-            rate > 0
+    private func trainingRate(for skill: PlannedSkill, freshQueue: Bool = false) -> Int? {
+        guard let attributes = attributesBaselineForOptimal(freshQueue: freshQueue),
+              let (primary, secondary) = SkillTrainingCalculator.getSkillAttributes(
+                  skillId: skill.skillID, databaseManager: databaseManager
+              ),
+              let rate = SkillTrainingCalculator.calculateTrainingRate(
+                  primaryAttrId: primary,
+                  secondaryAttrId: secondary,
+                  attributes: attributes
+              ),
+              rate > 0
         else {
-            return 0
+            return nil
         }
-        return Double(requiredSP) / Double(rate) * 3600
+        return rate
     }
 
-    private func freshQueueTotalTrainingTime() -> TimeInterval {
-        let attributes = Self.freshQueueBaselineAttributes()
-        return plan.skills.reduce(0) { total, skill in
-            total + trainingTime(
-                forSkill: skill,
-                requiredSP: skillRequiredSPFromZero(skill),
-                attributes: attributes
-            )
-        }
+    private func trainingEntry(for skill: PlannedSkill, freshQueue: Bool = false) -> SkillPlanTrainingCalculation.Entry {
+        let learned = freshQueue ? nil : learnedSkills[skill.skillID]
+        return SkillPlanTrainingCalculation.entry(
+            targetLevel: skill.targetLevel,
+            multiplier: SkillTreeManager.shared.trainingTimeMultiplier(for: skill.skillID),
+            trainedLevel: learned?.trained_skill_level ?? 0,
+            currentSkillPoints: learned?.skillpoints_in_skill ?? 0,
+            trainingRate: trainingRate(for: skill, freshQueue: freshQueue)
+        )
     }
 
     private func updateAttributeComparisons(freshQueue: Bool) {
@@ -624,21 +601,31 @@ struct SkillPlanDetailView: View {
         attributeComparisons = comparisons
     }
 
-    private func persistPlan(_ updatedPlan: SkillPlan) {
-        let saved = SkillPlanFileManager.shared.saveSkillPlan(
-            characterId: characterId, plan: updatedPlan, databaseManager: databaseManager
-        )
-        plan = saved
-        if let index = skillPlans.firstIndex(where: { $0.id == saved.id }) {
-            skillPlans[index] = saved
+    @discardableResult
+    private func persistPlan(_ updatedPlan: SkillPlan) -> Bool {
+        do {
+            let saved = try SkillPlanFileManager.shared.saveSkillPlan(
+                characterId: characterId, plan: updatedPlan, databaseManager: databaseManager
+            )
+            metricsRevision = UUID()
+            plan = saved
+            if let index = skillPlans.firstIndex(where: { $0.id == saved.id }) {
+                skillPlans[index] = saved
+            }
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            showErrorAlert = true
+            return false
         }
     }
 
-    private func updateOptimalAttributes(freshQueue: Bool) async {
+    private func updateOptimalAttributes(freshQueue: Bool, revision: UUID) async {
         guard shouldShowOptimalAttributesSection(freshQueue: freshQueue),
               let baselineAttrs = attributesBaselineForOptimal(freshQueue: freshQueue)
         else {
             await MainActor.run {
+                guard revision == metricsRevision else { return }
                 optimalAttributes = nil
                 attributeComparisons = []
             }
@@ -647,23 +634,14 @@ struct SkillPlanDetailView: View {
 
         let queueInfo = plan.skills.compactMap {
             skill -> (skillId: Int, remainingSP: Int, startDate: Date?, finishDate: Date?)? in
-            if !freshQueue, skill.isCompleted {
-                return nil
-            }
-
-            let remainingSP: Int
-            if freshQueue {
-                remainingSP = skillRequiredSPFromZero(skill)
-            } else {
-                let spRange = getSkillPointRange(skill)
-                remainingSP = spRange.end - spRange.start
-            }
-            guard remainingSP > 0 else { return nil }
+            guard let remainingSP = trainingEntry(for: skill, freshQueue: freshQueue).requiredSP,
+                  remainingSP > 0 else { return nil }
             return (skillId: skill.skillID, remainingSP: remainingSP, startDate: nil, finishDate: nil)
         }
 
         guard !queueInfo.isEmpty else {
             await MainActor.run {
+                guard revision == metricsRevision else { return }
                 optimalAttributes = nil
                 attributeComparisons = []
             }
@@ -675,10 +653,11 @@ struct SkillPlanDetailView: View {
             databaseManager: databaseManager,
             currentAttributes: baselineAttrs,
             characterId: characterId,
-            implantBonuses: implantBonuses ?? ImplantAttributes()
+            implantBonuses: freshQueue ? ImplantAttributes() : (implantBonuses ?? ImplantAttributes())
         )
 
         await MainActor.run {
+            guard revision == metricsRevision else { return }
             withAnimation(.easeInOut(duration: 0.35)) {
                 optimalAttributes = optimal
                 updateAttributeComparisons(freshQueue: freshQueue)
@@ -712,7 +691,7 @@ struct SkillPlanDetailView: View {
     }
 
     private var filteredSkills: [PlannedSkill] {
-        showCompletedSkills ? plan.skills : plan.skills.filter { !$0.isCompleted }
+        showCompletedSkills ? plan.skills : plan.skills.filter { !trainingEntry(for: $0).isCompleted }
     }
 
     /// 技能计划标题文本
@@ -724,7 +703,7 @@ struct SkillPlanDetailView: View {
             return "\(NSLocalizedString("Main_Skills_Plan", comment: ""))(\(totalCount))"
         } else {
             // 不显示已完成：显示 未完成/总数
-            let uncompletedCount = plan.skills.filter { !$0.isCompleted }.count
+            let uncompletedCount = plan.skills.filter { !trainingEntry(for: $0).isCompleted }.count
             return "\(NSLocalizedString("Main_Skills_Plan", comment: ""))(\(uncompletedCount)/\(totalCount))"
         }
     }
@@ -862,23 +841,24 @@ struct SkillPlanDetailView: View {
                 }
             }
 
-            let spRange = getSkillPointRange(skill)
+            let entry = trainingEntry(for: skill)
             HStack(spacing: 4) {
-                if let rate = trainingRates[skill.skillID] {
-                    Text(
-                        "\(FormatUtil.format(Double(spRange.start)))/\(FormatUtil.format(Double(spRange.end))) SP (\(FormatUtil.format(Double(rate)))/h)"
-                    )
+                if let start = entry.startSP, let end = entry.endSP {
+                    let rangeText = "\(FormatUtil.format(Double(start)))/\(FormatUtil.format(Double(end))) SP"
+                    if let rate = trainingRate(for: skill) {
+                        Text("\(rangeText) (\(FormatUtil.format(Double(rate)))/h)")
+                    } else {
+                        Text(rangeText)
+                    }
                 } else {
-                    Text(
-                        "\(FormatUtil.format(Double(spRange.start)))/\(FormatUtil.format(Double(spRange.end))) SP"
-                    )
+                    Text(calculationUnavailableText)
                 }
                 Spacer()
-                if skill.isCompleted {
+                if entry.isCompleted {
                     Text(NSLocalizedString("Main_Skills_Completed", comment: ""))
                         .foregroundColor(.green)
                 } else {
-                    Text(FormatUtil.formatCompactDuration(skill.trainingTime))
+                    Text(entry.trainingTime.map { FormatUtil.formatCompactDuration($0) } ?? calculationUnavailableText)
                         .fontDesign(.monospaced)
                 }
             }
@@ -930,23 +910,19 @@ struct SkillPlanDetailView: View {
 
                 let skillName = SkillTreeManager.shared.getSkillName(for: skill.skillId)
                     ?? "Unknown Skill (\(skill.skillId))"
-                let learnedSkill = learnedSkills[skill.skillId]
-                let currentLevel = learnedSkill?.trained_skill_level ?? 0
-                let isCompleted = skill.level <= currentLevel
-
                 return createPlannedSkill(
                     typeId: skill.skillId,
                     skillName: skillName,
-                    targetLevel: skill.level,
-                    isCompleted: isCompleted
+                    targetLevel: skill.level
                 )
             }
 
             if !validSkills.isEmpty {
                 updatedPlan = updatePlanWithSkills(updatedPlan, skills: updatedPlan.skills + validSkills)
-                await MainActor.run {
+                let saved = await MainActor.run {
                     persistPlan(updatedPlan)
                 }
+                guard saved else { return }
                 await loadCharacterData()
             }
 
@@ -1058,57 +1034,19 @@ struct SkillPlanDetailView: View {
                         id: skill.id,
                         skillID: skill.skillID,
                         skillName: name,
-                        currentLevel: skill.currentLevel,
-                        targetLevel: skill.targetLevel,
-                        trainingTime: skill.trainingTime,
-                        requiredSP: skill.requiredSP,
-                        prerequisites: skill.prerequisites,
-                        currentSkillPoints: skill.currentSkillPoints,
-                        isCompleted: skill.isCompleted
+                        targetLevel: skill.targetLevel
                     )
                 }
                 return skill
             }
         }
 
-        if let attrs = characterAttributes {
-            for skill in updatedSkills {
-                if let (primary, secondary) = SkillTrainingCalculator.getSkillAttributes(
-                    skillId: skill.skillID, databaseManager: databaseManager
-                ),
-                    let rate = SkillTrainingCalculator.calculateTrainingRate(
-                        primaryAttrId: primary,
-                        secondaryAttrId: secondary,
-                        attributes: attrs
-                    )
-                {
-                    trainingRates[skill.skillID] = rate
-                }
-            }
-        }
-
-        // 更新计划中的技能
-        let finalSkills = updatedSkills.map { skill in
-            // 获取已学习的技能信息
-            let learnedSkill = learnedSkills[skill.skillID]
-            let currentLevel = learnedSkill?.trained_skill_level ?? 0
-
-            // 如果目标等级小于等于当前等级，说明已完成
-            let isCompleted = skill.targetLevel <= currentLevel
-
-            return createPlannedSkill(
-                typeId: skill.skillID,
-                skillName: skill.skillName,
-                targetLevel: skill.targetLevel,
-                isCompleted: isCompleted
-            )
-        }
-
-        let updatedPlan = updatePlanWithSkills(plan, skills: finalSkills)
+        let updatedPlan = updatePlanWithSkills(plan, skills: updatedSkills)
 
         // 在主线程更新状态
         await MainActor.run {
             // 更新当前视图的计划
+            metricsRevision = UUID()
             plan = updatedPlan
 
             // 更新父视图中的计划列表
@@ -1118,69 +1056,6 @@ struct SkillPlanDetailView: View {
         }
 
         await recalculatePlanMetrics()
-    }
-
-    private func getSkillTimeMultiplier(_ skillId: Int) -> Int {
-        Int(SkillTreeManager.shared.trainingTimeMultiplier(for: skillId) ?? 1)
-    }
-
-    private func getBaseSkillPointsForLevel(_ level: Int) -> Int? {
-        switch level {
-        case 1: return 250
-        case 2: return 1415
-        case 3: return 8000
-        case 4: return 45255
-        case 5: return 256_000
-        default: return nil
-        }
-    }
-
-    private func calculateSkillDetails(_ skill: PlannedSkill) -> (
-        startSP: Int, endSP: Int, requiredSP: Int, trainingTime: TimeInterval
-    ) {
-        // 获取训练速度
-        let trainingRate = trainingRates[skill.skillID] ?? 0
-
-        // 获取技能的训练倍增系数
-        let timeMultiplier = getSkillTimeMultiplier(skill.skillID)
-
-        // 获取起始和目标等级的技能点数
-        let startSP = (getBaseSkillPointsForLevel(skill.currentLevel) ?? 0) * timeMultiplier
-        let endSP = (getBaseSkillPointsForLevel(skill.targetLevel) ?? 0) * timeMultiplier
-
-        // 计算需要训练的技能点数
-        let requiredSP = endSP - startSP
-
-        // 计算训练时间（如果有训练速度）
-        let trainingTime: TimeInterval =
-            trainingRate > 0 ? Double(requiredSP) / Double(trainingRate) * 3600 : 0 // 转换为秒
-
-        return (startSP, endSP, requiredSP, trainingTime)
-    }
-
-    private func calculateSkillRequirements(_ skill: PlannedSkill) -> (
-        requiredSP: Int, trainingTime: TimeInterval
-    ) {
-        let details = calculateSkillDetails(skill)
-        return (details.requiredSP, details.trainingTime)
-    }
-
-    private func getSkillPointRange(_ skill: PlannedSkill) -> (start: Int, end: Int) {
-        let timeMultiplier = getSkillTimeMultiplier(skill.skillID)
-        // 使用目标等级-1作为起始等级，目标等级作为结束等级
-        let startLevel = skill.targetLevel - 1
-        let endLevel = skill.targetLevel
-
-        // 使用缓存的技能数据
-        let actualSkillPoints = learnedSkills[skill.skillID]?.skillpoints_in_skill ?? 0
-        let actualLevel = learnedSkills[skill.skillID]?.trained_skill_level ?? 0
-
-        // 如果实际等级等于计划的起始等级，使用实际技能点数作为起始点
-        let startSP =
-            (actualLevel == startLevel)
-                ? actualSkillPoints : (getBaseSkillPointsForLevel(startLevel) ?? 0) * timeMultiplier
-        let endSP = (getBaseSkillPointsForLevel(endLevel) ?? 0) * timeMultiplier
-        return (startSP, endSP)
     }
 
     private func deleteSkill(at offsets: IndexSet) {
@@ -1285,18 +1160,25 @@ struct SkillPlanDetailView: View {
         )
     }
 
-    private func recalculatePlanMetrics(freshQueue: Bool? = nil, animated: Bool = false) async {
-        let mode = freshQueue ?? freshQueueMode
-        await MainActor.run {
+    private func recalculatePlanMetrics() async {
+        let revision = UUID()
+        metricsRevision = revision
+        let mode = freshQueueMode
+        let summary = trainingSummary(freshQueue: mode)
+        if let requiredSP = summary.requiredSP {
             injectorCalculation = SkillInjectorCalculator.calculate(
-                requiredSkillPoints: requiredSkillPoints(freshQueue: mode),
+                requiredSkillPoints: requiredSP,
                 characterTotalSP: mode ? 0 : (cachedCharacterTotalSP ?? 0)
             )
+        } else {
+            injectorCalculation = nil
         }
-        await updateOptimalAttributes(freshQueue: mode)
-        await MainActor.run {
-            syncDisplayedMetrics(freshQueue: mode, animated: animated)
+        guard summary.requiredSP != nil, summary.trainingTime != nil else {
+            optimalAttributes = nil
+            attributeComparisons = []
+            return
         }
+        await updateOptimalAttributes(freshQueue: mode, revision: revision)
     }
 
     private func loadInjectorPricesIfNeeded() async {
@@ -1309,68 +1191,23 @@ struct SkillPlanDetailView: View {
         }
     }
 
-    /// 添加新的通用函数
     private func updatePlanWithSkills(_ currentPlan: SkillPlan, skills: [PlannedSkill]) -> SkillPlan {
         var updatedPlan = currentPlan
         updatedPlan.skills = skills
-
-        // 更新计划的总训练时间和总技能点
-        updatedPlan.totalTrainingTime = updatedPlan.skills.reduce(0) {
-            $0 + ($1.isCompleted ? 0 : $1.trainingTime)
-        }
-        updatedPlan.totalSkillPoints = updatedPlan.skills.reduce(0) { total, skill in
-            if skill.isCompleted {
-                return total
-            }
-            let spRange = getSkillPointRange(skill)
-            return total + (spRange.end - spRange.start)
-        }
-
         return updatedPlan
     }
 
     private func createPlannedSkill(
         typeId: Int,
         skillName: String,
-        targetLevel: Int,
-        isCompleted: Bool
+        targetLevel: Int
     ) -> PlannedSkill {
-        let skill = PlannedSkill(
+        PlannedSkill(
             id: UUID(),
             skillID: typeId,
             skillName: skillName,
-            currentLevel: targetLevel - 1, // 计划中的当前等级始终是目标等级-1
-            targetLevel: targetLevel,
-            trainingTime: 0,
-            requiredSP: 0,
-            prerequisites: [],
-            currentSkillPoints: getBaseSkillPointsForLevel(targetLevel - 1) ?? 0, // 使用计划等级的基础点数
-            isCompleted: isCompleted
+            targetLevel: targetLevel
         )
-
-        // 计算训练时间和所需技能点
-        let (requiredSP, trainingTime) = calculateSkillRequirements(skill)
-
-        return PlannedSkill(
-            id: skill.id,
-            skillID: skill.skillID,
-            skillName: skill.skillName,
-            currentLevel: skill.currentLevel,
-            targetLevel: skill.targetLevel,
-            trainingTime: trainingTime,
-            requiredSP: requiredSP,
-            prerequisites: skill.prerequisites,
-            currentSkillPoints: skill.currentSkillPoints,
-            isCompleted: isCompleted
-        )
-    }
-
-    private func calculateAllSkillPoints() -> Int {
-        // 计算所有技能点数，不考虑已学会的技能
-        return plan.skills.reduce(0) { total, skill in
-            let spRange = getSkillPointRange(skill)
-            return total + (spRange.end - spRange.start)
-        }
     }
 
     /// 清空所有技能
@@ -1403,25 +1240,6 @@ struct SkillPlanDetailView: View {
     /// 确保技能数据已加载
     private func ensureSkillsDataLoaded(skillIds: [Int]) async {
         _ = await refreshSkillPlanNetworkCaches(skillIds: skillIds)
-
-        if let attrs = characterAttributes {
-            for skillId in skillIds {
-                if trainingRates[skillId] != nil {
-                    continue
-                }
-                if let (primary, secondary) = SkillTrainingCalculator.getSkillAttributes(
-                    skillId: skillId, databaseManager: databaseManager
-                ),
-                    let rate = SkillTrainingCalculator.calculateTrainingRate(
-                        primaryAttrId: primary,
-                        secondaryAttrId: secondary,
-                        attributes: attrs
-                    )
-                {
-                    trainingRates[skillId] = rate
-                }
-            }
-        }
     }
 
     /// 批量添加技能等级到计划（内部使用）
@@ -1469,17 +1287,11 @@ struct SkillPlanDetailView: View {
                 continue
             }
 
-            // 检查技能是否已完成
-            let learnedSkill = learnedSkills[skill.skillId]
-            let currentLevel = learnedSkill?.trained_skill_level ?? 0
-            let isCompleted = skill.level <= currentLevel
-
             // 创建新技能
             let newSkill = createPlannedSkill(
                 typeId: skill.skillId,
                 skillName: skillName,
-                targetLevel: skill.level,
-                isCompleted: isCompleted
+                targetLevel: skill.level
             )
 
             newSkills.append(newSkill)

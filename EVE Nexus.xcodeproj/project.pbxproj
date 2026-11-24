@@ -16,6 +16,7 @@
 		C6F824CD2EC45B700084AEB7 /* PulseProxy in Frameworks */ = {isa = PBXBuildFile; productRef = C6F824CC2EC45B700084AEB7 /* PulseProxy */; };
 		C6F824CF2EC45B700084AEB7 /* PulseUI in Frameworks */ = {isa = PBXBuildFile; productRef = C6F824CE2EC45B700084AEB7 /* PulseUI */; };
 		C6FDBFED2DC9DD17007A9F7D /* JWTDecode in Frameworks */ = {isa = PBXBuildFile; productRef = C6FDBFEC2DC9DD17007A9F7D /* JWTDecode */; };
+		C729AA010000000000000004 /* EVE Nexus Widgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C729AA010000000000000002 /* EVE Nexus Widgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,12 +34,34 @@
 			remoteGlobalIDString = C6417FC02CF80C4D0032F75C;
 			remoteInfo = "EVE Nexus";
 		};
+		C729AA010000000000000005 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C6417FB92CF80C4D0032F75C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C729AA010000000000000001;
+			remoteInfo = "EVE Nexus Widgets";
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C729AA010000000000000003 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				C729AA010000000000000004 /* EVE Nexus Widgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		C6417FC12CF80C4D0032F75C /* EVE Nexus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "EVE Nexus.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6417FD42CF80C4F0032F75C /* EVE NexusTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "EVE NexusTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6417FDE2CF80C4F0032F75C /* EVE NexusUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "EVE NexusUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C729AA010000000000000002 /* EVE Nexus Widgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "EVE Nexus Widgets.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -48,6 +71,13 @@
 				Info.plist,
 			);
 			target = C6417FC02CF80C4D0032F75C /* EVE Nexus */;
+		};
+		C729AA010000000000000007 /* Exceptions for "EVE Nexus Widgets" folder in "EVE Nexus Widgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C729AA010000000000000001 /* EVE Nexus Widgets */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -68,6 +98,19 @@
 		C6417FE12CF80C4F0032F75C /* EVE NexusUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "EVE NexusUITests";
+			sourceTree = "<group>";
+		};
+		C729AA010000000000000008 /* EVE Nexus Widgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C729AA010000000000000007 /* Exceptions for "EVE Nexus Widgets" folder in "EVE Nexus Widgets" target */,
+			);
+			path = "EVE Nexus Widgets";
+			sourceTree = "<group>";
+		};
+		C729AA010000000000000009 /* Widget Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Widget Shared";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -103,6 +146,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C729AA01000000000000000B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -110,6 +160,8 @@
 			isa = PBXGroup;
 			children = (
 				C6417FC32CF80C4D0032F75C /* EVE Nexus */,
+				C729AA010000000000000008 /* EVE Nexus Widgets */,
+				C729AA010000000000000009 /* Widget Shared */,
 				C6417FD72CF80C4F0032F75C /* EVE NexusTests */,
 				C6417FE12CF80C4F0032F75C /* EVE NexusUITests */,
 				C6417FC22CF80C4D0032F75C /* Products */,
@@ -120,6 +172,7 @@
 			isa = PBXGroup;
 			children = (
 				C6417FC12CF80C4D0032F75C /* EVE Nexus.app */,
+				C729AA010000000000000002 /* EVE Nexus Widgets.appex */,
 				C6417FD42CF80C4F0032F75C /* EVE NexusTests.xctest */,
 				C6417FDE2CF80C4F0032F75C /* EVE NexusUITests.xctest */,
 			);
@@ -136,13 +189,16 @@
 				C6417FBD2CF80C4D0032F75C /* Sources */,
 				C6417FBE2CF80C4D0032F75C /* Frameworks */,
 				C6417FBF2CF80C4D0032F75C /* Resources */,
+				C729AA010000000000000003 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C729AA010000000000000006 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				C6417FC32CF80C4D0032F75C /* EVE Nexus */,
+				C729AA010000000000000009 /* Widget Shared */,
 			);
 			name = "EVE Nexus";
 			packageProductDependencies = (
@@ -206,6 +262,27 @@
 			productReference = C6417FDE2CF80C4F0032F75C /* EVE NexusUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		C729AA010000000000000001 /* EVE Nexus Widgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C729AA01000000000000000D /* Build configuration list for PBXNativeTarget "EVE Nexus Widgets" */;
+			buildPhases = (
+				C729AA01000000000000000A /* Sources */,
+				C729AA01000000000000000B /* Frameworks */,
+				C729AA01000000000000000C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C729AA010000000000000008 /* EVE Nexus Widgets */,
+				C729AA010000000000000009 /* Widget Shared */,
+			);
+			name = "EVE Nexus Widgets";
+			productName = "EVE Nexus Widgets";
+			productReference = C729AA010000000000000002 /* EVE Nexus Widgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -214,10 +291,15 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1610;
-				LastUpgradeCheck = 2600;
+				LastUpgradeCheck = 2720;
 				TargetAttributes = {
 					C6417FC02CF80C4D0032F75C = {
 						CreatedOnToolsVersion = 16.1;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
 					};
 					C6417FD32CF80C4F0032F75C = {
 						CreatedOnToolsVersion = 16.1;
@@ -226,6 +308,14 @@
 					C6417FDD2CF80C4F0032F75C = {
 						CreatedOnToolsVersion = 16.1;
 						TestTargetID = C6417FC02CF80C4D0032F75C;
+					};
+					C729AA010000000000000001 = {
+						CreatedOnToolsVersion = 27.2;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -253,6 +343,7 @@
 			projectRoot = "";
 			targets = (
 				C6417FC02CF80C4D0032F75C /* EVE Nexus */,
+				C729AA010000000000000001 /* EVE Nexus Widgets */,
 				C6417FD32CF80C4F0032F75C /* EVE NexusTests */,
 				C6417FDD2CF80C4F0032F75C /* EVE NexusUITests */,
 			);
@@ -275,6 +366,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		C6417FDC2CF80C4F0032F75C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C729AA01000000000000000C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -305,6 +403,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C729AA01000000000000000A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -317,6 +422,11 @@
 			isa = PBXTargetDependency;
 			target = C6417FC02CF80C4D0032F75C /* EVE Nexus */;
 			targetProxy = C6417FDF2CF80C4F0032F75C /* PBXContainerItemProxy */;
+		};
+		C729AA010000000000000006 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C729AA010000000000000001 /* EVE Nexus Widgets */;
+			targetProxy = C729AA010000000000000005 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -379,6 +489,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.15;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -441,6 +552,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -486,7 +598,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.14.12;
 				PRODUCT_BUNDLE_IDENTIFIER = "secgg.EVE-Nexus";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -537,7 +648,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.14.12;
 				PRODUCT_BUNDLE_IDENTIFIER = "secgg.EVE-Nexus";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -643,6 +753,62 @@
 			};
 			name = Release;
 		};
+		C729AA01000000000000000E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = "EVE Nexus Widgets/EVE_Nexus_Widgets.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "EVE Nexus Widgets/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Tritanium;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "secgg.EVE-Nexus.Widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C729AA01000000000000000F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = "EVE Nexus Widgets/EVE_Nexus_Widgets.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "EVE Nexus Widgets/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Tritanium;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "secgg.EVE-Nexus.Widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -678,6 +844,15 @@
 			buildConfigurations = (
 				C6417FEF2CF80C4F0032F75C /* Debug */,
 				C6417FF02CF80C4F0032F75C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C729AA01000000000000000D /* Build configuration list for PBXNativeTarget "EVE Nexus Widgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C729AA01000000000000000E /* Debug */,
+				C729AA01000000000000000F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

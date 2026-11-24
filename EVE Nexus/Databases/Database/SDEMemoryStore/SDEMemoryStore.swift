@@ -20,10 +20,9 @@ struct LocalizedText: Equatable {
     }
 
     /// 从行字典读取 `{prefix}de_name`… 或裸 `de_name`（prefix 为空）
-    static func from(row: [String: Any], prefix: String = "") -> LocalizedText {
+    static func from(row: [String: Any], prefix: String = "", suffix: String = "name") -> LocalizedText {
         func v(_ lang: String) -> String {
-            let key = prefix.isEmpty ? "\(lang)_name" : "\(prefix)\(lang)_name"
-            return (row[key] as? String) ?? ""
+            (row["\(prefix)\(lang)_\(suffix)"] as? String) ?? ""
         }
         return LocalizedText(
             de: v("de"), en: v("en"), es: v("es"), fr: v("fr"),
@@ -200,6 +199,7 @@ enum SDEMemoryStore {
         let categoryID: Int?
         let name: String // attribute_key，语言无关
         let displayNames: LocalizedText
+        let tooltipDescriptions: LocalizedText
         let iconID: Int
         let iconFilename: String
         let unitID: Int?
@@ -210,6 +210,11 @@ enum SDEMemoryStore {
 
         var displayName: String? {
             displayNames.resolvedNonEmpty()
+        }
+
+        var tooltipDescription: String? {
+            let text = tooltipDescriptions.resolved().trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.isEmpty ? nil : text
         }
     }
 

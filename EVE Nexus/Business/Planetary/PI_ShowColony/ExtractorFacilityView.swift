@@ -69,7 +69,7 @@ struct ExtractorFacilityView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         PulsingProgressBar(
                             progress: progress,
-                            color: isExpired ? PlanetaryFacilityColors.extractorProgressExpired : PlanetaryFacilityColors.extractorProgressActive,
+                            color: PlanetaryExtractorProgressColors.fill(isExpired: isExpired),
                             showPulse: isLive && !isExpired
                         )
 

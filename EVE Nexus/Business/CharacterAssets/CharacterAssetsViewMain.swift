@@ -221,6 +221,61 @@ private struct MergedLocationRowView: View {
     }
 }
 
+private struct AssetRegionRow: View {
+    let group: AssetRegionGroup
+    let viewModel: CharacterAssetsViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 12) {
+                Text(group.region.name)
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 0)
+                if let regionId = group.region.id,
+                   let distribution = viewModel.regionSecurityDistributions[regionId]
+                {
+                    SecurityDistributionBar(stat: distribution)
+                }
+            }
+
+            ViewThatFits(in: .horizontal) {
+                portraits.fixedSize(horizontal: true, vertical: false)
+                ScrollView(.horizontal) { portraits }
+                    .scrollIndicators(.hidden)
+            }
+
+            Text(
+                String.localizedStringWithFormat(
+                    NSLocalizedString("Assets_Filter_Active_Item_Count_Format", comment: ""),
+                    group.itemCount
+                )
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var portraits: some View {
+        HStack(spacing: 4) {
+            ForEach(group.ownerIds, id: \.self) { ownerId in
+                Group {
+                    if let portrait = viewModel.ownerPortrait(for: ownerId) {
+                        AssetIconView(uiImage: portrait, size: CharacterAssetsIconSize.pathSegment)
+                    } else {
+                        AssetIconView(
+                            iconName: IconManager.defaultItemIcon,
+                            size: CharacterAssetsIconSize.pathSegment
+                        )
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(viewModel.ownerName(for: ownerId) ?? String(ownerId))
+            }
+        }
+    }
+}
+
 /// 加载进度文案（与 AssetLoadingProgress 对应）
 private func localizedProgressText(_ progress: AssetLoadingProgress) -> String {
     switch progress {
@@ -304,7 +359,7 @@ struct CharacterAssetsView: View {
                 isSearching = false
             }
         }
-        .onChange(of: viewModel.selectedTypeIds) { _, _ in refreshSearchIfNeeded() }
+        .onChange(of: viewModel.filters) { _, _ in refreshSearchIfNeeded() }
         .refreshable {
             Task {
                 await viewModel.loadAssets(forceRefresh: true)
@@ -315,6 +370,13 @@ struct CharacterAssetsView: View {
                 ? NSLocalizedString("Main_Assets", comment: "")
                 : NSLocalizedString("Main_Search_Results", comment: "")
         )
+        .navigationDestination(for: AssetRegion.self) { region in
+            List {
+                AssetLocationRows(viewModel: viewModel, region: region)
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle(region.name)
+        }
         .toolbar {
             if #available(iOS 26.0, *) {
                 // iOS 26：搜索框与过滤按钮共处底部同一 Liquid Glass 行（搜索框左、过滤右）
@@ -350,11 +412,12 @@ struct CharacterAssetsView: View {
             showFilterSheet = true
         } label: {
             Image(
-                systemName: viewModel.isTypeFilterActive
+                systemName: viewModel.filters.isActive
                     ? "line.3.horizontal.decrease.circle.fill"
                     : "line.3.horizontal.decrease.circle"
             )
         }
+        .accessibilityLabel(NSLocalizedString("Assets_Filter_Title", comment: ""))
     }
 
     // MARK: - List Sections（按显示顺序）
@@ -369,9 +432,13 @@ struct CharacterAssetsView: View {
         let showLoading = viewModel.isLoading
             || viewModel.loadingProgress != nil
             || viewModel.characterLoadingProgress != nil
-        let filterLabel = viewModel.isTypeFilterActive ? viewModel.activeFilterLabel : nil
+        let filterLabels = [
+            viewModel.activeSystemFilterLabel,
+            viewModel.activeTypeFilterLabel,
+            viewModel.activeFilterItemCountLabel,
+        ].compactMap { $0 }
 
-        if showLoading || filterLabel != nil {
+        if showLoading || !filterLabels.isEmpty {
             Section {
                 VStack(spacing: 4) {
                     if showLoading {
@@ -397,17 +464,11 @@ struct CharacterAssetsView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    if let filterLabel {
+                    ForEach(filterLabels, id: \.self) { filterLabel in
                         Text(filterLabel)
                             .font(.caption)
                             .foregroundColor(.orange)
                             .frame(maxWidth: .infinity, alignment: .center)
-                        if let itemCountLabel = viewModel.activeFilterItemCountLabel {
-                            Text(itemCountLabel)
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                        }
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -488,68 +549,25 @@ struct CharacterAssetsView: View {
     @ViewBuilder
     private var assetListSections: some View {
         if searchText.isEmpty, !viewModel.isLoading, !viewModel.assetLocations.isEmpty {
-            if viewModel.multiCharacterMode && viewModel.mergeLocations {
-                mergedPinnedLocationsSection
-                ForEach(viewModel.mergedUnpinnedLocationsByRegion, id: \.region) { group in
-                    Section(
-                        header: Text(group.region)
-                    ) {
-                        ForEach(group.locations) { merged in
-                            mergedLocationRowLink(merged: merged, role: nil)
+            AssetLocationRows(viewModel: viewModel)
+            if viewModel.filters.isActive, viewModel.activeFilterItemCount == 0 {
+                NoDataSection()
+            }
+            if viewModel.groupByRegion {
+                if !viewModel.unpinnedLocationsByRegion.isEmpty {
+                    Section {
+                        ForEach(viewModel.unpinnedLocationsByRegion) { group in
+                            NavigationLink(value: group.region) {
+                                AssetRegionRow(group: group, viewModel: viewModel)
+                            }
                         }
                     }
                 }
             } else {
-                pinnedLocationsSection
-                ForEach(viewModel.unpinnedLocationsByRegion, id: \.region) { group in
-                    Section(
-                        header: Text(group.region)
-                    ) {
-                        ForEach(group.locations) { entry in
-                            locationRowLink(entry: entry, pinLabel: "Assets_Pin", pinIcon: "pin", role: nil)
-                        }
+                ForEach(viewModel.unpinnedLocationsByRegion) { group in
+                    Section(header: Text(group.region.name)) {
+                        AssetLocationRows(viewModel: viewModel, region: group.region)
                     }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var pinnedLocationsSection: some View {
-        if !viewModel.pinnedLocations.isEmpty {
-            Section(
-                header: HStack {
-                    Image(systemName: "star.fill")
-                        .foregroundColor(.yellow)
-                        .font(.system(size: 16))
-                    Text(NSLocalizedString("Assets_Pinned_Locations", comment: ""))
-                }
-            ) {
-                ForEach(viewModel.pinnedLocations) { entry in
-                    locationRowLink(
-                        entry: entry,
-                        pinLabel: "Assets_Unpin",
-                        pinIcon: "pin.slash",
-                        role: .destructive
-                    )
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var mergedPinnedLocationsSection: some View {
-        if !viewModel.mergedPinnedLocations.isEmpty {
-            Section(
-                header: HStack {
-                    Image(systemName: "star.fill")
-                        .foregroundColor(.yellow)
-                        .font(.system(size: 16))
-                    Text(NSLocalizedString("Assets_Pinned_Locations", comment: ""))
-                }
-            ) {
-                ForEach(viewModel.mergedPinnedLocations) { merged in
-                    mergedLocationRowLink(merged: merged, role: .destructive)
                 }
             }
         }
@@ -566,6 +584,76 @@ struct CharacterAssetsView: View {
                 }
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 2, trailing: 16))
+            }
+        }
+    }
+}
+
+private struct AssetLocationRows: View {
+    @ObservedObject var viewModel: CharacterAssetsViewModel
+    var region: AssetRegion? = nil
+
+    var body: some View {
+        if let region {
+            if let group = viewModel.unpinnedLocationsByRegion.first(where: { $0.id == region.id }) {
+                if viewModel.mergesAssetLocations {
+                    ForEach(viewModel.mergedLocations(in: group)) { merged in
+                        mergedLocationRowLink(merged: merged, role: nil)
+                    }
+                } else {
+                    ForEach(group.locations) { entry in
+                        locationRowLink(entry: entry, pinLabel: "Assets_Pin", pinIcon: "pin", role: nil)
+                    }
+                }
+            } else {
+                NoDataSection()
+            }
+        } else if viewModel.mergesAssetLocations {
+            mergedPinnedLocationsSection
+        } else {
+            pinnedLocationsSection
+        }
+    }
+
+    @ViewBuilder
+    private var pinnedLocationsSection: some View {
+        let locations = viewModel.pinnedLocations
+        if !locations.isEmpty {
+            Section(
+                header: HStack {
+                    Image(systemName: "star.fill")
+                        .foregroundColor(.yellow)
+                        .font(.system(size: 16))
+                    Text(NSLocalizedString("Assets_Pinned_Locations", comment: ""))
+                }
+            ) {
+                ForEach(locations) { entry in
+                    locationRowLink(
+                        entry: entry,
+                        pinLabel: "Assets_Unpin",
+                        pinIcon: "pin.slash",
+                        role: .destructive
+                    )
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var mergedPinnedLocationsSection: some View {
+        let locations = viewModel.mergedPinnedLocations
+        if !locations.isEmpty {
+            Section(
+                header: HStack {
+                    Image(systemName: "star.fill")
+                        .foregroundColor(.yellow)
+                        .font(.system(size: 16))
+                    Text(NSLocalizedString("Assets_Pinned_Locations", comment: ""))
+                }
+            ) {
+                ForEach(locations) { merged in
+                    mergedLocationRowLink(merged: merged, role: .destructive)
+                }
             }
         }
     }
@@ -702,6 +790,17 @@ struct AssetsSettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Toggle(isOn: $viewModel.groupByRegion) {
+                        VStack(alignment: .leading) {
+                            Text(NSLocalizedString("Assets_Group_By_Region", comment: ""))
+                            Text(NSLocalizedString("Assets_Group_By_Region_Description", comment: ""))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 Section {
                     Toggle(isOn: $viewModel.multiCharacterMode) {
                         VStack(alignment: .leading) {

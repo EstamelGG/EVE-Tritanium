@@ -17,6 +17,13 @@ struct ShipMasteryDetailView: View {
     @State private var planNameText = ""
     @State private var showPlanSavedAlert = false
     @State private var savedPlanName = ""
+    @State private var showPlanSaveError = false
+    @State private var planSaveErrorMessage = ""
+    @State private var existingPlanNames: [(id: UUID?, name: String)] = []
+
+    private var planNameError: SkillPlanNaming.ValidationError? {
+        SkillPlanNaming.validationError(for: planNameText, existingPlans: existingPlanNames)
+    }
 
     /// 专精显示状态（复用 MasteryDisplayHelper，与物品详情页/专精浏览列表同源）
     /// 未登录 / 加载中 / 该船无专精数据时为 nil
@@ -117,6 +124,7 @@ struct ShipMasteryDetailView: View {
             Section {
                 Button {
                     planNameText = defaultPlanName
+                    existingPlanNames = SkillPlanFileManager.shared.loadPlanNames()
                     showAddPlanAlert = true
                 } label: {
                     HStack {
@@ -141,13 +149,18 @@ struct ShipMasteryDetailView: View {
             Button(NSLocalizedString("Misc_Save", comment: "保存")) {
                 addToSkillPlan()
             }
+            .disabled(planNameError != nil)
         } message: {
-            Text(
-                String.localizedStringWithFormat(
-                    NSLocalizedString("Mastery_Plan_Skills_Count", comment: "专精技能共 %d 项"),
-                    planRequirements.count
+            if planNameError == .duplicateName {
+                Text(planNameError?.localizedDescription ?? "")
+            } else {
+                Text(
+                    String.localizedStringWithFormat(
+                        NSLocalizedString("Mastery_Plan_Skills_Count", comment: "专精技能共 %d 项"),
+                        planRequirements.count
+                    )
                 )
-            )
+            }
         }
         .alert(
             NSLocalizedString("Fitting_Add_To_Skill_Plan_Success", comment: ""),
@@ -161,6 +174,11 @@ struct ShipMasteryDetailView: View {
                     savedPlanName
                 )
             )
+        }
+        .alert(NSLocalizedString("Main_Skills_Plan_Name", comment: ""), isPresented: $showPlanSaveError) {
+            Button(NSLocalizedString("Misc_Done", comment: ""), role: .cancel) {}
+        } message: {
+            Text(planSaveErrorMessage)
         }
         .onAppear {
             skillsManager.loadAttributes(
@@ -299,15 +317,22 @@ struct ShipMasteryDetailView: View {
 
         let requirements = planRequirements
         Task {
-            if let saved = await AddFittingSkillsToPlanSheet.saveMissingSkillsToPlan(
-                missingSkills: requirements,
-                characterId: currentCharacterId,
-                planName: name,
-                databaseManager: databaseManager
-            ) {
+            do {
+                if let saved = try await AddFittingSkillsToPlanSheet.saveMissingSkillsToPlan(
+                    missingSkills: requirements,
+                    characterId: currentCharacterId,
+                    planName: name,
+                    databaseManager: databaseManager
+                ) {
+                    await MainActor.run {
+                        savedPlanName = saved
+                        showPlanSavedAlert = true
+                    }
+                }
+            } catch {
                 await MainActor.run {
-                    savedPlanName = saved
-                    showPlanSavedAlert = true
+                    planSaveErrorMessage = error.localizedDescription
+                    showPlanSaveError = true
                 }
             }
         }

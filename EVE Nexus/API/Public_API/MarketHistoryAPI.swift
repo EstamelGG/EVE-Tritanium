@@ -3,13 +3,23 @@ import SwiftUI
 
 // MARK: - 数据模型
 
-struct MarketHistory: Codable {
+struct MarketHistory: Codable, Sendable {
     let average: Double
     let date: String
     let highest: Double
     let lowest: Double
     let order_count: Int
     let volume: Int
+}
+
+extension WidgetMarketPoint {
+    static func recent(history: [MarketHistory], through date: Date) -> [Self] {
+        let format = Date.ISO8601FormatStyle(timeZone: .gmt).year().month().day()
+        return recent(history.compactMap { entry in
+            guard let day = try? format.parse(entry.date) else { return nil }
+            return Self(date: day, average: entry.average)
+        }, through: date)
+    }
 }
 
 // MARK: - 错误类型
@@ -51,6 +61,14 @@ class MarketHistoryAPI {
     static let shared = MarketHistoryAPI()
     private let cacheDuration: TimeInterval = 60 * 60 // 1小时缓存
 
+    private struct RequestKey: Hashable, Sendable {
+        let typeID: Int
+        let regionID: Int
+    }
+
+    private let requests = AppDataRequests<RequestKey, [MarketHistory]>()
+    private lazy var bundledPlexHistory = loadPlexHistory()
+
     private init() {}
 
     private struct CachedData: Codable {
@@ -85,11 +103,16 @@ class MarketHistoryAPI {
         return cacheDirectory.appendingPathComponent("market_history_\(typeID)_\(regionID).json")
     }
 
-    private func loadFromCache(typeID: Int, regionID: Int) -> [MarketHistory]? {
+    func cachedAt(typeID: Int, regionID: Int) -> Date? {
+        let region = typeID == MarketManager.plexTypeID ? MarketManager.globalPlexRegionID : regionID
+        return getCacheFilePath(typeID: typeID, regionID: region)?.cacheModificationDate
+    }
+
+    private func loadFromCache(typeID: Int, regionID: Int, maxAge: TimeInterval) -> [MarketHistory]? {
         guard let cacheFile = getCacheFilePath(typeID: typeID, regionID: regionID),
               let data = try? Data(contentsOf: cacheFile),
               let cached = try? JSONDecoder().decode(CachedData.self, from: data),
-              cached.timestamp.addingTimeInterval(cacheDuration) > Date()
+              cached.timestamp.addingTimeInterval(maxAge) > Date()
         else {
             return nil
         }
@@ -98,13 +121,13 @@ class MarketHistoryAPI {
         return cached.data
     }
 
-    private func saveToCache(_ history: [MarketHistory], typeID: Int, regionID: Int) {
+    private func saveToCache(_ history: [MarketHistory], typeID: Int, regionID: Int, at date: Date) {
         guard let cacheFile = getCacheFilePath(typeID: typeID, regionID: regionID) else { return }
 
-        let cachedData = CachedData(data: history, timestamp: Date())
+        let cachedData = CachedData(data: history, timestamp: date)
         do {
             let encodedData = try JSONEncoder().encode(cachedData)
-            try encodedData.write(to: cacheFile)
+            try encodedData.write(to: cacheFile, options: .atomic)
             Logger.info("市场历史数据已缓存到文件")
         } catch {
             Logger.error("保存市场历史缓存失败: \(error)")
@@ -115,19 +138,20 @@ class MarketHistoryAPI {
 
     func fetchMarketHistory(
         typeID: Int, regionID: Int, forceRefresh: Bool = false, interpolate: Bool = true,
-        fillToCurrentDate: Bool = true
+        fillToCurrentDate: Bool = true, maxCacheAge: TimeInterval? = nil
     ) async throws -> [MarketHistory] {
         var actualRegionID = regionID
 
         // PLEX 特殊处理
         if typeID == MarketManager.plexTypeID {
-            actualRegionID = 19_000_001
+            actualRegionID = MarketManager.globalPlexRegionID
 
             // 读取本地plex_history.json文件
-            if let plexHistory = loadPlexHistory() {
+            if let plexHistory = bundledPlexHistory {
                 // 获取API数据
                 let apiHistory = try await fetchApiHistory(
-                    typeID: typeID, regionID: actualRegionID, forceRefresh: forceRefresh
+                    typeID: typeID, regionID: actualRegionID, forceRefresh: forceRefresh,
+                    interpolate: false, maxCacheAge: maxCacheAge
                 )
 
                 // 简单合并：本地数据 + API数据
@@ -142,7 +166,7 @@ class MarketHistoryAPI {
         // 普通流程
         return try await fetchApiHistory(
             typeID: typeID, regionID: actualRegionID, forceRefresh: forceRefresh,
-            interpolate: interpolate, fillToCurrentDate: fillToCurrentDate
+            interpolate: interpolate, fillToCurrentDate: fillToCurrentDate, maxCacheAge: maxCacheAge
         )
     }
 
@@ -158,7 +182,7 @@ class MarketHistoryAPI {
 
     private func fetchApiHistory(
         typeID: Int, regionID: Int, forceRefresh: Bool, interpolate: Bool = true,
-        fillToCurrentDate: Bool = true
+        fillToCurrentDate: Bool = true, maxCacheAge: TimeInterval? = nil
     ) async throws -> [MarketHistory] {
         if regionID < 0 {
             return []
@@ -175,13 +199,22 @@ class MarketHistoryAPI {
 
         // 如果不是强制刷新，尝试从缓存获取
         if !forceRefresh {
-            if let cached = loadFromCache(typeID: typeID, regionID: regionID) {
+            if let cached = loadFromCache(typeID: typeID, regionID: regionID, maxAge: maxCacheAge ?? cacheDuration) {
                 return interpolate
                     ? interpolateMarketHistory(cached, fillToCurrentDate: fillToCurrentDate)
                     : cached
             }
         }
 
+        let key = RequestKey(typeID: typeID, regionID: regionID)
+        let history = try await requests.run(key) {
+            try await self.downloadHistory(for: key)
+        }
+        return interpolate ? interpolateMarketHistory(history, fillToCurrentDate: fillToCurrentDate) : history
+    }
+
+    private func downloadHistory(for key: RequestKey) async throws -> [MarketHistory] {
+        let (typeID, regionID) = (key.typeID, key.regionID)
         // 构建URL
         let baseURL = "https://esi.evetech.net/markets/\(regionID)/history/"
         var components = URLComponents(string: baseURL)
@@ -198,12 +231,11 @@ class MarketHistoryAPI {
         let data = try await NetworkManager.shared.fetchData(from: url)
         let history = try JSONDecoder().decode([MarketHistory].self, from: data)
 
-        // 保存到缓存
-        saveToCache(history, typeID: typeID, regionID: regionID)
-
-        // 返回处理后的数据
-        return interpolate
-            ? interpolateMarketHistory(history, fillToCurrentDate: fillToCurrentDate) : history
+        let now = Date()
+        saveToCache(history, typeID: typeID, regionID: regionID, at: now)
+        let displayHistory = typeID == MarketManager.plexTypeID ? (bundledPlexHistory ?? []) + history : history
+        await AppDataUpdate.marketHistory(typeID: typeID, regionID: regionID, history: displayHistory, at: now).publish()
+        return history
     }
 
     // MARK: - 数据插值处理

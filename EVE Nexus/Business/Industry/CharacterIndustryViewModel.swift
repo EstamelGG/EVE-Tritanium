@@ -117,7 +117,11 @@ class CharacterIndustryViewModel: ObservableObject {
     private var initialLoadDone = false
     private var cachedJobs: [IndustryJob]? // 缓存工业项目数据
 
-    init(characterId: Int, databaseManager: DatabaseManager = DatabaseManager()) {
+    init(
+        characterId: Int,
+        databaseManager: DatabaseManager = DatabaseManager(),
+        focusSingleCharacter: Bool = false
+    ) {
         self.characterId = characterId
         self.databaseManager = databaseManager
 
@@ -126,30 +130,36 @@ class CharacterIndustryViewModel: ObservableObject {
             forKey: "hideCompletedAndCancelled_global"
         )
 
-        // 从 UserDefaults 读取多人物聚合设置
-        multiCharacterMode = UserDefaults.standard.bool(forKey: "multiCharacterMode_industry")
-        let savedCharacterIds =
-            UserDefaults.standard.array(forKey: "selectedCharacterIds_industry") as? [Int] ?? []
-        selectedCharacterIds = Set(savedCharacterIds)
-
         // 加载可用角色列表
         availableCharacters = CharacterSkillsUtils.getAllCharacters()
 
-        // 过滤掉已保存但已不在可用角色列表中的角色ID
-        let availableCharacterIds = Set(availableCharacters.map { $0.id })
-        let validSelectedIds = selectedCharacterIds.intersection(availableCharacterIds)
+        if focusSingleCharacter {
+            // 从小组件点击特定角色任务进入时聚焦单角色，通过 backing storage 赋值以跳过 didSet，避免覆盖全局多人物偏好
+            _multiCharacterMode = Published(initialValue: false)
+            _selectedCharacterIds = Published(initialValue: [characterId])
+        } else {
+            // 从 UserDefaults 读取多人物聚合设置
+            multiCharacterMode = UserDefaults.standard.bool(forKey: "multiCharacterMode_industry")
+            let savedCharacterIds =
+                UserDefaults.standard.array(forKey: "selectedCharacterIds_industry") as? [Int] ?? []
+            selectedCharacterIds = Set(savedCharacterIds)
 
-        // 如果有角色被过滤掉，更新 UserDefaults
-        if validSelectedIds.count != selectedCharacterIds.count {
-            selectedCharacterIds = validSelectedIds
-            UserDefaults.standard.set(
-                Array(selectedCharacterIds), forKey: "selectedCharacterIds_industry"
-            )
-        }
+            // 过滤掉已保存但已不在可用角色列表中的角色ID
+            let availableCharacterIds = Set(availableCharacters.map { $0.id })
+            let validSelectedIds = selectedCharacterIds.intersection(availableCharacterIds)
 
-        // 如果没有选中的角色，默认选择当前角色
-        if selectedCharacterIds.isEmpty {
-            selectedCharacterIds.insert(characterId)
+            // 如果有角色被过滤掉，更新 UserDefaults
+            if validSelectedIds.count != selectedCharacterIds.count {
+                selectedCharacterIds = validSelectedIds
+                UserDefaults.standard.set(
+                    Array(selectedCharacterIds), forKey: "selectedCharacterIds_industry"
+                )
+            }
+
+            // 如果没有选中的角色，默认选择当前角色
+            if selectedCharacterIds.isEmpty {
+                selectedCharacterIds.insert(characterId)
+            }
         }
 
         // 在初始化时立即加载技能数据和工业任务数据
@@ -268,33 +278,9 @@ class CharacterIndustryViewModel: ObservableObject {
                     return
                 }
 
-                // 更新数据
                 self.jobs = jobs
-                await loadItemNames()
-
-                if Task.isCancelled {
-                    return
-                }
-
-                await loadLocationNames()
-
-                if Task.isCancelled {
-                    return
-                }
-
-                groupJobsByStatus()
-
-                // 更新过滤选项
-                updateFilterOptions()
-
-                // 计算工业槽位统计
-                calculateIndustrySlotStats()
-
-                // 更新characterSlotDetails中的已用槽位数
-                updateCharacterSlotUsedCounts()
-
-                // 计算生产清单
-                calculateProductionList()
+                await updateJobsPresentation()
+                guard !Task.isCancelled else { return }
 
                 // 根据是否是过滤刷新来清除相应的加载状态
                 if isFiltering {
@@ -323,6 +309,33 @@ class CharacterIndustryViewModel: ObservableObject {
 
         // 等待任务完成
         await loadingTask?.value
+    }
+
+    func applySharedJobs(_ updated: [IndustryJob], characterID: Int) async {
+        let isVisible = multiCharacterMode && !selectedCharacterIds.isEmpty
+            ? selectedCharacterIds.contains(characterID) : characterId == characterID
+        guard isVisible, initialLoadDone, !isLoading, !isFiltering else { return }
+
+        let visibleJobs = hideCompletedAndCancelled ? updated.filter(\.isOpen) : updated
+        jobsWithOwner.removeAll { !$0.isFromCorporation && $0.ownerId == characterID }
+        jobsWithOwner.append(contentsOf: visibleJobs.map {
+            IndustryJobWithOwner(job: $0, ownerId: characterID, isFromCorporation: false)
+        })
+        jobs = jobsWithOwner.map(\.job)
+        cachedJobs = jobs
+        await updateJobsPresentation()
+    }
+
+    private func updateJobsPresentation() async {
+        await loadItemNames()
+        guard !Task.isCancelled else { return }
+        await loadLocationNames()
+        guard !Task.isCancelled else { return }
+        groupJobsByStatus()
+        updateFilterOptions()
+        calculateIndustrySlotStats()
+        updateCharacterSlotUsedCounts()
+        calculateProductionList()
     }
 
     /// 封装获取数据逻辑，处理缓存
@@ -771,39 +784,7 @@ class CharacterIndustryViewModel: ObservableObject {
 
     /// 计算并缓存所有角色的详细信息
     private func calculateCharacterSlotDetails(forceRefresh: Bool = false) async -> [CharacterSlotDetail] {
-        // 获取技能槽位增加属性的映射
-        let attributeQuery = """
-            SELECT type_id, attribute_id, value 
-            FROM typeAttributes 
-            WHERE attribute_id IN (450, 471, 2661)
-        """
-
-        var skillSlotBonuses: [Int: (manufacturing: Int, research: Int, reaction: Int)] = [:]
-
-        if case let .success(rows) = databaseManager.executeQuery(attributeQuery) {
-            for row in rows {
-                guard let typeId = row["type_id"] as? Int,
-                      let attributeId = row["attribute_id"] as? Int,
-                      let value = row["value"] as? Double
-                else { continue }
-
-                if skillSlotBonuses[typeId] == nil {
-                    skillSlotBonuses[typeId] = (manufacturing: 0, research: 0, reaction: 0)
-                }
-
-                let intValue = Int(value)
-                switch attributeId {
-                case 450: // 加工任务槽位增加数
-                    skillSlotBonuses[typeId]?.manufacturing = intValue
-                case 471: // 科研槽位增加数
-                    skillSlotBonuses[typeId]?.research = intValue
-                case 2661: // 反应任务增加数
-                    skillSlotBonuses[typeId]?.reaction = intValue
-                default:
-                    break
-                }
-            }
-        }
+        let skillSlotBonuses = IndustrySlotCounts.skillBonuses(in: databaseManager)
 
         // 确定要计算的角色ID列表（按ID排序）
         let characterIdsToCalculate: [Int]
@@ -845,10 +826,7 @@ class CharacterIndustryViewModel: ObservableObject {
         await withTaskGroup(of: SkillData?.self) { group in
             for charId in characterIdsToCalculate {
                 group.addTask {
-                    // 每个角色的基础槽位数
-                    var manufacturingSlots = 1
-                    var researchSlots = 1
-                    var reactionSlots = 1
+                    let capacity: IndustrySlotCounts
                     var manufacturingRange = 0
                     var researchRange = 0
                     var reactionRange = 0
@@ -860,15 +838,7 @@ class CharacterIndustryViewModel: ObservableObject {
                             forceRefresh: forceRefresh
                         )
 
-                        // 遍历技能槽位加成，从技能映射中查找对应技能
-                        for (skillId, bonus) in skillSlotBonuses {
-                            if let skill = skillsResponse.skillsMap[skillId] {
-                                let level = skill.trained_skill_level
-                                manufacturingSlots += bonus.manufacturing * level
-                                researchSlots += bonus.research * level
-                                reactionSlots += bonus.reaction * level
-                            }
-                        }
+                        capacity = IndustrySlotCounts.capacity(for: skillsResponse.skillsMap, bonuses: skillSlotBonuses)
 
                         // 计算操作范围
                         manufacturingRange = (skillsResponse.skillsMap[24268]?.trained_skill_level ?? 0) * 5
@@ -886,9 +856,9 @@ class CharacterIndustryViewModel: ObservableObject {
 
                     return SkillData(
                         characterId: charId,
-                        manufacturingSlots: manufacturingSlots,
-                        researchSlots: researchSlots,
-                        reactionSlots: reactionSlots,
+                        manufacturingSlots: capacity.manufacturing,
+                        researchSlots: capacity.research,
+                        reactionSlots: capacity.reaction,
                         manufacturingRange: manufacturingRange,
                         researchRange: researchRange,
                         reactionRange: reactionRange
@@ -921,9 +891,7 @@ class CharacterIndustryViewModel: ObservableObject {
                     || (job.status == "active" && job.end_date <= Date()) // 已完成但状态未更新
             }
 
-            let manufacturingUsed = activeJobs.filter { $0.activity_id == 1 }.count
-            let researchUsed = activeJobs.filter { [3, 4, 5, 8].contains($0.activity_id) }.count
-            let reactionUsed = activeJobs.filter { $0.activity_id == 9 }.count
+            let used = IndustrySlotCounts.used(by: activeJobs.lazy.map(\.activity_id))
 
             details.append(CharacterSlotDetail(
                 characterId: skillData.characterId,
@@ -934,9 +902,9 @@ class CharacterIndustryViewModel: ObservableObject {
                 manufacturingRange: skillData.manufacturingRange,
                 researchRange: skillData.researchRange,
                 reactionRange: skillData.reactionRange,
-                manufacturingUsed: manufacturingUsed,
-                researchUsed: researchUsed,
-                reactionUsed: reactionUsed
+                manufacturingUsed: used.manufacturing,
+                researchUsed: used.research,
+                reactionUsed: used.reaction
             ))
         }
 
@@ -1009,9 +977,7 @@ class CharacterIndustryViewModel: ObservableObject {
                     || (job.status == "active" && job.end_date <= Date()) // 已完成但状态未更新
             }
 
-            let manufacturingUsed = activeJobs.filter { $0.activity_id == 1 }.count
-            let researchUsed = activeJobs.filter { [3, 4, 5, 8].contains($0.activity_id) }.count
-            let reactionUsed = activeJobs.filter { $0.activity_id == 9 }.count
+            let used = IndustrySlotCounts.used(by: activeJobs.lazy.map(\.activity_id))
 
             return CharacterSlotDetail(
                 characterId: detail.characterId,
@@ -1022,9 +988,9 @@ class CharacterIndustryViewModel: ObservableObject {
                 manufacturingRange: detail.manufacturingRange,
                 researchRange: detail.researchRange,
                 reactionRange: detail.reactionRange,
-                manufacturingUsed: manufacturingUsed,
-                researchUsed: researchUsed,
-                reactionUsed: reactionUsed
+                manufacturingUsed: used.manufacturing,
+                researchUsed: used.research,
+                reactionUsed: used.reaction
             )
         }
     }
@@ -1075,18 +1041,16 @@ class CharacterIndustryViewModel: ObservableObject {
                 || (job.status == "active" && job.end_date <= Date()) // 已完成但状态未更新
         }
 
-        let manufacturingUsed = activeJobs.filter { $0.activity_id == 1 }.count
-        let researchUsed = activeJobs.filter { [3, 4, 5, 8].contains($0.activity_id) }.count
-        let reactionUsed = activeJobs.filter { $0.activity_id == 9 }.count
+        let used = IndustrySlotCounts.used(by: activeJobs.lazy.map(\.activity_id))
 
         // 取计算出的最大槽位数和实际使用数量中的较大值，避免缓存不同步问题
-        let actualManufacturingTotal = max(maxSlots.manufacturing, manufacturingUsed)
-        let actualResearchTotal = max(maxSlots.research, researchUsed)
-        let actualReactionTotal = max(maxSlots.reaction, reactionUsed)
+        let actualManufacturingTotal = max(maxSlots.manufacturing, used.manufacturing)
+        let actualResearchTotal = max(maxSlots.research, used.research)
+        let actualReactionTotal = max(maxSlots.reaction, used.reaction)
 
-        manufacturingSlots = (used: manufacturingUsed, total: actualManufacturingTotal)
-        researchSlots = (used: researchUsed, total: actualResearchTotal)
-        reactionSlots = (used: reactionUsed, total: actualReactionTotal)
+        manufacturingSlots = (used: used.manufacturing, total: actualManufacturingTotal)
+        researchSlots = (used: used.research, total: actualResearchTotal)
+        reactionSlots = (used: used.reaction, total: actualReactionTotal)
     }
 
     /// 计算最大工业槽位数

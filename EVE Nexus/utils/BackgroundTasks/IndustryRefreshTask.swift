@@ -66,10 +66,8 @@ class IndustryRefreshTask: BaseProcessingTask {
             }
 
             do {
-                // 强制刷新工业项目数据
                 _ = try await CharacterIndustryAPI.shared.fetchIndustryJobs(
                     characterId: characterId,
-                    forceRefresh: true,
                     includeCompleted: !hideCompletedAndCancelled
                 )
                 Logger.success("成功更新工业项目数据: \(characterId)")

@@ -50,7 +50,7 @@ struct WealthItem: Identifiable, Equatable {
     }
 
     var formattedValue: String {
-        return FormatUtil.format(value)
+        return FormatUtil.formatISKAmount(value)
     }
 
     static func == (lhs: WealthItem, rhs: WealthItem) -> Bool {

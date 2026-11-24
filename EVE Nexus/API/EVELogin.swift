@@ -387,7 +387,7 @@ class EVELogin {
         )
 
         // 2. 先写入新的 refresh/access，再清过期标记，避免并发 getAccessToken 仍用旧 refresh。
-        await AuthTokenManager.shared.saveAuthState(authState, for: character.CharacterID)
+        try await AuthTokenManager.shared.saveAuthState(authState, for: character.CharacterID)
 
         // 3. 清掉可能残留的 refreshTokenExpired（例如上次 invalid_grant）。
         updateCharacterRefreshTokenExpiredStatus(
@@ -453,6 +453,9 @@ class EVELogin {
                 "正在缓存角色顺序数据, key: \(characterOrderKey), 数据大小: \(characterOrder.count) bytes"
             )
             UserDefaults.standard.set(characterOrder, forKey: characterOrderKey)
+        }
+        Task { @MainActor in
+            WidgetRefreshService.shared.reconcileCharacters()
         }
     }
 
@@ -601,11 +604,14 @@ class EVELogin {
             }
         }
 
-        // 5. 取消该角色的技能队列到期提醒
+        // 共享资源由 clearAllTokens 与授权一起清理。
         NotificationManager.shared.cancelSkillQueueNotifications(characterId: characterId)
 
         UserDefaults.standard.synchronize()
         Logger.info("角色移除完成 (ID: \(characterId))")
+        Task { @MainActor in
+            WidgetRefreshService.shared.reconcileCharacters()
+        }
     }
 
     /// 保存角色顺序
@@ -628,6 +634,9 @@ class EVELogin {
         )
         UserDefaults.standard.set(uniqueCharacterIds, forKey: characterOrderKey)
         UserDefaults.standard.synchronize()
+        Task { @MainActor in
+            WidgetRefreshService.shared.reconcileCharacters()
+        }
     }
 
     /// 获取指定ID的角色
@@ -718,6 +727,9 @@ class EVELogin {
                         object: nil,
                         userInfo: ["character": updatedCharacter]
                     )
+                }
+                Task { @MainActor in
+                    WidgetRefreshService.shared.reconcileCharacters()
                 }
             } else {
                 Logger.info(

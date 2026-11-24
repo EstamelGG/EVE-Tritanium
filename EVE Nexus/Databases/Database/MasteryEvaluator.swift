@@ -45,18 +45,6 @@ enum MasteryDisplayHelper {
         }
     }
 
-    /// 专精背景色：locked = 红，0-4 级 = 淡蓝，5 级 = 金黄
-    static func backdropColor(for state: MasteryLevelState) -> Color {
-        switch state {
-        case .locked:
-            return Color(red: 0x77 / 255.0, green: 0x2E / 255.0, blue: 0x2D / 255.0)
-        case let .level(level) where level >= 5:
-            return Color(red: 0x61 / 255.0, green: 0x54 / 255.0, blue: 0x37 / 255.0)
-        case .level:
-            return Color(red: 0x2B / 255.0, green: 0x3C / 255.0, blue: 0x57 / 255.0)
-        }
-    }
-
     /// 专精等级符号（下标 = 等级）
     static let levelSymbols = ["0", "I", "II", "III", "IV", "V"]
 

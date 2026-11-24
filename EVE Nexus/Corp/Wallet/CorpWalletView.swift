@@ -47,15 +47,6 @@ struct CorpWalletView: View {
         _viewModel = StateObject(wrappedValue: CorpWalletViewModel(characterId: characterId))
     }
 
-    /// 格式化金额
-    private func formatBalance(_ balance: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: balance)) ?? "0.00"
-    }
-
     var body: some View {
         List {
             if viewModel.isLoading {
@@ -113,7 +104,7 @@ struct CorpWalletView: View {
                                 .foregroundColor(.primary)
 
                                 // 余额
-                                Text("\(formatBalance(wallet.balance)) ISK")
+                                Text(FormatUtil.formatISK(wallet.balance))
                                     .font(.system(size: 14))
                                     .foregroundColor(.secondary)
                             }

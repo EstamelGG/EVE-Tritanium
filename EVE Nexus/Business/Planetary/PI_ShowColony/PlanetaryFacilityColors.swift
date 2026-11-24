@@ -24,14 +24,6 @@ enum PlanetaryFacilityColors {
     /// 工厂输入物品图标 - 浅色覆盖（根据库存占比显示）
     static let factoryInputIconBackgroundLight = Color(red: 237 / 255.0, green: 153 / 255.0, blue: 53 / 255.0)
 
-    // MARK: - 提取器设施颜色
-
-    /// 提取器进度条 - 未过期状态
-    static let extractorProgressActive = Color(red: 0.0, green: 0.6, blue: 0.3)
-
-    /// 提取器进度条 - 过期状态
-    static let extractorProgressExpired = Color.gray
-
     // MARK: - 存储设施颜色
 
     /// 存储进度条 - 正常状态（容量 < 90%）

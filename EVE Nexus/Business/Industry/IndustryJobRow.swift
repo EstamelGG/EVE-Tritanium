@@ -224,18 +224,9 @@ struct IndustryJobRow: View {
                         // 数量信息
                         HStack {
                             Text(
-                                job.activity_id == 5
-                                    ? String(
-                                        format: NSLocalizedString(
-                                            "Industry_Runs_With_Copies_Format", comment: ""
-                                        ),
-                                        job.runs, job.licensed_runs ?? 1
-                                    )
-                                    : String(
-                                        format: NSLocalizedString(
-                                            "Industry_Runs_Format", comment: ""
-                                        ), job.runs
-                                    )
+                                IndustryJobQuantity.description(
+                                    runs: job.runs, isCopying: job.activity_id == 5, licensedRuns: job.licensed_runs
+                                )
                             )
                             .font(.caption)
                             .foregroundColor(.secondary)

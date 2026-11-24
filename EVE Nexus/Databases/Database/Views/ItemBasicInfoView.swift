@@ -91,6 +91,11 @@ struct ItemBasicInfoView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 64, height: 64)
+                .padding(6)
+                .background {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.white.opacity(0.08))
+                }
                 .onTapGesture { showMasteryDetail = true }
                 .navigationDestination(isPresented: $showMasteryDetail) {
                     ShipMasteryDetailView(
@@ -99,11 +104,6 @@ struct ItemBasicInfoView: View {
                     )
                 }
         }
-    }
-
-    /// 渲染图文遮罩右端的专精背景色（与左侧半透明黑做横向渐变）；无专精状态时为 nil
-    private func masteryBackdropColor(for state: MasteryLevelState?) -> Color? {
-        state.map { MasteryDisplayHelper.backdropColor(for: $0) }
     }
 
     var body: some View {
@@ -277,7 +277,8 @@ struct ItemBasicInfoView: View {
                         basicStatRow(
                             icon: "structure",
                             title: NSLocalizedString("Item_Volume", comment: ""),
-                            value: "\(FormatUtil.format(Double(volume))) m3"
+                            value: "\(FormatUtil.format(Double(volume))) m3",
+                            attributeID: 161
                         )
                     }
                     if let repackagedVolume = itemDetails.repackagedVolume {
@@ -295,9 +296,10 @@ struct ItemBasicInfoView: View {
                             icon: "cargo_fit",
                             title: NSLocalizedString("Item_Capacity", comment: ""),
                             value: "\(FormatUtil.format(final)) m3",
-                            valueColor: getAttributeColor(attributeId: 38, originalValue: original)
+                            valueColor: getAttributeColor(attributeId: 38, originalValue: original),
+                            attributeID: 38,
+                            showsInfluences: true
                         )
-                        .attributeInfluences([38])
                     }
                     if let mass = itemDetails.mass {
                         let original = Double(mass)
@@ -307,9 +309,10 @@ struct ItemBasicInfoView: View {
                             icon: "hull",
                             title: NSLocalizedString("Item_Mass", comment: ""),
                             value: "\(FormatUtil.format(final)) Kg",
-                            valueColor: getAttributeColor(attributeId: 4, originalValue: original)
+                            valueColor: getAttributeColor(attributeId: 4, originalValue: original),
+                            attributeID: 4,
+                            showsInfluences: true
                         )
-                        .attributeInfluences([4])
                     }
                 }
                 .listRowInsets(rowInsets)
@@ -378,31 +381,11 @@ struct ItemBasicInfoView: View {
             .contextMenu { itemNameContextMenu(includeSaveImage: true) }
             .padding(.horizontal, standardPadding * 2)
             .padding(.vertical, standardPadding)
-            .background(masteryBackdrop(for: masteryState))
+            .background(Color.black.opacity(0.72))
             .foregroundColor(.white)
         }
         // 图片四角圆角与文字遮罩共用同一裁剪，文字块无需自身圆角
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-    }
-
-    /// 渲染图文字遮罩背景：底层恒定半透明黑，右侧叠加专精色透明度淡入
-    /// 叠加式可避免黑↔彩色的 RGB 插值（中间段发灰），色相全程纯正
-    /// 自身无需圆角，由外层 clipShape 跟随图片圆角裁剪
-    private func masteryBackdrop(for state: MasteryLevelState?) -> some View {
-        ZStack {
-            Color.black.opacity(0.5)
-
-            if let masteryColor = masteryBackdropColor(for: state) {
-                LinearGradient(
-                    stops: [
-                        .init(color: masteryColor.opacity(0), location: 0.4),
-                        .init(color: masteryColor.opacity(0.9), location: 1.0),
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            }
-        }
     }
 
     private func originalLayoutView() -> some View {
@@ -425,13 +408,18 @@ struct ItemBasicInfoView: View {
     }
 
     private func itemTitleLabel(lineLimit: Int?) -> some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(itemTitleDisplayName)
                 .font(.title)
                 .lineLimit(lineLimit)
                 .multilineTextAlignment(.leading)
                 .contentTransition(.interpolate)
-            Spacer(minLength: 0)
+
+            if itemNameCanToggleEnglish {
+                Image(systemName: "translate")
+                    .font(.subheadline)
+                    .accessibilityHidden(true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
@@ -501,18 +489,23 @@ struct ItemBasicInfoView: View {
         icon: String,
         title: String,
         value: String,
-        valueColor: Color = .secondary
+        valueColor: Color = .secondary,
+        attributeID: Int? = nil,
+        showsInfluences: Bool = false
     ) -> some View {
-        HStack {
-            Image(icon)
-                .resizable()
-                .frame(width: 32, height: 32)
-                .cornerRadius(6)
-            Text(title)
-            Spacer()
-            Text(value)
-                .foregroundColor(valueColor)
-                .frame(alignment: .trailing)
+        AttributeTooltipRow(title: title, attributeID: attributeID) { attributeTitle in
+            HStack {
+                Image(icon)
+                    .resizable()
+                    .frame(width: 32, height: 32)
+                    .cornerRadius(6)
+                attributeTitle
+                Spacer()
+                Text(value)
+                    .foregroundColor(valueColor)
+                    .frame(alignment: .trailing)
+            }
+            .attributeInfluences(showsInfluences ? [attributeID].compactMap { $0 } : [])
         }
     }
 

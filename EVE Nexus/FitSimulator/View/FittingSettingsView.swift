@@ -48,6 +48,11 @@ struct FittingSettingsView: View {
     @State private var addToSkillPlanName = ""
     @State private var showAddToSkillPlanSuccessAlert = false
     @State private var savedSkillPlanName = ""
+    @State private var existingSkillPlanNames: [(id: UUID?, name: String)] = []
+
+    private var skillPlanNameError: SkillPlanNaming.ValidationError? {
+        SkillPlanNaming.validationError(for: addToSkillPlanName, existingPlans: existingSkillPlanNames)
+    }
 
     // 环境效果待提交状态（在关闭设置页时统一提交）
     @State private var pendingEnvironmentTypeId: Int?
@@ -228,6 +233,7 @@ struct FittingSettingsView: View {
             if !allRequired.isEmpty {
                 Button {
                     addToSkillPlanName = ""
+                    existingSkillPlanNames = SkillPlanFileManager.shared.loadPlanNames()
                     showAddToSkillPlanAlert = true
                 } label: {
                     HStack {
@@ -244,13 +250,18 @@ struct FittingSettingsView: View {
             Button(NSLocalizedString("Misc_Save", comment: "保存")) {
                 saveMissingSkillsToPlan(name: addToSkillPlanName.trimmingCharacters(in: .whitespaces))
             }
+            .disabled(skillPlanNameError != nil)
         } message: {
-            Text(
-                String.localizedStringWithFormat(
-                    NSLocalizedString("Fitting_All_Skills_Count", comment: "装配所需技能共 %d 项"),
-                    viewModel.getAllRequiredSkillsForFitting().count
+            if skillPlanNameError == .duplicateName {
+                Text(skillPlanNameError?.localizedDescription ?? "")
+            } else {
+                Text(
+                    String.localizedStringWithFormat(
+                        NSLocalizedString("Fitting_All_Skills_Count", comment: "装配所需技能共 %d 项"),
+                        viewModel.getAllRequiredSkillsForFitting().count
+                    )
                 )
-            )
+            }
         }
         .alert(NSLocalizedString("Fitting_Add_To_Skill_Plan_Success", comment: ""), isPresented: $showAddToSkillPlanSuccessAlert) {
             Button(NSLocalizedString("Misc_Done", comment: "")) {}
@@ -270,15 +281,22 @@ struct FittingSettingsView: View {
         let charId = skillsMode == "current_char" ? currentCharacterId : (selectedCharacterId ?? 0)
 
         Task {
-            if let savedName = await AddFittingSkillsToPlanSheet.saveMissingSkillsToPlan(
-                missingSkills: allRequiredSkills,
-                characterId: charId,
-                planName: name,
-                databaseManager: databaseManager
-            ) {
+            do {
+                if let savedName = try await AddFittingSkillsToPlanSheet.saveMissingSkillsToPlan(
+                    missingSkills: allRequiredSkills,
+                    characterId: charId,
+                    planName: name,
+                    databaseManager: databaseManager
+                ) {
+                    await MainActor.run {
+                        savedSkillPlanName = savedName
+                        showAddToSkillPlanSuccessAlert = true
+                    }
+                }
+            } catch {
                 await MainActor.run {
-                    savedSkillPlanName = savedName
-                    showAddToSkillPlanSuccessAlert = true
+                    alertMessage = error.localizedDescription
+                    showingErrorAlert = true
                 }
             }
         }

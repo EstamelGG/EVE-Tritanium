@@ -224,7 +224,8 @@ struct DynamicItemDetailView: View {
             multiplier: .constant(attr.mutationMultiplier),
             referenceAttributes: originalAttributeValues,
             currentReferenceAttributes: currentAttributeValues,
-            isInteractive: false
+            isInteractive: false,
+            showsAttributeTooltip: true
         )
     }
 

@@ -531,7 +531,7 @@ struct CorpWalletJournalView: View {
                     .font(.system(size: 14))
                 Spacer()
                 Text(
-                    "\(viewModel.totalIncome > 0 ? "+" : "")\(FormatUtil.format(viewModel.totalIncome, false)) ISK"
+                    "\(viewModel.totalIncome > 0 ? "+" : "")\(FormatUtil.formatISKAmount(viewModel.totalIncome, maxFractionDigits: 0)) ISK"
                 )
                 .font(.system(.caption, design: .monospaced))
                 .foregroundColor(viewModel.totalIncome > 0 ? .green : .secondary)
@@ -543,7 +543,7 @@ struct CorpWalletJournalView: View {
                     .font(.system(size: 14))
                 Spacer()
                 Text(
-                    "\(viewModel.totalExpense > 0 ? "-" : "")\(FormatUtil.format(viewModel.totalExpense, false)) ISK"
+                    "\(viewModel.totalExpense > 0 ? "-" : "")\(FormatUtil.formatISKAmount(viewModel.totalExpense, maxFractionDigits: 0)) ISK"
                 )
                 .font(.system(.caption, design: .monospaced))
                 .foregroundColor(viewModel.totalExpense > 0 ? .red : .secondary)
@@ -555,7 +555,7 @@ struct CorpWalletJournalView: View {
                     .font(.system(size: 14))
                 Spacer()
                 let netIncome = viewModel.totalIncome - viewModel.totalExpense
-                Text("\(FormatUtil.format(netIncome, false)) ISK")
+                Text("\(FormatUtil.formatISKAmount(netIncome, maxFractionDigits: 0)) ISK")
                     .font(.system(.caption, design: .monospaced))
                     .foregroundColor(netIncome > 0 ? .green : netIncome < 0 ? .red : .secondary)
             }
@@ -736,7 +736,7 @@ struct CorpWalletJournalEntryRow: View {
                     .font(.body)
                     .lineLimit(1)
                 Spacer()
-                Text("\(FormatUtil.format(entry.amount)) ISK")
+                Text("\(FormatUtil.formatISKAmount(entry.amount)) ISK")
                     .foregroundColor(entry.amount >= 0 ? .green : .red)
                     .font(.system(.caption, design: .monospaced))
             }
@@ -763,7 +763,7 @@ struct CorpWalletJournalEntryRow: View {
             Text(
                 String(
                     format: NSLocalizedString("Balance", comment: ""),
-                    FormatUtil.format(entry.balance)
+                    FormatUtil.formatISKAmount(entry.balance)
                 )
             )
             .font(.caption)

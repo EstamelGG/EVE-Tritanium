@@ -18,6 +18,13 @@ struct MarketQuickbarDetailView: View {
     @State private var loadedOrdersCount: Int = 0 // 已加载订单的物品数量（用于显示进度）
     @State private var itemVolumes: [Int: Double] = [:] // 存储物品体积信息
     @State private var jitaPrices: [Int: (buy: Double, sell: Double)] = [:] // Jita 市场价格
+    @State private var itemHistories: [Int: ItemHistory] = [:]
+    @State private var loadedHistoryRegion: Int?
+    @State private var visibleHistoryTypeIDs: Set<Int> = []
+    @State private var historyLoadTasks: [Int: Task<Void, Never>] = [:]
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @AppStorage(WidgetMarketTrendColors.key, store: WidgetMarketWatchlist.defaults)
+    private var trendColors = WidgetMarketTrendColors.defaultStyle
     @State var isShowingClipboardAlert = false // 新增：控制剪贴板导入提示
     @State var clipboardResult = "" // 新增：存储剪贴板导入结果
     @State var isShowingExportAlert = false // 新增：控制剪贴板导出提示
@@ -38,6 +45,33 @@ struct MarketQuickbarDetailView: View {
         var localizedName: String {
             NSLocalizedString(rawValue, comment: "")
         }
+    }
+
+    private enum ItemHistory: Sendable {
+        case ready([WidgetMarketPoint])
+        case failed
+    }
+
+    private var historyRegionID: Int? {
+        let locationID = quickbar.locationID
+        if let structureID = StructureMarketManager.getStructureId(from: locationID) {
+            return MarketStructureManager.shared.structures
+                .first { $0.structureId == Int(structureID) }?.regionId
+        }
+        return MarketLocationType.from(id: locationID)?.regionID ?? locationID
+    }
+
+    private var historyRegionName: String {
+        let globalMarket = String(localized: "Main_Market_Watch_List_History_Global_Market")
+        if quickbar.items.allSatisfy({ $0.typeID == MarketManager.plexTypeID }) {
+            return globalMarket
+        }
+        let region = historyRegionID.flatMap { SDEMemoryStore.regionName(for: $0) }
+            ?? String(localized: "Assets_Unknown_Region")
+        if quickbar.items.contains(where: { $0.typeID == MarketManager.plexTypeID }) {
+            return "\(region) · \(globalMarket)"
+        }
+        return region
     }
 
     /// 当前选中的地点类型
@@ -175,11 +209,22 @@ struct MarketQuickbarDetailView: View {
                 Section {
                     ForEach(sortedItems, id: \.id) { item in
                         itemRow(item)
+                            .onScrollVisibilityChange(threshold: 0.1) { isVisible in
+                                if isVisible {
+                                    historyDidAppear(for: item.id)
+                                } else {
+                                    historyDidDisappear(for: item.id)
+                                }
+                            }
                     }
                     .onDelete { indexSet in
                         let itemsToDelete = indexSet.map { sortedItems[$0].id }
                         quickbar.items.removeAll { itemsToDelete.contains($0.typeID) }
                         items.removeAll { itemsToDelete.contains($0.id) }
+                        for itemID in itemsToDelete {
+                            historyDidDisappear(for: itemID)
+                            itemHistories.removeValue(forKey: itemID)
+                        }
                         // 移除对应的体积信息
                         for itemID in itemsToDelete {
                             itemVolumes.removeValue(forKey: itemID)
@@ -215,12 +260,34 @@ struct MarketQuickbarDetailView: View {
                         .foregroundColor(.accentColor)
                         .font(.system(size: 14))
                     }
+                } footer: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Main_Market_Watch_List_History_Period")
+                        Text("Main_Market_Watch_List_History_Region \(historyRegionName)")
+                    }
                 }
             }
         }
         .refreshable {
-            // 强制刷新市场订单
-            await loadAllMarketOrders(forceRefresh: true)
+            async let orders: () = loadAllMarketOrders(forceRefresh: true)
+            async let history: () = refreshVisibleHistories()
+            _ = await (orders, history)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AppDataUpdate.notification)) { notification in
+            guard hasLoadedOrders, !isLoadingOrders,
+                  let update = notification.object as? AppDataUpdate,
+                  case let .marketOrders(typeID, region, orders, _) = update,
+                  items.contains(where: { $0.id == typeID }) else { return }
+
+            let isGlobal = typeID == MarketManager.plexTypeID
+            let selectedRegion = isGlobal ? MarketManager.globalPlexRegionID : currentRegionID
+            if !StructureMarketManager.isStructureId(currentRegionID), region == selectedRegion {
+                marketOrders[typeID] = locationType?.systemID.map { id in orders.filter { $0.systemId == id } } ?? orders
+            }
+            let comparisonRegion = isGlobal ? MarketManager.globalPlexRegionID : MarketManager.theForgeRegionID
+            if !isSelectedMarketJita, region == comparisonRegion {
+                jitaPrices[typeID] = Self.bestPrices(orders)
+            }
         }
         .navigationTitle(quickbar.name)
         .toolbar {
@@ -364,6 +431,101 @@ struct MarketQuickbarDetailView: View {
                 await loadAllMarketOrders()
             }
         }
+        .onChange(of: historyRegionID) { _, _ in
+            resetHistoryStateAndReloadVisibleItems()
+        }
+    }
+
+    private func historyDidAppear(for typeID: Int) {
+        let regionID = historyRegionID
+        prepareHistoryRegion(regionID)
+        visibleHistoryTypeIDs.insert(typeID)
+        scheduleHistoryLoad(for: typeID, regionID: regionID)
+    }
+
+    private func historyDidDisappear(for typeID: Int) {
+        visibleHistoryTypeIDs.remove(typeID)
+        historyLoadTasks[typeID]?.cancel()
+        historyLoadTasks.removeValue(forKey: typeID)
+    }
+
+    private func scheduleHistoryLoad(for typeID: Int, regionID: Int?) {
+        historyLoadTasks[typeID]?.cancel()
+        guard regionID != nil else {
+            itemHistories[typeID] = .ready([])
+            return
+        }
+
+        historyLoadTasks[typeID] = Task {
+            do {
+                try await Task.sleep(for: .milliseconds(500))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled,
+                  visibleHistoryTypeIDs.contains(typeID),
+                  historyRegionID == regionID
+            else { return }
+            await loadMarketHistory(for: typeID, regionID: regionID)
+        }
+    }
+
+    private func resetHistoryStateAndReloadVisibleItems() {
+        cancelHistoryLoads()
+        itemHistories.removeAll()
+        loadedHistoryRegion = historyRegionID
+        for typeID in visibleHistoryTypeIDs {
+            scheduleHistoryLoad(for: typeID, regionID: historyRegionID)
+        }
+    }
+
+    private func prepareHistoryRegion(_ regionID: Int?) {
+        guard loadedHistoryRegion != regionID else { return }
+        cancelHistoryLoads()
+        itemHistories.removeAll()
+        loadedHistoryRegion = regionID
+    }
+
+    private func cancelHistoryLoads() {
+        historyLoadTasks.values.forEach { $0.cancel() }
+        historyLoadTasks.removeAll()
+    }
+
+    private func refreshVisibleHistories() async {
+        let regionID = historyRegionID
+        guard regionID != nil else { return }
+        await withTaskGroup(of: Void.self) { group in
+            for typeID in visibleHistoryTypeIDs {
+                group.addTask {
+                    await loadMarketHistory(for: typeID, regionID: regionID, forceRefresh: true)
+                }
+            }
+        }
+    }
+
+    private func loadMarketHistory(
+        for typeID: Int, regionID: Int?, forceRefresh: Bool = false
+    ) async {
+        guard let regionID, historyRegionID == regionID, !Task.isCancelled else { return }
+        let api = await MarketHistoryAPI.shared
+        let requestedRegionID = typeID == MarketManager.plexTypeID
+            ? MarketManager.globalPlexRegionID
+            : regionID
+        do {
+            let daily = try await api.fetchMarketHistory(
+                typeID: typeID,
+                regionID: requestedRegionID,
+                forceRefresh: forceRefresh,
+                interpolate: false
+            )
+            guard !Task.isCancelled, historyRegionID == regionID else { return }
+            itemHistories[typeID] = .ready(
+                WidgetMarketPoint.recent(history: daily, through: Date())
+            )
+        } catch {
+            guard !Task.isCancelled, historyRegionID == regionID else { return }
+            itemHistories[typeID] = itemHistories[typeID] ?? .failed
+        }
     }
 
     /// 加载所有物品的市场订单（使用通用工具类，支持渐进式显示）
@@ -395,15 +557,7 @@ struct MarketQuickbarDetailView: View {
                 regionID: MarketManager.theForgeRegionID,
                 forceRefresh: forceRefresh
             )
-            var prices: [Int: (buy: Double, sell: Double)] = [:]
-            for (typeId, orders) in jitaOrders {
-                // 只统计仍有剩余量的订单（volumeRemain == 0 的挂单无法成交）
-                let buyPrices = orders.filter { $0.isBuyOrder && $0.volumeRemain > 0 }.map(\.price)
-                let sellPrices = orders.filter { !$0.isBuyOrder && $0.volumeRemain > 0 }.map(\.price)
-                // 无买单或无卖单时对应方向记 0，与旧 GitHub 数据缺失时的行为一致
-                prices[typeId] = (buyPrices.max() ?? 0, sellPrices.min() ?? 0)
-            }
-            return prices
+            return jitaOrders.mapValues(Self.bestPrices)
         }
 
         // 使用通用工具类加载订单（自动判断建筑/星域）
@@ -438,6 +592,13 @@ struct MarketQuickbarDetailView: View {
 
         // 更新 Jita 价格（失败或无需加载时为空）
         jitaPrices = await jitaPriceTask.value
+    }
+
+    private static func bestPrices(_ orders: [MarketOrder]) -> (buy: Double, sell: Double) {
+        let available = orders.lazy.filter { $0.volumeRemain > 0 }
+        let buy = available.filter(\.isBuyOrder).map(\.price).max() ?? 0
+        let sell = available.filter { !$0.isBuyOrder }.map(\.price).min() ?? 0
+        return (buy, sell)
     }
 
     /// 获取列表的总价和库存状态
@@ -491,95 +652,10 @@ struct MarketQuickbarDetailView: View {
         }
     }
 
-    /// 计算选定市场相对于 Jita 的价格差异百分比
-    /// - Returns: 正数表示选定市场更贵，负数表示更便宜；任一价格缺失返回 nil
-    private func priceDiffPercentage(selectedPrice: Double, jitaPrice: Double) -> Double? {
-        guard jitaPrice > 0 else { return nil }
-        return (selectedPrice / jitaPrice - 1.0) * 100
-    }
-
-    /// Jita 价格对比行：展示 Jita 价格和差异百分比（正数红色=选定市场更贵，负数绿色=更便宜）
-    @ViewBuilder
-    private func jitaComparisonLine(for item: DatabaseListItem, selectedPrice: Double) -> some View {
-        if !isSelectedMarketJita,
-           let jitaPrice = jitaPrice(for: item.id),
-           let diff = priceDiffPercentage(selectedPrice: selectedPrice, jitaPrice: jitaPrice)
-        {
-            HStack(spacing: 4) {
-                Text(
-                    NSLocalizedString("Main_Market_Jita_Price_Label", comment: "")
-                        + FormatUtil.format(jitaPrice) + " ISK"
-                )
-                .font(.system(.caption, design: .monospaced))
-                .foregroundColor(.secondary)
-                Text(String(format: "%+.1f%%", diff))
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(diff > 0 ? .red : .green)
-            }
-        }
-    }
-
     @ViewBuilder
     private func itemRow(_ item: DatabaseListItem) -> some View {
         if isEditingQuantity {
-            HStack(spacing: 12) {
-                Image(uiImage: IconManager.shared.loadUIImage(for: item.iconFileName))
-                    .resizable()
-                    .frame(width: 40, height: 40)
-                    .cornerRadius(6)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    // 细粒度加载状态：已加载的显示价格，未加载的显示加载指示器
-                    if isLoadingOrders && marketOrders[item.id] == nil {
-                        HStack(spacing: 4) {
-                            ProgressView()
-                                .scaleEffect(0.6)
-                            Text(NSLocalizedString("Main_Database_Loading", comment: ""))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    } else {
-                        let priceInfo = getListPrice(for: item)
-                        if let price = priceInfo.price {
-                            Text(
-                                NSLocalizedString("Main_Market_Avg_Price", comment: "")
-                                    + FormatUtil.format(price, maxFractionDigits: 1)
-                                    + " ISK"
-                            )
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundColor(.secondary)
-                            HStack(spacing: 4) {
-                                Text(
-                                    NSLocalizedString("Main_Market_Total_Price", comment: "")
-                                        + FormatUtil.format(
-                                            price * Double(itemQuantities[item.id] ?? 1)
-                                        )
-                                        + " ISK"
-                                )
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(.secondary)
-                                if priceInfo.insufficientStock {
-                                    Text(
-                                        NSLocalizedString("Main_Market_Insufficient_Stock", comment: "")
-                                    )
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                                }
-                            }
-                            jitaComparisonLine(for: item, selectedPrice: price)
-                        } else {
-                            Text(NSLocalizedString("Main_Market_No_Orders", comment: ""))
-                                .font(.caption)
-                                .foregroundColor(.red)
-                        }
-                    }
-                }
-
-                Spacer()
-
+            itemRowContent(item) {
                 TextField(
                     "",
                     text: Binding(
@@ -608,6 +684,7 @@ struct MarketQuickbarDetailView: View {
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.leading)
                 .frame(width: 80)
+                .accessibilityLabel(Text("Main_Market_Watch_List_Quantity_Field_Placeholder"))
             }
         } else {
             NavigationLink {
@@ -617,68 +694,10 @@ struct MarketQuickbarDetailView: View {
                     selectedLocation: selectedLocation // 传递当前选中的市场位置ID
                 )
             } label: {
-                HStack(spacing: 12) {
-                    Image(uiImage: IconManager.shared.loadUIImage(for: item.iconFileName))
-                        .resizable()
-                        .frame(width: 40, height: 40)
-                        .cornerRadius(6)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.name)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        // 细粒度加载状态：已加载的显示价格，未加载的显示加载指示器
-                        if isLoadingOrders && marketOrders[item.id] == nil {
-                            HStack(spacing: 4) {
-                                ProgressView()
-                                    .scaleEffect(0.6)
-                                Text(NSLocalizedString("Main_Database_Loading", comment: ""))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        } else {
-                            let priceInfo = getListPrice(for: item)
-                            if let price = priceInfo.price {
-                                Text(
-                                    NSLocalizedString("Main_Market_Avg_Price", comment: "")
-                                        + FormatUtil.format(price, maxFractionDigits: 1)
-                                        + " ISK"
-                                )
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(.secondary)
-                                Text(
-                                    NSLocalizedString("Main_Market_Total_Price", comment: "")
-                                        + FormatUtil.format(
-                                            price
-                                                * Double(
-                                                    quickbar.items.first(where: { $0.typeID == item.id })?.quantity ?? 1
-                                                )
-                                        )
-                                        + " ISK"
-                                )
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(.secondary)
-                                if priceInfo.insufficientStock {
-                                    Text(
-                                        NSLocalizedString("Main_Market_Insufficient_Stock", comment: "")
-                                    )
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                                }
-                                jitaComparisonLine(for: item, selectedPrice: price)
-                            } else {
-                                Text(NSLocalizedString("Main_Market_No_Orders", comment: ""))
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                            }
-                        }
-                    }
-
-                    Spacer()
-
-                    Text(getItemQuantity(for: item))
-                        .fontDesign(.monospaced)
-                        .foregroundColor(.secondary)
+                itemRowContent(item) {
+                    itemHistoryChart(for: item.id)
+                        .frame(minWidth: 64, minHeight: 32)
+                        .allowsHitTesting(false)
                 }
             }
             .contextMenu {
@@ -695,6 +714,123 @@ struct MarketQuickbarDetailView: View {
                     )
                 }
             }
+        }
+    }
+
+    private func itemRowContent<Trailing: View>(
+        _ item: DatabaseListItem, @ViewBuilder trailing: () -> Trailing
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(uiImage: IconManager.shared.loadUIImage(for: item.iconFileName))
+                .resizable()
+                .frame(width: 40, height: 40)
+                .clipShape(.rect(cornerRadius: 6))
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                itemTitleLine(for: item)
+                itemPrices(for: item)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+
+            trailing()
+        }
+    }
+
+    private func itemTitleLine(for item: DatabaseListItem) -> some View {
+        let quantityText = Text("(×\(getItemQuantity(for: item)))")
+            .font(.subheadline.monospacedDigit())
+            .foregroundStyle(.secondary)
+        return Text("\(item.name) \(quantityText)")
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private func itemPrices(for item: DatabaseListItem) -> some View {
+        if isLoadingOrders && marketOrders[item.id] == nil {
+            HStack(spacing: 4) {
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Main_Database_Loading")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            let priceInfo = getListPrice(for: item)
+            if let price = priceInfo.price {
+                let quantity = quickbar.items.first(where: { $0.typeID == item.id })?.quantity ?? 1
+                Text(
+                    NSLocalizedString("Main_Market_Avg_Price", comment: "")
+                        + FormatUtil.formatISKAmount(price, maxFractionDigits: 1) + " ISK"
+                )
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                Text(
+                    NSLocalizedString("Main_Market_Total_Price", comment: "")
+                        + FormatUtil.formatISKAmount(price * Double(quantity)) + " ISK"
+                )
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                if priceInfo.insufficientStock {
+                    Text("Main_Market_Insufficient_Stock")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                if !isSelectedMarketJita, let comparisonPrice = jitaPrice(for: item.id) {
+                    Text(
+                        NSLocalizedString("Main_Market_Jita_Price_Label", comment: "")
+                            + FormatUtil.formatISKAmount(comparisonPrice) + " ISK"
+                    )
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Main_Market_No_Orders")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func itemHistoryChart(for typeID: Int) -> some View {
+        let history = loadedHistoryRegion == historyRegionID ? itemHistories[typeID] : nil
+        switch history {
+        case let .ready(points):
+            if let change = MarketHistorySparkline.change(in: points) {
+                let trendColor = colorSchemeContrast == .increased ? Color.primary : trendColors.color(for: change)
+                let format = FloatingPointFormatStyle<Double>.Percent.percent
+                    .sign(strategy: .always(includingZero: false))
+                    .precision(.fractionLength(2))
+                VStack(alignment: .trailing, spacing: 2) {
+                    MarketHistorySparkline(points: points, color: trendColor)
+                        .frame(width: 64, height: 32)
+                        .accessibilityHidden(true)
+                    Text(change, format: format)
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(trendColor)
+                        .fixedSize()
+                        .accessibilityLabel(
+                            Text("Widget_Three_Month_Change", tableName: "Widgets")
+                                + Text(" ") + Text(change, format: format)
+                        )
+                }
+            } else {
+                Image(systemName: "minus")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(Text("Widget_No_History", tableName: "Widgets"))
+            }
+        case .failed:
+            Image(systemName: "exclamationmark.circle")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(Text("Main_Market_History_Load_Failed"))
+        case nil:
+            ProgressView()
+                .controlSize(.mini)
+                .accessibilityLabel(Text("Main_Database_Loading"))
         }
     }
 

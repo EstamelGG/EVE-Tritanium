@@ -577,7 +577,7 @@ struct CorpWalletTransactionEntryRow: View {
                                 )
                         )
                         .font(.body)
-                        Text("\(FormatUtil.format(entry.unit_price * Double(entry.quantity))) ISK")
+                        Text("\(FormatUtil.formatISKAmount(entry.unit_price * Double(entry.quantity))) ISK")
                             .foregroundColor(entry.is_buy ? .red : .green)
                             .font(.system(.caption, design: .monospaced))
                     }
@@ -593,7 +593,7 @@ struct CorpWalletTransactionEntryRow: View {
                     HStack {
                         // 交易类型和数量
                         Text(
-                            "\(entry.is_buy ? NSLocalizedString("Main_Market_Transactions_Buy", comment: "") : NSLocalizedString("Main_Market_Transactions_Sell", comment: "")) - \(entry.quantity) × \(FormatUtil.format(entry.unit_price)) ISK"
+                            "\(entry.is_buy ? NSLocalizedString("Main_Market_Transactions_Buy", comment: "") : NSLocalizedString("Main_Market_Transactions_Sell", comment: "")) - \(entry.quantity) × \(FormatUtil.formatISKAmount(entry.unit_price)) ISK"
                         )
                         .font(.caption2)
                         .foregroundColor(.gray)
@@ -716,7 +716,7 @@ struct CorpMergedTransactionEntryRow: View {
                                 )
                         )
                         .font(.body)
-                        Text("\(FormatUtil.format(entry.totalAmount)) ISK")
+                        Text("\(FormatUtil.formatISKAmount(entry.totalAmount)) ISK")
                             .foregroundColor(entry.is_buy ? .red : .green)
                             .font(.system(.caption, design: .monospaced))
                     }
@@ -732,7 +732,7 @@ struct CorpMergedTransactionEntryRow: View {
                     HStack {
                         // 交易类型和数量
                         Text(
-                            "\(entry.is_buy ? NSLocalizedString("Main_Market_Transactions_Buy", comment: "") : NSLocalizedString("Main_Market_Transactions_Sell", comment: "")) - \(entry.totalQuantity) × \(FormatUtil.format(entry.averagePrice)) ISK"
+                            "\(entry.is_buy ? NSLocalizedString("Main_Market_Transactions_Buy", comment: "") : NSLocalizedString("Main_Market_Transactions_Sell", comment: "")) - \(entry.totalQuantity) × \(FormatUtil.formatISKAmount(entry.averagePrice)) ISK"
                         )
                         .font(.caption2)
                         .foregroundColor(.gray)

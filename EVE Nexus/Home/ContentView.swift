@@ -233,14 +233,7 @@ struct ContentView: View {
                 mainViewModel: viewModel,
                 selectedItem: $selectedItem
             ) { character, portrait in
-                viewModel.resetCharacterInfo()
-                viewModel.selectedCharacter = character
-                viewModel.characterPortrait = portrait
-                currentCharacterId = character.CharacterID
-                Task {
-                    SharedSkillsManager.shared.clearSkillData()
-                    await viewModel.refreshAllBasicData()
-                }
+                activateCharacter(character, portrait: portrait)
             }
         } else if let featureID = selectedItem.flatMap(FeatureID.init(rawValue:)) {
             featureID.destination(
@@ -251,6 +244,17 @@ struct ContentView: View {
         } else {
             Text(NSLocalizedString("Select_Item", comment: ""))
                 .foregroundColor(.gray)
+        }
+    }
+
+    private func activateCharacter(_ character: EVECharacterInfo, portrait: UIImage?) {
+        viewModel.resetCharacterInfo()
+        viewModel.selectedCharacter = character
+        viewModel.characterPortrait = portrait
+        currentCharacterId = character.CharacterID
+        Task {
+            SharedSkillsManager.shared.clearSkillData()
+            await viewModel.refreshAllBasicData()
         }
     }
 

@@ -480,7 +480,7 @@ struct CorporationIssuedContractsView: View {
                                             if !minPrice.isEmpty,
                                                let value = Double(minPrice), value > 0
                                             {
-                                                Text("(\(FormatUtil.formatForUI(value)))")
+                                                Text("(\(FormatUtil.formatISKAmount(value, maxFractionDigits: 1)))")
                                                     .font(.caption)
                                                     .foregroundColor(.blue)
                                             }
@@ -506,7 +506,7 @@ struct CorporationIssuedContractsView: View {
                                             if !maxPrice.isEmpty,
                                                let value = Double(maxPrice), value > 0
                                             {
-                                                Text("(\(FormatUtil.formatForUI(value)))")
+                                                Text("(\(FormatUtil.formatISKAmount(value, maxFractionDigits: 1)))")
                                                     .font(.caption)
                                                     .foregroundColor(.blue)
                                             }
@@ -942,21 +942,21 @@ struct CorporationIssuedContractRow: View {
             switch contract.type {
             case "item_exchange":
                 // 物品交换合同：公司发起，price 是收入（绿色正号）
-                Text("+\(FormatUtil.format(contract.price)) ISK")
+                Text("+\(FormatUtil.formatISKAmount(contract.price)) ISK")
                     .foregroundColor(.green)
                     .font(.system(.caption, design: .monospaced))
             case "courier":
                 // 快递合同：公司发起，reward 是支出（红色负号）
-                Text("-\(FormatUtil.format(contract.reward)) ISK")
+                Text("-\(FormatUtil.formatISKAmount(contract.reward)) ISK")
                     .foregroundColor(.red)
                     .font(.system(.caption, design: .monospaced))
             case "auction":
                 // 拍卖合同：公司发起，price 是收入（绿色正号）
-                Text("+\(FormatUtil.format(contract.price)) ISK")
+                Text("+\(FormatUtil.formatISKAmount(contract.price)) ISK")
                     .foregroundColor(.green)
                     .font(.system(.caption, design: .monospaced))
             default:
-                Text("\(FormatUtil.format(0)) ISK")
+                Text("\(FormatUtil.formatISKAmount(0)) ISK")
                     .foregroundColor(.secondary)
                     .font(.system(.caption, design: .monospaced))
             }
@@ -971,16 +971,16 @@ struct CorporationIssuedContractRow: View {
         switch contractType {
         case "item_exchange":
             // 物品交换合同：公司发起，price 是收入（绿色正号）
-            Text("+\(FormatUtil.format(value)) ISK")
+            Text("+\(FormatUtil.formatISKAmount(value)) ISK")
                 .foregroundColor(.green)
                 .font(.system(.caption, design: .monospaced))
         case "auction":
             // 拍卖合同：公司发起，price 是收入（绿色正号）
-            Text("+\(FormatUtil.format(value)) ISK")
+            Text("+\(FormatUtil.formatISKAmount(value)) ISK")
                 .foregroundColor(.green)
                 .font(.system(.caption, design: .monospaced))
         default:
-            Text("\(FormatUtil.format(value)) ISK")
+            Text("\(FormatUtil.formatISKAmount(value)) ISK")
                 .foregroundColor(.secondary)
                 .font(.system(.caption, design: .monospaced))
         }
@@ -994,12 +994,12 @@ struct CorporationIssuedContractRow: View {
         switch contractType {
         case "courier":
             // 快递合同：公司发起，reward 是支出（红色负号）
-            Text("-\(FormatUtil.format(value)) ISK")
+            Text("-\(FormatUtil.formatISKAmount(value)) ISK")
                 .foregroundColor(.red)
                 .font(.system(.caption, design: .monospaced))
         default:
             // 其他合同：reward 显示为绿色正号
-            Text("+\(FormatUtil.format(value)) ISK")
+            Text("+\(FormatUtil.formatISKAmount(value)) ISK")
                 .foregroundColor(.green)
                 .font(.system(.caption, design: .monospaced))
         }

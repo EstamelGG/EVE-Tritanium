@@ -526,7 +526,7 @@ struct OreRefineryCalculatorView: View {
                     if let price = priceInfo.price {
                         Text(
                             NSLocalizedString("Main_Market_Avg_Price", comment: "")
-                                + FormatUtil.format(price)
+                                + FormatUtil.formatISKAmount(price)
                                 + " ISK"
                         )
                         .font(.caption)
@@ -534,7 +534,7 @@ struct OreRefineryCalculatorView: View {
                         HStack(spacing: 4) {
                             Text(
                                 NSLocalizedString("Main_Market_Total_Price", comment: "")
-                                    + FormatUtil.format(
+                                    + FormatUtil.formatISKAmount(
                                         price * Double(itemQuantities[item.id] ?? 1)
                                     )
                                     + " ISK"
@@ -620,14 +620,14 @@ struct OreRefineryCalculatorView: View {
                             if let price = priceInfo.price {
                                 Text(
                                     NSLocalizedString("Main_Market_Avg_Price", comment: "")
-                                        + FormatUtil.format(price)
+                                        + FormatUtil.formatISKAmount(price)
                                         + " ISK"
                                 )
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 Text(
                                     NSLocalizedString("Main_Market_Total_Price", comment: "")
-                                        + FormatUtil.format(
+                                        + FormatUtil.formatISKAmount(
                                             price
                                                 * Double(
                                                     oreItems.first(where: { $0.typeID == item.id })?.quantity ?? 1

@@ -26,6 +26,8 @@ struct MarketHistoryChartView: View, Equatable {
     }
 
     @AppStorage("selectedLanguage") private var selectedLanguage = "en"
+    @AppStorage(CurrencyUnitStyle.key, store: WidgetMarketWatchlist.defaults)
+    private var currencyUnitStyle = CurrencyUnitStyle.defaultStyle
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let priceColor = Color.blue
@@ -33,17 +35,17 @@ struct MarketHistoryChartView: View, Equatable {
     private let axisLabelSpacing: CGFloat = 2
 
     private var priceAxisLabelWidth: CGFloat {
-        axisLabelWidth(for: chartData.axisScale.priceTicks, maxFractionDigits: 3)
+        axisLabelWidth(for: chartData.axisScale.priceTicks, format: formatPriceTick)
     }
 
     private var volumeAxisLabelWidth: CGFloat {
-        axisLabelWidth(for: chartData.axisScale.volumeTicks)
+        axisLabelWidth(for: chartData.axisScale.volumeTicks) { formatAxisValue($0) }
     }
 
-    private func axisLabelWidth(for values: [Double], maxFractionDigits: Int = 1) -> CGFloat {
+    private func axisLabelWidth(for values: [Double], format: (Double) -> String) -> CGFloat {
         let font = UIFont.monospacedSystemFont(ofSize: 10, weight: .regular)
         return ceil(values.map {
-            (formatAxisValue($0, maxFractionDigits: maxFractionDigits) as NSString)
+            (format($0) as NSString)
                 .size(withAttributes: [.font: font]).width
         }.max() ?? 0)
     }
@@ -80,6 +82,10 @@ struct MarketHistoryChartView: View, Equatable {
             return .topTrailing
         }
         return .top
+    }
+
+    private func formatPriceTick(_ value: Double) -> String {
+        currencyUnitStyle.format(value, locale: Locale(identifier: selectedLanguage), maxFractionDigits: 3)
     }
 
     private func formatAxisValue(_ value: Double, maxFractionDigits: Int = 1) -> String {
@@ -183,7 +189,7 @@ struct MarketHistoryChartView: View, Equatable {
                     // Ordinary SwiftUI labels refresh even when Charts reuses unchanged axis positions.
                     ForEach(Array(chartData.axisScale.gridPositions.enumerated()), id: \.offset) { index, position in
                         if let y = proxy.position(forY: position) {
-                            Text(formatAxisValue(chartData.axisScale.priceTicks[index], maxFractionDigits: 3))
+                            Text(formatPriceTick(chartData.axisScale.priceTicks[index]))
                                 .foregroundStyle(priceColor)
                                 .frame(width: priceAxisLabelWidth, alignment: .trailing)
                                 .position(

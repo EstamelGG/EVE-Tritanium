@@ -177,17 +177,11 @@ class IconManager {
         return resultImage ?? UIImage(named: "not_found") ?? UIImage()
     }
 
-    func loadUIImage(for iconName: String) -> UIImage {
-        // 如果缓存中有，直接返回
-        let cacheKey = NSString(string: iconName)
-        if let cachedImage = imageCache.object(forKey: cacheKey) {
-            return cachedImage
-        }
-
+    func loadLocalUIImage(for iconName: String) -> UIImage? {
         // 从解压后的目录中读取图片
         guard let iconsDirectory = iconsDirectory else {
             Logger.error("Icons directory is not set")
-            return UIImage(named: "not_found") ?? UIImage()
+            return nil
         }
 
         // 尝试不同的扩展名组合
@@ -202,19 +196,23 @@ class IconManager {
             if let imageData = try? Data(contentsOf: iconURL),
                let image = UIImage(data: imageData)
             {
-                imageCache.setObject(image, forKey: cacheKey)
                 return image
             }
         }
 
         // 检查是否是类型图标（以"icon_"开头）
-        if extractTypeID(from: iconName) != nil,
-           let typeIcon = loadTypeIconFromDisk(iconName: iconName)
-        {
-            imageCache.setObject(typeIcon, forKey: cacheKey)
-            return typeIcon
-        }
+        return extractTypeID(from: iconName) == nil ? nil : loadTypeIconFromDisk(iconName: iconName)
+    }
 
+    func loadUIImage(for iconName: String) -> UIImage {
+        let cacheKey = NSString(string: iconName)
+        if let cachedImage = imageCache.object(forKey: cacheKey) {
+            return cachedImage
+        }
+        if let image = loadLocalUIImage(for: iconName) {
+            imageCache.setObject(image, forKey: cacheKey)
+            return image
+        }
         // 如果是类型图标但未找到，尝试同步加载
         if let typeID = extractTypeID(from: iconName) {
             if let downloadedImage = loadTypeIconFromAPISync(typeID: typeID) {

@@ -259,7 +259,8 @@ struct CorporationAssetsView: View {
                         multiCharacterMode: false,
                         ownerName: { _ in nil },
                         ownerPortrait: { _ in nil },
-                        typeFilterContext: .inactive
+                        typeFilterContext: .inactive,
+                        showsSectionVolume: false
                     )
                 )
             }
@@ -281,7 +282,8 @@ struct CorporationAssetsView: View {
                                     location: location,
                                     preloadedItemInfo: viewModel.itemInfoCache,
                                     stationNameCache: viewModel.stationNameCache,
-                                    solarSystemNameCache: viewModel.solarSystemNameCache
+                                    solarSystemNameCache: viewModel.solarSystemNameCache,
+                                    showsSectionVolume: false
                                 )
                             ) {
                                 LocationRowView(location: location)
@@ -316,7 +318,8 @@ struct CorporationAssetsView: View {
                                     location: location,
                                     preloadedItemInfo: viewModel.itemInfoCache,
                                     stationNameCache: viewModel.stationNameCache,
-                                    solarSystemNameCache: viewModel.solarSystemNameCache
+                                    solarSystemNameCache: viewModel.solarSystemNameCache,
+                                    showsSectionVolume: false
                                 )
                             ) {
                                 LocationRowView(location: location)

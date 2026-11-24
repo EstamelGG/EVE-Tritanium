@@ -8,11 +8,17 @@ struct CharacterIndustryView: View {
     @State private var showSlotDetailSheet = false
     @State private var showProductionListSheet = false
 
-    init(characterId: Int, databaseManager: DatabaseManager = DatabaseManager()) {
+    init(
+        characterId: Int,
+        databaseManager: DatabaseManager = DatabaseManager(),
+        focusSingleCharacter: Bool = false
+    ) {
         self.characterId = characterId
         // 构造表达式必须内联在 autoclosure 中：StateObject 只在视图身份首次建立时求值一次，
         _viewModel = StateObject(wrappedValue: CharacterIndustryViewModel(
-            characterId: characterId, databaseManager: databaseManager
+            characterId: characterId,
+            databaseManager: databaseManager,
+            focusSingleCharacter: focusSingleCharacter
         ))
     }
 
@@ -308,6 +314,11 @@ struct CharacterIndustryView: View {
         .listStyle(.insetGrouped)
         .refreshable {
             await viewModel.refreshAllIndustryData()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AppDataUpdate.notification)) { notification in
+            guard let update = notification.object as? AppDataUpdate,
+                  case let .industry(id, jobs, _) = update else { return }
+            Task { await viewModel.applySharedJobs(jobs, characterID: id) }
         }
         .navigationTitle(NSLocalizedString("Main_Industry_Jobs", comment: ""))
         .navigationBarTitleDisplayMode(.inline)

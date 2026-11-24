@@ -15,9 +15,10 @@ struct CharacterSkillsView: View {
     @Environment(\.locale) private var displayLocale
     @Environment(\.timeZone) private var displayTimeZone
     let characterId: Int
-    let databaseManager: DatabaseManager
+    @ObservedObject var databaseManager: DatabaseManager
     @State private var skillQueue: [SkillQueueItem] = []
-    @State private var skillNames: [Int: String] = [:]
+    @State private var latestQueueUpdate: CharacterSkillQueueSample?
+    @State private var queueDetailsTask: Task<Void, Never>?
     @State private var isRefreshing = false
     @State private var isLoading = true
     @State private var isLoadingInjectors = true
@@ -217,7 +218,20 @@ struct CharacterSkillsView: View {
             await task.value
         }
         .onAppear {
-            loadInitialDataIfNeeded()
+            if hasInitialized {
+                Task {
+                    if let sample = await CharacterSkillsAPI.shared.cachedSkillQueue(characterId: characterId) {
+                        acceptQueueUpdate(sample)
+                    }
+                }
+            } else {
+                loadInitialDataIfNeeded()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: CharacterSkillQueueUpdate.notification)) { notification in
+            guard let update = notification.object as? CharacterSkillQueueUpdate,
+                  update.characterID == characterId else { return }
+            acceptQueueUpdate(update.sample)
         }
         .onDisappear {
             currentLoadTask?.cancel()
@@ -434,7 +448,7 @@ struct CharacterSkillsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 2) {
                     Text(
-                        skillNames[item.skill_id]
+                        ItemInfoMap.typeName(for: item.skill_id)
                             ?? NSLocalizedString("Main_Database_Loading", comment: "")
                     )
                     .lineLimit(1)
@@ -462,7 +476,7 @@ struct CharacterSkillsView: View {
             }
         }
         .contextMenu {
-            if let skillName = skillNames[item.skill_id] {
+            if let skillName = ItemInfoMap.typeName(for: item.skill_id) {
                 Button {
                     UIPasteboard.general.string = skillName
                 } label: {
@@ -809,132 +823,110 @@ struct CharacterSkillsView: View {
                 )
             }
 
-            let skillIds = loadedQueue.map { $0.skill_id }
-            let skillAttrsMap = SkillTrainingCalculator.loadSkillAttributes(
-                skillIds: skillIds,
-                databaseManager: databaseManager
+            characterAttributes = attributes
+            implantBonuses = implants
+            detectedBoosterBonus = SkillTrainingCalculator.detectBoosterBonus(
+                currentAttributes: attributes, implantBonuses: implants
             )
-
-            var names: [Int: String] = [:]
-            for skillId in skillIds {
-                if let name = ItemInfoMap.typeName(for: skillId) {
-                    names[skillId] = name
-                }
+            if let loadedSkills {
+                cachedCharacterTotalSP = loadedSkills.total_sp + loadedSkills.unallocated_sp
             }
-
-            var rates: [Int: Int] = [:]
-            for skillId in skillIds {
-                guard let attrs = skillAttrsMap[skillId],
-                      let rate = SkillTrainingCalculator.calculateTrainingRate(
-                          primaryAttrId: attrs.primary,
-                          secondaryAttrId: attrs.secondary,
-                          attributes: attributes
-                      )
-                else { continue }
-                rates[skillId] = rate
-            }
-
-            let booster = SkillTrainingCalculator.detectBoosterBonus(
-                currentAttributes: attributes,
-                implantBonuses: implants
-            )
-
-            let totalSPFromSkills = loadedSkills.map { $0.total_sp + $0.unallocated_sp }
-
-            // 基础数据就绪后立即显示列表（不等待耗时的最优属性计算和注入器价格）
-            await MainActor.run {
-                self.characterAttributes = attributes
-                self.implantBonuses = implants
-                self.detectedBoosterBonus = booster
-                self.skillQueue = loadedQueue
-                self.skillNames = names
-                self.trainingRates = rates
-                self.isLoading = false
-                self.isDataReady = true
-            }
-
-            // 最优属性分配使用回溯算法枚举所有分配组合，可能较耗时，放到独立任务不阻塞列表
-            Task {
-                let queueInfo = loadedQueue.compactMap {
-                    item -> (skillId: Int, remainingSP: Int, startDate: Date?, finishDate: Date?)? in
-                    guard let levelEndSp = item.level_end_sp,
-                          let trainingStartSp = item.training_start_sp
-                    else {
-                        return nil
-                    }
-                    return (
-                        skillId: item.skill_id,
-                        remainingSP: levelEndSp - trainingStartSp,
-                        startDate: item.start_date,
-                        finishDate: item.finish_date
-                    )
-                }
-
-                let optimal = await SkillTrainingCalculator.calculateOptimalAttributes(
-                    skillQueue: queueInfo,
-                    databaseManager: databaseManager,
-                    currentAttributes: attributes,
-                    characterId: characterId,
-                    implantBonuses: implants,
-                    skillAttributes: skillAttrsMap,
-                    boosterBonus: booster
-                ).map { result in
-                    OptimalAttributeAllocation(
-                        charisma: result.charisma,
-                        intelligence: result.intelligence,
-                        memory: result.memory,
-                        perception: result.perception,
-                        willpower: result.willpower,
-                        totalTrainingTime: result.totalTrainingTime,
-                        currentTrainingTime: result.currentTrainingTime
-                    )
-                }
-
-                await MainActor.run {
-                    self.optimalAttributes = optimal
-                    updateAttributeComparisons()
-                }
-            }
-
-            Task {
-                await calculateInjectors(characterTotalSP: totalSPFromSkills)
-            }
+            applyQueue(latestQueueUpdate?.queue ?? loadedQueue, attributes: attributes, implants: implants)
+            isLoading = false
+            isDataReady = true
 
         } catch {
             Logger.error("加载技能数据失败: \(error)")
             await MainActor.run {
                 self.isLoading = false
                 self.isDataReady = true
+                applyLatestQueueIfNeeded()
             }
+        }
+    }
+
+    private func acceptQueueUpdate(_ sample: CharacterSkillQueueSample) {
+        if let latestQueueUpdate, latestQueueUpdate.fetchedAt >= sample.fetchedAt {
+            return
+        }
+        latestQueueUpdate = sample
+        if !isRefreshing {
+            applyLatestQueueIfNeeded()
+        }
+    }
+
+    private func applyLatestQueueIfNeeded() {
+        guard isDataReady, let queue = latestQueueUpdate?.queue, queue != skillQueue,
+              let attributes = characterAttributes, let implants = implantBonuses else { return }
+        applyQueue(queue, attributes: attributes, implants: implants)
+    }
+
+    private func applyQueue(_ queue: [SkillQueueItem], attributes: CharacterAttributes, implants: ImplantAttributes) {
+        let skillIDs = Set(queue.map(\.skill_id))
+        let skillAttributes = SkillTrainingCalculator.loadSkillAttributes(
+            skillIds: Array(skillIDs), databaseManager: databaseManager
+        )
+        skillQueue = queue
+        trainingRates = skillAttributes.compactMapValues { attrs in
+            SkillTrainingCalculator.calculateTrainingRate(
+                primaryAttrId: attrs.primary, secondaryAttrId: attrs.secondary, attributes: attributes
+            )
+        }
+
+        queueDetailsTask?.cancel()
+        let booster = detectedBoosterBonus
+        let totalSP = cachedCharacterTotalSP
+        queueDetailsTask = Task {
+            async let injectors: Void = calculateInjectors(characterTotalSP: totalSP)
+            let queueInfo = queue.compactMap {
+                item -> (skillId: Int, remainingSP: Int, startDate: Date?, finishDate: Date?)? in
+                guard let endSP = item.level_end_sp, let startSP = item.training_start_sp else { return nil }
+                return (item.skill_id, endSP - startSP, item.start_date, item.finish_date)
+            }
+            let optimal = await SkillTrainingCalculator.calculateOptimalAttributes(
+                skillQueue: queueInfo,
+                databaseManager: databaseManager,
+                currentAttributes: attributes,
+                characterId: characterId,
+                implantBonuses: implants,
+                skillAttributes: skillAttributes,
+                boosterBonus: booster
+            ).map { result in
+                OptimalAttributeAllocation(
+                    charisma: result.charisma, intelligence: result.intelligence, memory: result.memory,
+                    perception: result.perception, willpower: result.willpower,
+                    totalTrainingTime: result.totalTrainingTime, currentTrainingTime: result.currentTrainingTime
+                )
+            }
+            if !Task.isCancelled {
+                optimalAttributes = optimal
+                updateAttributeComparisons()
+            }
+            await injectors
         }
     }
 
     private func refreshSkillQueue() async {
         guard !Task.isCancelled else { return }
-
-        await MainActor.run {
-            isRefreshing = true
+        isRefreshing = true
+        defer {
+            isRefreshing = false
+            applyLatestQueueIfNeeded()
         }
-
         await loadSkillQueue(forceRefresh: true)
-
         if !Task.isCancelled {
-            await MainActor.run {
-                isRefreshing = false
-            }
-        }
-
-        // 添加延迟以防止快速连续刷新
-        if !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
+            try? await Task.sleep(for: .milliseconds(500))
         }
     }
 
-    /// 计算注入器需求并加载价格
-    /// - Parameter characterTotalSP: 已有总技能点时传入，避免再读技能快照
-    private func calculateInjectors(characterTotalSP: Int? = nil) async {
+    private func calculateInjectors(characterTotalSP: Int) async {
+        guard !Task.isCancelled else { return }
         isLoadingInjectors = true
-        defer { isLoadingInjectors = false }
+        defer {
+            if !Task.isCancelled {
+                isLoadingInjectors = false
+            }
+        }
 
         // 计算队列中所需的总技能点数
         var totalRequiredSP = 0
@@ -963,47 +955,13 @@ struct CharacterSkillsView: View {
             }
         }
 
-        let resolvedTotalSP = if let characterTotalSP {
-            characterTotalSP
-        } else {
-            await getCharacterTotalSP()
-        }
-
-        await MainActor.run {
-            cachedCharacterTotalSP = resolvedTotalSP
-        }
-
         injectorCalculation = SkillInjectorCalculator.calculate(
             requiredSkillPoints: totalRequiredSP,
-            characterTotalSP: resolvedTotalSP
+            characterTotalSP: characterTotalSP
         )
 
-        await loadInjectorPrices()
-    }
-
-    /// 获取角色总技能点数
-    private func getCharacterTotalSP() async -> Int {
-        do {
-            // 直接调用API获取技能数据
-            let skillsInfo = try await CharacterSkillsAPI.shared.fetchCharacterSkills(
-                characterId: characterId,
-                forceRefresh: false
-            )
-            let characterTotalSP = skillsInfo.total_sp + skillsInfo.unallocated_sp
-            Logger.debug(
-                "从API获取角色总技能点: \(characterTotalSP) (已分配: \(skillsInfo.total_sp), 未分配: \(skillsInfo.unallocated_sp))"
-            )
-            return characterTotalSP
-        } catch {
-            Logger.error("获取技能点数据失败: \(error)")
-            return 0
-        }
-    }
-
-    func loadInjectorPrices() async {
         let prices = await InjectorPriceManager.shared.loadInjectorPrices()
-
-        await MainActor.run {
+        if !Task.isCancelled {
             injectorPrices = prices
         }
     }

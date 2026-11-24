@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - 筛选面板（市场目录树导航，仅物品可多选；完成时统一应用）
+// MARK: - 筛选面板
 
 /// 筛选面板紧凑行距（各层共用）
 private let AssetFilterRowInsets = EdgeInsets(top: 4, leading: 18, bottom: 4, trailing: 18)
@@ -57,21 +57,20 @@ private struct AssetFilterItemRow: View {
     }
 }
 
-/// 筛选面板根页：市场目录导航 + 特殊物品入口；完成时统一应用 draft，X 放弃改动
 struct AssetsFilterSheet: View {
     @ObservedObject var viewModel: CharacterAssetsViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var draftTypeIds: Set<Int>
+    @State private var draft: AssetFilters
 
     init(viewModel: CharacterAssetsViewModel) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
-        _draftTypeIds = State(initialValue: viewModel.selectedTypeIds)
+        _draft = State(initialValue: viewModel.filters)
     }
 
     /// 完成：应用 draft 并关闭整个面板（各层共用）
     private var applyDraft: () -> Void {
         {
-            viewModel.applyTypeFilter(draftTypeIds)
+            viewModel.applyFilters(draft)
             dismiss()
         }
     }
@@ -80,12 +79,28 @@ struct AssetsFilterSheet: View {
         NavigationStack {
             Form {
                 Section {
+                    NavigationLink {
+                        AssetsFilterSystemsView(
+                            viewModel: viewModel,
+                            selection: $draft.systemIds,
+                            onApply: applyDraft
+                        )
+                    } label: {
+                        Label(
+                            NSLocalizedString("Assets_Filter_Systems", comment: ""),
+                            systemImage: "location"
+                        )
+                    }
+                    .listRowInsets(AssetFilterRowInsets)
+                }
+
+                Section {
                     ForEach(viewModel.marketRootFilterNodes) { node in
                         NavigationLink {
                             AssetsFilterMarketDestination(
                                 node: node,
                                 viewModel: viewModel,
-                                draftTypeIds: $draftTypeIds,
+                                draftTypeIds: $draft.typeIds,
                                 onApply: applyDraft
                             )
                         } label: {
@@ -125,9 +140,9 @@ struct AssetsFilterSheet: View {
                         } label: {
                             Image(systemName: "xmark")
                         }
-                        if !draftTypeIds.isEmpty {
+                        if draft.isActive {
                             Button(NSLocalizedString("Assets_Filter_Clear", comment: "")) {
-                                draftTypeIds = []
+                                draft = AssetFilters()
                             }
                         }
                     }
@@ -149,7 +164,7 @@ struct AssetsFilterSheet: View {
             AssetsFilterItemListView(
                 title: title,
                 itemsProvider: { items },
-                draftTypeIds: $draftTypeIds,
+                draftTypeIds: $draft.typeIds,
                 onApply: applyDraft
             )
         } label: {
@@ -178,6 +193,53 @@ struct AssetsFilterSheet: View {
             }
         }
         .listRowInsets(AssetFilterRowInsets)
+    }
+}
+
+private struct AssetsFilterSystemsView: View {
+    @ObservedObject var viewModel: CharacterAssetsViewModel
+    @Binding var selection: Set<Int>
+    let onApply: () -> Void
+
+    var body: some View {
+        let systems = viewModel.availableFilterSystems
+        List {
+            if systems.isEmpty {
+                NoDataSection()
+            } else {
+                Section {
+                    ForEach(systems) { system in
+                        let isSelected = selection.contains(system.id)
+                        Button {
+                            if isSelected {
+                                selection.remove(system.id)
+                            } else {
+                                selection.insert(system.id)
+                            }
+                        } label: {
+                            SystemRowView(
+                                name: system.name,
+                                security: system.security,
+                                regionName: system.regionName,
+                                isSelected: isSelected
+                            )
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
+                        .listRowInsets(AssetFilterRowInsets)
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle(NSLocalizedString("Assets_Filter_Systems", comment: ""))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(NSLocalizedString("Common_Done", comment: "")) { onApply() }
+            }
+        }
     }
 }
 

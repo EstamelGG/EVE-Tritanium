@@ -13,14 +13,6 @@ struct SystemPickerSheet: View {
     let onSelect: (Int, String) -> Void
     let onCancel: () -> Void
 
-    /// 星域空间统计：总星系数与高安/低安/00 分布
-    struct RegionStat {
-        var total = 0
-        var hisec = 0
-        var lowsec = 0
-        var nullsec = 0
-    }
-
     /// 星域条目
     struct RegionEntry: Identifiable {
         let id: Int
@@ -43,7 +35,7 @@ struct SystemPickerSheet: View {
     /// 首字母 → 星域分组
     @State private var regionSections: [String: [RegionEntry]] = [:]
     @State private var sectionTitles: [String] = []
-    @State private var regionStats: [Int: RegionStat] = [:]
+    @State private var regionStats: [Int: RegionSecurityDistribution] = [:]
     /// 主权信息（showsSovereignty 时启用，按需加载）
     @StateObject private var sovereigntyVM = PlanetarySearchResultViewModel()
     /// 搜索命中星系的主权加载任务（去抖）
@@ -242,14 +234,7 @@ struct SystemPickerSheet: View {
             }
 
             // 一次遍历聚合每个星域的星系数与安等分布（应用谓词）
-            var stats: [Int: RegionStat] = [:]
-            for (systemId, info) in SDEMemoryStore.universeSystems {
-                guard includeSystem?(systemId, info) ?? true else { continue }
-                var stat = stats[info.regionID] ?? RegionStat()
-                stat.total += 1
-                Self.classifySecurity(info.security, into: &stat)
-                stats[info.regionID] = stat
-            }
+            let stats = RegionSecurityDistribution.byRegion(including: includeSystem)
 
             // 无可选星系的星域不显示
             let visibleRegions = loaded.filter { stats[$0.id] != nil }
@@ -262,18 +247,6 @@ struct SystemPickerSheet: View {
                 isPreparing = false
                 // 主权信息不在此处全量加载：进入第二层或搜索命中时按需加载（避免上千星系的映射与图标请求）
             }
-        }
-    }
-
-    /// 按安全类别归类到高安/低安/00（复用 SolarSystem.swift 的 getSecurityClass）
-    private static func classifySecurity(_ security: Double, into stat: inout RegionStat) {
-        switch getSecurityClass(trueSec: security) {
-        case .highSec:
-            stat.hisec += 1
-        case .lowSec:
-            stat.lowsec += 1
-        case .nullSecOrWH:
-            stat.nullsec += 1
         }
     }
 
@@ -350,7 +323,7 @@ struct SystemPickerSheet: View {
 /// `showsSovereignty` 时切换为两行布局（主权图标 + 主权名），图标加载中显示 ProgressView
 struct SystemRowView: View {
     let name: String
-    let security: Double
+    let security: Double?
     /// 星域名后缀（如第一层搜索结果，跨星域时用于区分）
     var regionName: String? = nil
     var isSelected: Bool = false
@@ -437,10 +410,13 @@ struct SystemRowView: View {
     }
 
     /// 安等数字（按安等着色的等宽字体）
+    @ViewBuilder
     private func securityText(_ style: Font.TextStyle) -> some View {
-        Text(formatSystemSecurity(security))
-            .foregroundColor(getSecurityColor(security))
-            .font(.system(style, design: .monospaced))
+        if let security {
+            Text(formatSystemSecurity(security))
+                .foregroundColor(getSecurityColor(security))
+                .font(.system(style, design: .monospaced))
+        }
     }
 
     private var nameText: some View {
@@ -467,17 +443,50 @@ struct SystemRowView: View {
     }
 }
 
-/// 三段安等分布条：高安（绿）/ 低安（橙）/ 00（紫），宽度按星系比例
-private struct SecurityDistributionBar: View {
-    let stat: SystemPickerSheet.RegionStat
+struct RegionSecurityDistribution {
+    private(set) var hisec = 0
+    private(set) var lowsec = 0
+    private(set) var nullsec = 0
+
+    var total: Int {
+        hisec + lowsec + nullsec
+    }
+
+    static func byRegion(
+        including includeSystem: ((Int, SDEMemoryStore.UniverseSystemInfo) -> Bool)? = nil
+    ) -> [Int: Self] {
+        var result: [Int: Self] = [:]
+        for (systemId, info) in SDEMemoryStore.universeSystems {
+            guard includeSystem?(systemId, info) ?? true else { continue }
+            switch getSecurityClass(trueSec: info.security) {
+            case .highSec:
+                result[info.regionID, default: Self()].hisec += 1
+            case .lowSec:
+                result[info.regionID, default: Self()].lowsec += 1
+            case .nullSecOrWH:
+                result[info.regionID, default: Self()].nullsec += 1
+            }
+        }
+        return result
+    }
+}
+
+struct SecurityDistributionBar: View {
+    let stat: RegionSecurityDistribution
 
     var body: some View {
         SegmentedProgressBar(segments: [
-            .init(value: Double(stat.hisec), color: getSecurityColor(0.6)),
+            .init(value: Double(stat.hisec), color: getSecurityColor(1.0)),
             .init(value: Double(stat.lowsec), color: getSecurityColor(0.4)),
             .init(value: Double(stat.nullsec), color: getSecurityColor(-0.3)),
         ])
         .frame(width: 48)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel([
+            "\(NSLocalizedString("Security_HighSec", comment: "")) \(stat.hisec)",
+            "\(NSLocalizedString("Security_LowSec", comment: "")) \(stat.lowsec)",
+            "\(NSLocalizedString("Security_NullSec", comment: "")) \(stat.nullsec)",
+        ].joined(separator: ", "))
     }
 }
 

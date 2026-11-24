@@ -99,8 +99,7 @@ class NetworkManager: NSObject, @unchecked Sendable {
     private let imageCache = NSCache<NSString, CachedData<UIImage>>()
     private var imageCacheKeys = Set<String>() // 跟踪图片缓存的键
 
-    /// 添加并发控制信号量
-    private let concurrentSemaphore = DispatchSemaphore(value: 8)
+    private let requestConcurrency = RequestConcurrencyLimiter(limit: 8)
 
     override private init() {
         retrier = RequestRetrier()
@@ -146,19 +145,10 @@ class NetworkManager: NSObject, @unchecked Sendable {
         timeouts: [TimeInterval]? = nil
     ) async throws -> (Data, HTTPURLResponse) {
         try checkRateLimitCooldown()
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                self.concurrentSemaphore.wait()
-                continuation.resume()
-            }
-        }
+        try await requestConcurrency.acquire()
+        defer { requestConcurrency.release() }
 
-        defer {
-            DispatchQueue.global(qos: .userInitiated).async {
-                self.concurrentSemaphore.signal()
-            }
-        }
-
+        try Task.checkCancellation()
         try await rateLimiter.waitForPermission()
 
         var request = URLRequest(url: url)
@@ -835,6 +825,59 @@ class RequestRetrier {
             return [408, 500, 502, 503, 504].contains(statusCode)
         }
         return false
+    }
+}
+
+@NetworkManagerActor
+final class RequestConcurrencyLimiter {
+    private var available: Int
+    private var waiters: [(id: UUID, continuation: CheckedContinuation<Void, Error>)] = []
+
+    init(limit: Int) {
+        precondition(limit > 0)
+        available = limit
+    }
+
+    func acquire() async throws {
+        try Task.checkCancellation()
+        if available > 0 {
+            available -= 1
+            return
+        }
+
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                if Task.isCancelled {
+                    continuation.resume(throwing: CancellationError())
+                } else {
+                    waiters.append((id, continuation))
+                }
+            }
+        } onCancel: {
+            Task { @NetworkManagerActor in
+                self.cancelWaiter(id)
+            }
+        }
+
+        // A cancellation can arrive after release has already handed off the slot.
+        if Task.isCancelled {
+            release()
+            throw CancellationError()
+        }
+    }
+
+    func release() {
+        if waiters.isEmpty {
+            available += 1
+        } else {
+            waiters.removeFirst().continuation.resume()
+        }
+    }
+
+    private func cancelWaiter(_ id: UUID) {
+        guard let index = waiters.firstIndex(where: { $0.id == id }) else { return }
+        waiters.remove(at: index).continuation.resume(throwing: CancellationError())
     }
 }
 

@@ -1,84 +1,45 @@
 import Foundation
 
-class CharacterIndustryAPI {
+actor CharacterIndustryAPI {
     static let shared = CharacterIndustryAPI()
 
     /// 缓存过期时间（1小时）
     private let cacheExpirationInterval: TimeInterval = 3600
+    private let requests = AppDataRequests<Int, [IndustryJob]>()
 
-    /// 工业项目信息模型
-    struct IndustryJob: Codable, Identifiable, Hashable {
-        let activity_id: Int
-        let blueprint_id: Int64
-        let blueprint_location_id: Int64
-        let blueprint_type_id: Int
-        let completed_character_id: Int?
-        let completed_date: Date?
-        let cost: Double
-        let duration: Int
-        let end_date: Date
-        let facility_id: Int64
-        let installer_id: Int
-        let job_id: Int
-        let licensed_runs: Int?
-        let output_location_id: Int64
-        let pause_date: Date?
-        let probability: Float?
-        let product_type_id: Int?
-        let runs: Int
-        let start_date: Date
-        let station_id: Int64
-        let status: String
-        let successful_runs: Int?
-
-        var id: Int {
-            job_id
-        }
-
-        /// 实现 Hashable
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(job_id)
-        }
-
-        static func == (lhs: IndustryJob, rhs: IndustryJob) -> Bool {
-            return lhs.job_id == rhs.job_id
-        }
-    }
+    typealias IndustryJob = ESIIndustryJob
 
     private init() {}
 
     func fetchIndustryJobs(
         characterId: Int,
         forceRefresh: Bool = false,
-        includeCompleted: Bool = true
+        includeCompleted: Bool = true,
+        maxCacheAge: TimeInterval? = nil
     ) async throws -> [IndustryJob] {
-        // 如果不是强制刷新，先尝试从文件缓存加载未过期数据
-        if !forceRefresh {
-            if let cachedJobs = loadJobsFromCache(characterId: characterId) {
-                Logger.info("使用缓存的工业项目数据 - 角色ID: \(characterId)")
-                return cachedJobs
+        let jobs: [IndustryJob]
+        if !forceRefresh, let cached = loadJobsFromCache(
+            characterId: characterId, maxAge: maxCacheAge ?? cacheExpirationInterval
+        ) {
+            jobs = cached
+        } else {
+            jobs = try await requests.run(characterId) {
+                try await self.downloadJobs(characterId: characterId)
             }
         }
+        return includeCompleted ? jobs : jobs.filter(\.isOpen)
+    }
 
-        // 从网络获取最新数据
+    private func downloadJobs(characterId: Int) async throws -> [IndustryJob] {
         let url = URL(
-            string:
-            "https://esi.evetech.net/characters/\(characterId)/industry/jobs/?datasource=tranquility&include_completed=\(includeCompleted)"
+            string: "https://esi.evetech.net/characters/\(characterId)/industry/jobs/?datasource=tranquility&include_completed=true"
         )!
-
-        let data = try await NetworkManager.shared.fetchDataWithToken(
-            from: url, characterId: characterId
-        )
-
+        let data = try await NetworkManager.shared.fetchDataWithToken(from: url, characterId: characterId)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let jobs = try decoder.decode([IndustryJob].self, from: data)
-
-        Logger.debug("从 API 获取到 \(jobs.count) 个工业项目")
-
-        // 保存到文件缓存
         saveJobsToCache(jobs, characterId: characterId)
-
+        await AppDataUpdate.industry(characterID: characterId, jobs: jobs, at: Date()).publish()
         return jobs
     }
 
@@ -104,12 +65,16 @@ class CharacterIndustryAPI {
         return cacheDirectory
     }
 
-    private func getCacheFilePath(characterId: Int) -> URL? {
-        guard let cacheDirectory = getCacheDirectory() else { return nil }
-        return cacheDirectory.appendingPathComponent("char_\(characterId).json")
+    func cachedAt(characterId: Int) -> Date? {
+        getCacheFilePath(characterId: characterId)?.cacheModificationDate
     }
 
-    private func loadJobsFromCache(characterId: Int) -> [IndustryJob]? {
+    private func getCacheFilePath(characterId: Int) -> URL? {
+        guard let cacheDirectory = getCacheDirectory() else { return nil }
+        return cacheDirectory.appendingPathComponent("char_\(characterId)_all.json")
+    }
+
+    private func loadJobsFromCache(characterId: Int, maxAge: TimeInterval? = nil) -> [IndustryJob]? {
         guard let cacheFile = getCacheFilePath(characterId: characterId) else {
             Logger.error("获取缓存文件路径失败 - 角色ID: \(characterId)")
             return nil
@@ -127,11 +92,10 @@ class CharacterIndustryAPI {
             let fileAttributes = try FileManager.default.attributesOfItem(atPath: cacheFile.path)
             if let modificationDate = fileAttributes[.modificationDate] as? Date {
                 let timeSinceModification = Date().timeIntervalSince(modificationDate)
-                if timeSinceModification > cacheExpirationInterval {
+                if timeSinceModification >= (maxAge ?? cacheExpirationInterval) {
                     Logger.info(
                         "缓存文件已过期 - 角色ID: \(characterId), 路径: \(cacheFile.path), 修改时间: \(modificationDate)"
                     )
-                    try? FileManager.default.removeItem(at: cacheFile)
                     return nil
                 }
             }
@@ -163,7 +127,7 @@ class CharacterIndustryAPI {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             let encodedData = try encoder.encode(jobs)
-            try encodedData.write(to: cacheFile)
+            try encodedData.write(to: cacheFile, options: .atomic)
             Logger.info(
                 "工业项目信息已缓存到文件 - 角色ID: \(characterId), 路径: \(cacheFile.path), 数据条数: \(jobs.count)"
             )

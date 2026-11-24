@@ -550,3 +550,11 @@ Fixes & Improvements:
 6. The standings and contacts tabs now explain whose standing is shown. The contacts tab hides NPC agents
 7. Employment history is cached for 24 hours per character. Pull down to refresh it in the character sheet
 8. Open a character’s combat record from your character sheet or a character search result
+
+# v1.15 November 24, 2026
+
+1. Set up Home Screen widgets in the Lab for market prices and three-month trends, skill queues, planetary extractor progress, and industry summaries and jobs.
+2. Widgets share data updates with the app. Choose the items and characters to follow in the Lab. Skill names follow the game database language.
+3. Choose localized ISK abbreviations or fixed English K, M, B, and T in Appearance settings.
+4. Filter personal assets by solar system or group them by region to browse assets spread across locations.
+5. Read attribute descriptions in item details and on mutation screens.

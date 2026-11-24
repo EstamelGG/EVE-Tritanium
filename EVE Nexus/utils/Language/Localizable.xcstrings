@@ -447,9 +447,6 @@
       },
       "shouldTranslate" : false
     },
-    "%@: 0.00 ISK" : {
-      "shouldTranslate" : false
-    },
     "%@: 0.0M SP" : {
       "shouldTranslate" : false
     },
@@ -519,17 +516,6 @@
       },
       "shouldTranslate" : false
     },
-    "%@/%@ SP (%@/h)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@/%2$@ SP (%3$@/h)"
-          }
-        }
-      },
-      "shouldTranslate" : false
-    },
     "%@/%@%@" : {
       "localizations" : {
         "en" : {
@@ -562,6 +548,28 @@
         }
       },
       "shouldTranslate" : false
+    },
+    "%@%@, %@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@%2$@, %3$@: %4$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@%2$@, %3$@: %4$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@%2$@，%3$@：%4$@"
+          }
+        }
+      }
     },
     "%@%%" : {
       "localizations" : {
@@ -3841,10 +3849,38 @@
             "value" : "%ld items in total"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всего предметов: %ld"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "共 %ld 件"
+          }
+        }
+      }
+    },
+    "Assets_Filter_Active_Systems_Format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtering by %ld solar systems"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фильтр по солнечным системам: %ld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在过滤：%ld 个星系"
           }
         }
       }
@@ -3978,12 +4014,40 @@
         }
       }
     },
+    "Assets_Filter_Systems" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solar Systems"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Солнечные системы"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "星系"
+          }
+        }
+      }
+    },
     "Assets_Filter_Title" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Filter"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фильтр"
           }
         },
         "zh-Hans" : {
@@ -4022,6 +4086,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未发布物品"
+          }
+        }
+      }
+    },
+    "Assets_Group_By_Region" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group by Region"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Группировать по регионам"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按星域分组"
+          }
+        }
+      }
+    },
+    "Assets_Group_By_Region_Description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use when your assets are spread across many locations"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Используйте, если ваши активы находятся в разных местах"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当地点较为分散的时候使用"
           }
         }
       }
@@ -4424,6 +4532,12 @@
             "value" : "Pin"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрепить"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4551,6 +4665,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unknown Region"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неизвестный регион"
           }
         },
         "zh-Hans" : {
@@ -13518,6 +13638,12 @@
             "value" : "%d skills required for fitting"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Навыков для оснащения: %d"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -19811,38 +19937,6 @@
         }
       }
     },
-    "Industry_Runs_Format" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d runs ×"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d流程 ×"
-          }
-        }
-      }
-    },
-    "Industry_Runs_With_Copies_Format" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d runs × %d copies"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d张 × %d 流程/张"
-          }
-        }
-      }
-    },
     "Industry_Settings_Title" : {
       "comment" : "设置",
       "localizations" : {
@@ -20813,6 +20907,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "阶段 %d"
+          }
+        }
+      }
+    },
+    "Item_Attribute_Description_Format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Описание: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@说明"
           }
         }
       }
@@ -22270,54 +22386,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未知地点"
-          }
-        }
-      }
-    },
-    "Standing_Outgoing_Hint" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "These are the standings you assigned to your contacts."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "这里显示你给联系人的声望。"
-          }
-        }
-      }
-    },
-    "Standing_Incoming_Hint" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "These are the standings NPC factions, corporations, and agents have toward you."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "这里显示 NPC 势力、军团和代理人对你的声望。"
-          }
-        }
-      }
-    },
-    "Open_In_Browser" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open in browser"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "通过浏览器打开"
           }
         }
       }
@@ -23998,6 +24066,12 @@
             "value" : "Attribute Compare"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сравнение характеристик"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -24082,6 +24156,97 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%d 个物品"
+          }
+        }
+      }
+    },
+    "Main_Attribute_Compare_Layout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Table Layout"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расположение таблицы"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表格方向"
+          }
+        }
+      }
+    },
+    "Main_Attribute_Compare_Layout_Horizontal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horizontal"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Характеристики по горизонтали"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "属性横向"
+          }
+        }
+      }
+    },
+    "Main_Attribute_Compare_Layout_Tiled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiled"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плитки по характеристикам"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按属性平铺"
+          }
+        }
+      }
+    },
+    "Main_Attribute_Compare_Layout_Vertical" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vertical"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Характеристики по вертикали"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "属性纵向"
           }
         }
       }
@@ -25265,6 +25430,18 @@
     "Main_Database_base" : {
       "comment" : "基础物品",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Base items"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Базовые предметы"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -25429,6 +25606,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Loading..."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузка…"
           }
         },
         "zh-Hans" : {
@@ -25885,6 +26068,18 @@
     "Main_Database_ungrouped" : {
       "comment" : "未分组",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungrouped"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без группы"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -28780,6 +28975,12 @@
             "value" : "Avg price: "
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Средняя цена: "
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -29217,6 +29418,28 @@
         }
       }
     },
+    "Main_Market_History_Load_Failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t load price history"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось загрузить историю цен"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "历史行情加载失败"
+          }
+        }
+      }
+    },
     "Main_Market_Insufficient_Stock" : {
       "comment" : "库存不足",
       "localizations" : {
@@ -29224,6 +29447,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(Insufficient stock)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(Недостаточно в наличии)"
           }
         },
         "zh-Hans" : {
@@ -29254,6 +29483,12 @@
       "comment" : "Jita 价格对比标签",
       "localizations" : {
         "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jita: "
+          }
+        },
+        "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Jita: "
@@ -29307,6 +29542,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No orders"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет ордеров"
           }
         },
         "zh-Hans" : {
@@ -29522,6 +29763,12 @@
             "value" : "Select All"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать все"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -29622,6 +29869,12 @@
             "value" : "Sum price: "
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Общая стоимость: "
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -29653,6 +29906,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Buy"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Покупка"
           }
         },
         "zh-Hans" : {
@@ -29736,6 +29995,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sell"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продажа"
           }
         },
         "zh-Hans" : {
@@ -29854,6 +30119,12 @@
             "value" : "Add Item"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить предмет"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -29902,10 +30173,82 @@
             "value" : "No items in watchlist"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Список наблюдения пуст"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "暂无关注物品"
+          }
+        }
+      }
+    },
+    "Main_Market_Watch_List_History_Global_Market" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PLEX global market"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Глобальный рынок PLEX"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PLEX 全服市场"
+          }
+        }
+      }
+    },
+    "Main_Market_Watch_List_History_Period" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Charts show the last 3 months of price history."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Графики показывают динамику цен за последние 3 месяца."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "折线图为近3个月走势"
+          }
+        }
+      }
+    },
+    "Main_Market_Watch_List_History_Region %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chart region: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Регион графика: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前折线图对应星域：%@"
           }
         }
       }
@@ -29948,6 +30291,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quantity"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Количество"
           }
         },
         "zh-Hans" : {
@@ -32262,6 +32611,94 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "颜色模式"
+          }
+        }
+      }
+    },
+    "Main_Setting_Currency_Units" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Currency & Economic Settings"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Валюта и экономика"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "货币与经济设置"
+          }
+        }
+      }
+    },
+    "Main_Setting_Currency_Units_English" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Английский"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "英文"
+          }
+        }
+      }
+    },
+    "Main_Setting_Currency_Units_Header" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Currency units"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Единицы валюты"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "货币单位"
+          }
+        }
+      }
+    },
+    "Main_Setting_Currency_Units_Localized" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Localized"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Локализованные"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本地化"
           }
         }
       }
@@ -34650,6 +35087,28 @@
         }
       }
     },
+    "Main_Skills_Plan_Calculation_Unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to calculate"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось выполнить расчёт"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法计算"
+          }
+        }
+      }
+    },
     "Main_Skills_Plan_Cannot_Delete_Has_Dependencies" : {
       "localizations" : {
         "en" : {
@@ -35079,10 +35538,60 @@
             "value" : "Plan Name"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название плана"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "计划名称"
+          }
+        }
+      }
+    },
+    "Main_Skills_Plan_Name_Duplicate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A skill plan with this name already exists. Choose a different name."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "План навыков с таким названием уже существует. Выберите другое название."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已有同名技能计划，请使用其他名称。"
+          }
+        }
+      }
+    },
+    "Main_Skills_Plan_Name_Required" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a skill plan name."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Введите название плана навыков."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请输入技能计划名称。"
           }
         }
       }
@@ -36520,6 +37029,12 @@
             "value" : "%d mastery skills total"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всего навыков мастерства: %d"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -37603,6 +38118,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Done"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово"
           }
         },
         "zh-Hans" : {
@@ -38727,6 +39248,12 @@
             "value" : "Select All"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать все"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -39377,6 +39904,22 @@
       "comment" : "确定",
       "shouldTranslate" : false
     },
+    "Open_In_Browser" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in browser"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通过浏览器打开"
+          }
+        }
+      }
+    },
     "Operation_Success" : {
       "comment" : "Success Messages",
       "localizations" : {
@@ -39822,6 +40365,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Avg Price"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Средняя цена"
           }
         },
         "zh-Hans" : {
@@ -45087,6 +45636,12 @@
             "value" : "High Sec"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Высокая безопасность"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -45104,6 +45659,12 @@
             "value" : "Low Sec"
           }
         },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Низкая безопасность"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -45119,6 +45680,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Null Sec"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нулевая безопасность"
           }
         },
         "zh-Hans" : {
@@ -45889,6 +46456,22 @@
         }
       }
     },
+    "Standing_Incoming_Hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These are the standings NPC factions, corporations, and agents have toward you."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这里显示 NPC 势力、军团和代理人对你的声望。"
+          }
+        }
+      }
+    },
     "Standing_Loading" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -45936,6 +46519,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "暂无声望数据"
+          }
+        }
+      }
+    },
+    "Standing_Outgoing_Hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These are the standings you assigned to your contacts."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这里显示你给联系人的声望。"
           }
         }
       }
@@ -48293,121 +48892,6 @@
         }
       }
     },
-    "Time_Compact_Days" : {
-      "comment" : "Compact duration days",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldd"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldд"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld天"
-          }
-        }
-      }
-    },
-    "Time_Compact_Hours" : {
-      "comment" : "Compact duration hours",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldh"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldч"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld时"
-          }
-        }
-      }
-    },
-    "Time_Compact_Join" : {
-      "comment" : "Join duration components",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@%@"
-          }
-        }
-      }
-    },
-    "Time_Compact_Minutes" : {
-      "comment" : "Compact duration minutes",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldm"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldм"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld分"
-          }
-        }
-      }
-    },
-    "Time_Compact_Seconds" : {
-      "comment" : "Compact duration seconds",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%llds"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldс"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld秒"
-          }
-        }
-      }
-    },
     "Time_Days" : {
       "comment" : "%dd",
       "localizations" : {
@@ -50047,6 +50531,74 @@
           }
         }
       }
+    },
+    "Widget_Awaiting_Data" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Manufacturing" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_No_Jobs" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_No_Planets" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_No_Price" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Paused" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Queue_Empty" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Queued" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Reaction" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Ready" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Research" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Select_Characters" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Select_Market_Items" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Skill_Queue_Stale" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Soon" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Token_Expired" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
+    },
+    "Widget_Total" : {
+      "comment" : "Dynamic key resolved from Widgets.xcstrings, not the default table.",
+      "shouldTranslate" : false
     },
     "zKB" : {
       "shouldTranslate" : false

@@ -4,22 +4,7 @@ typealias IndustryJob = CharacterIndustryAPI.IndustryJob
 
 /// 全局函数：获取活动类型对应的图标文件名
 func getActivityTypeIcon(for activityId: Int) -> String {
-    switch activityId {
-    case 1: // 制造
-        return "Icon_Manufacturing.png"
-    case 3: // 时间效率研究
-        return "Icon_ResearchTime.png"
-    case 4: // 材料效率研究
-        return "Icon_ResearchMaterial.png"
-    case 5: // 复制
-        return "Icon_Copying.png"
-    case 8: // 发明
-        return "Icon_Invention.png"
-    case 9: // 反应
-        return "Icon_reaction.png"
-    default:
-        return "Icon_Manufacturing.png"
-    }
+    industryActivityIconAsset(for: activityId) + ".png"
 }
 
 /// 扩展IndustryJob来包含角色归属信息
@@ -75,4 +60,56 @@ struct CharacterSlotDetail {
     let manufacturingUsed: Int
     let researchUsed: Int
     let reactionUsed: Int
+}
+
+struct IndustrySlotCounts: Equatable, Sendable {
+    var manufacturing = 0
+    var research = 0
+    var reaction = 0
+
+    static func used(by activities: some Sequence<Int>) -> Self {
+        var counts = Self()
+        for activity in activities {
+            switch activity {
+            case 1: counts.manufacturing += 1
+            case 3, 4, 5, 8: counts.research += 1
+            case 9: counts.reaction += 1
+            default: break
+            }
+        }
+        return counts
+    }
+
+    static func skillBonuses(in databaseManager: DatabaseManager) -> [Int: Self] {
+        let query = """
+        SELECT type_id, attribute_id, value
+        FROM typeAttributes
+        WHERE attribute_id IN (450, 471, 2661)
+        """
+        guard case let .success(rows) = databaseManager.executeQuery(query) else { return [:] }
+        var bonuses: [Int: Self] = [:]
+        for row in rows {
+            guard let typeID = row["type_id"] as? Int, let attributeID = row["attribute_id"] as? Int,
+                  let value = row["value"] as? Double
+            else { continue }
+            switch attributeID {
+            case 450: bonuses[typeID, default: Self()].manufacturing = Int(value)
+            case 471: bonuses[typeID, default: Self()].research = Int(value)
+            case 2661: bonuses[typeID, default: Self()].reaction = Int(value)
+            default: break
+            }
+        }
+        return bonuses
+    }
+
+    static func capacity(for skills: [Int: CharacterSkill], bonuses: [Int: Self]) -> Self {
+        var capacity = Self(manufacturing: 1, research: 1, reaction: 1)
+        for (id, bonus) in bonuses {
+            guard let level = skills[id]?.trained_skill_level else { continue }
+            capacity.manufacturing += bonus.manufacturing * level
+            capacity.research += bonus.research * level
+            capacity.reaction += bonus.reaction * level
+        }
+        return capacity
+    }
 }

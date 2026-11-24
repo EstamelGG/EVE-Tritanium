@@ -64,7 +64,7 @@ class SkillPlanHelper {
         return skillsToAdd
     }
 
-    /// 用修正后的队列重建计划技能列表，尽量保留已有名称与完成状态
+    /// 用修正后的队列重建计划技能列表，保留已有条目的身份和名称。
     static func rebuildSkills(
         corrected: [(skillId: Int, level: Int)],
         existing: [PlannedSkill]
@@ -85,13 +85,7 @@ class SkillPlanHelper {
                 id: UUID(),
                 skillID: skill.skillId,
                 skillName: skillName,
-                currentLevel: skill.level - 1,
-                targetLevel: skill.level,
-                trainingTime: 0,
-                requiredSP: 0,
-                prerequisites: [],
-                currentSkillPoints: nil,
-                isCompleted: false
+                targetLevel: skill.level
             )
         }
     }

@@ -66,4 +66,22 @@ final class CharacterSkillsCacheValidityTests: XCTestCase {
         try Data("{}".utf8).write(to: path)
         XCTAssertTrue(CharacterSkillsAPI.shared.isCacheFileValid(at: path))
     }
+
+
+    func testRelocalizingSkillNamesPreservesTheCachedQueueAndSyncTime() {
+        let queue = [
+            SkillQueueItem(
+                queue_position: 0, skill_id: 3449, finished_level: 4,
+                training_start_sp: 250, level_end_sp: 1000, level_start_sp: 0,
+                start_date: modifiedAt, finish_date: modifiedAt.addingTimeInterval(60)
+            ),
+        ]
+        let original = CharacterSkillQueueSample(queue: queue, fetchedAt: modifiedAt, names: [3449: "Navigation"])
+        let localized = original.relocalized { $0 == 3449 ? "导航学" : nil }
+
+        XCTAssertEqual(localized.queue, original.queue)
+        XCTAssertEqual(localized.fetchedAt, original.fetchedAt)
+        XCTAssertEqual(localized.widgetSkills().first?.name, "导航学")
+    }
+
 }

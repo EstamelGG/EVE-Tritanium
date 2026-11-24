@@ -183,6 +183,7 @@ struct MutationAttributeControlRow: View {
     var isInteractive: Bool = true
     /// 点击百分比按钮时的回调；为 nil 时仅显示只读百分比
     var onEdit: (() -> Void)? = nil
+    var showsAttributeTooltip = false
 
     /// 当前属性值（基于原始值实时推导）
     private var currentValue: Double {
@@ -217,25 +218,27 @@ struct MutationAttributeControlRow: View {
     }
 
     private var titleRow: some View {
-        HStack(spacing: 8) {
-            Text(name)
+        AttributeTooltipRow(title: name, attributeID: showsAttributeTooltip ? attributeID : nil) { title in
+            HStack(spacing: 8) {
+                title
+                    .font(.body)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 8)
+
+                HStack(spacing: 4) {
+                    Text(formattedValue(originalValue, in: referenceAttributes))
+                        .foregroundColor(.secondary)
+                    Image(systemName: "arrow.right")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(formattedValue(currentValue, in: currentReferenceAttributes ?? referenceAttributes))
+                        .foregroundColor(valueColor)
+                }
                 .font(.body)
-                .foregroundColor(.primary)
-                .lineLimit(1)
-
-            Spacer(minLength: 8)
-
-            HStack(spacing: 4) {
-                Text(formattedValue(originalValue, in: referenceAttributes))
-                    .foregroundColor(.secondary)
-                Image(systemName: "arrow.right")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                Text(formattedValue(currentValue, in: currentReferenceAttributes ?? referenceAttributes))
-                    .foregroundColor(valueColor)
+                .layoutPriority(1)
             }
-            .font(.body)
-            .layoutPriority(1)
         }
     }
 

@@ -110,6 +110,8 @@ struct AttributeCompareDetailView: View {
                             isOn: $showOnlyDifferences
                         )
                         .padding(.top, 4)
+
+                        AttributeCompareLayoutPicker()
                     }
                 } header: {
                     Text(NSLocalizedString("Main_Attribute_Compare_Item_List", comment: ""))

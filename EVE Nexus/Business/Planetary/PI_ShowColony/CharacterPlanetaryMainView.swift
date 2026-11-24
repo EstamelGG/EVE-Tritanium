@@ -95,6 +95,7 @@ final class CharacterPlanetaryViewModel: ObservableObject {
 
     private var loadingTask: Task<Void, Never>?
     private var expiryLoadingTask: Task<Void, Never>?
+    private var sharedDetailDates: [String: Date] = [:]
     private let characterId: Int?
     private var initialLoadDone = false
 
@@ -104,36 +105,42 @@ final class CharacterPlanetaryViewModel: ObservableObject {
     /// Type 缓存（包括图标信息），避免重复查询数据库
     private var typeCache: [Int: (name: String, icon: String)] = [:]
 
-    init(characterId: Int?) {
+    init(characterId: Int?, focusSingleCharacter: Bool = false) {
         self.characterId = characterId
-
-        // 从 UserDefaults 读取多人物聚合设置
-        multiCharacterMode = UserDefaults.standard.bool(forKey: "multiCharacterMode_planetary")
-        showPlanetTypeSummaryInMultiSelect = UserDefaults.standard.bool(
-            forKey: "showPlanetTypeSummary_planetary"
-        )
-        let savedCharacterIds =
-            UserDefaults.standard.array(forKey: "selectedCharacterIds_planetary") as? [Int] ?? []
-        selectedCharacterIds = Set(savedCharacterIds)
 
         // 加载可用角色列表
         availableCharacters = CharacterSkillsUtils.getAllCharacters()
+        showPlanetTypeSummaryInMultiSelect = UserDefaults.standard.bool(
+            forKey: "showPlanetTypeSummary_planetary"
+        )
 
-        // 过滤掉已保存但已不在可用角色列表中的角色ID
-        let availableCharacterIds = Set(availableCharacters.map { $0.id })
-        let validSelectedIds = selectedCharacterIds.intersection(availableCharacterIds)
+        if focusSingleCharacter, let characterId {
+            // 从小组件点击特定角色行星进入时聚焦单角色，通过 backing storage 赋值以跳过 didSet，避免覆盖全局多人物偏好
+            _multiCharacterMode = Published(initialValue: false)
+            _selectedCharacterIds = Published(initialValue: [characterId])
+        } else {
+            // 从 UserDefaults 读取多人物聚合设置
+            multiCharacterMode = UserDefaults.standard.bool(forKey: "multiCharacterMode_planetary")
+            let savedCharacterIds =
+                UserDefaults.standard.array(forKey: "selectedCharacterIds_planetary") as? [Int] ?? []
+            selectedCharacterIds = Set(savedCharacterIds)
 
-        // 如果有角色被过滤掉，更新 UserDefaults
-        if validSelectedIds.count != selectedCharacterIds.count {
-            selectedCharacterIds = validSelectedIds
-            UserDefaults.standard.set(
-                Array(selectedCharacterIds), forKey: "selectedCharacterIds_planetary"
-            )
-        }
+            // 过滤掉已保存但已不在可用角色列表中的角色ID
+            let availableCharacterIds = Set(availableCharacters.map { $0.id })
+            let validSelectedIds = selectedCharacterIds.intersection(availableCharacterIds)
 
-        // 如果没有选中的角色，默认选择当前角色
-        if selectedCharacterIds.isEmpty, let characterId = characterId {
-            selectedCharacterIds.insert(characterId)
+            // 如果有角色被过滤掉，更新 UserDefaults
+            if validSelectedIds.count != selectedCharacterIds.count {
+                selectedCharacterIds = validSelectedIds
+                UserDefaults.standard.set(
+                    Array(selectedCharacterIds), forKey: "selectedCharacterIds_planetary"
+                )
+            }
+
+            // 如果没有选中的角色，默认选择当前角色
+            if selectedCharacterIds.isEmpty, let characterId = characterId {
+                selectedCharacterIds.insert(characterId)
+            }
         }
 
         // 在初始化时立即开始加载数据
@@ -316,6 +323,70 @@ final class CharacterPlanetaryViewModel: ObservableObject {
 
         // 等待任务完成
         await loadingTask?.value
+    }
+
+    func applySharedColonies(_ colonies: [CharacterPlanetaryInfo], characterID: Int, at date: Date) async {
+        let isVisible = multiCharacterMode && !selectedCharacterIds.isEmpty
+            ? selectedCharacterIds.contains(characterID) : characterId == characterID
+        guard isVisible, initialLoadDone, !isLoading else { return }
+
+        let previousIDs = Set(planetsWithOwner.filter { $0.ownerId == characterID }.map { $0.planet.planetId })
+        planetsWithOwner.removeAll { $0.ownerId == characterID }
+        planetsWithOwner.append(contentsOf: colonies.map { PlanetWithOwner(planet: $0, ownerId: characterID) })
+        planets = planetsWithOwner.map(\.planet)
+        planetOwners = Dictionary(
+            planetsWithOwner.map { ($0.planet.planetId, $0.ownerId) }, uniquingKeysWith: { first, _ in first }
+        )
+        planetNames.merge(DatabaseManager.shared.getCelestialNames(itemIDs: colonies.map(\.planetId))) { _, new in new }
+        for systemID in Set(colonies.map(\.solarSystemId)) {
+            systemSecurities[systemID] = SDEMemoryStore.universeSystems[systemID]?.security
+        }
+
+        let currentIDs = Set(colonies.map(\.planetId))
+        for id in previousIDs.subtracting(currentIDs) {
+            let key = makePlanetKey(characterId: characterID, planetId: id)
+            earliestExtractorExpiry[key] = nil
+            finalProducts[key] = nil
+            extractorStatus[key] = nil
+            sharedDetailDates[key] = nil
+        }
+        for id in currentIDs.subtracting(previousIDs) {
+            if let detail = CharacterPlanetaryAPI.cachedColony(characterID: characterID, planetID: id) {
+                await applySharedDetail(detail, characterID: characterID, planetID: id, at: date)
+            }
+        }
+    }
+
+    func applySharedDetail(_ detail: PlanetaryDetail, characterID: Int, planetID: Int, at date: Date) async {
+        let key = makePlanetKey(characterId: characterID, planetId: planetID)
+        guard initialLoadDone, !isLoading, !loadingPlanets.contains(key),
+              planetsWithOwner.contains(where: { $0.ownerId == characterID && $0.planet.planetId == planetID }),
+              sharedDetailDates[key].map({ $0 < date }) ?? true else { return }
+        sharedDetailDates[key] = date
+        let summary = Self.extractorSummary(detail, at: Date())
+        earliestExtractorExpiry[key] = summary.expiry
+        extractorStatus[key] = summary.status
+        let products = await calculateFinalProducts(detail: detail)
+        if sharedDetailDates[key] == date {
+            finalProducts[key] = products
+        }
+    }
+
+    private nonisolated static func extractorSummary(_ detail: PlanetaryDetail, at now: Date)
+        -> (expiry: Date?, status: ExtractorStatus)
+    {
+        let formatter = ISO8601DateFormatter()
+        let extractors = detail.pins.filter { $0.extractorDetails != nil }
+        let expiries = extractors.compactMap { $0.expiryTime.flatMap(formatter.date(from:)) }
+        let upcoming = expiries.filter { $0 > now }
+        return (
+            upcoming.min(),
+            ExtractorStatus(
+                totalCount: extractors.count,
+                expiredCount: expiries.count - upcoming.count,
+                expiringSoonCount: upcoming.filter { $0.timeIntervalSince(now) <= 3600 }.count
+            )
+        )
     }
 
     func getPlanetTypeInfo(for planetType: String) -> PlanetTypeInfo? {
@@ -538,9 +609,6 @@ final class CharacterPlanetaryViewModel: ObservableObject {
         }
 
         expiryLoadingTask = Task {
-            let dateFormatter = ISO8601DateFormatter()
-            dateFormatter.formatOptions = [.withInternetDateTime]
-
             // 初始化加载状态：将所有行星标记为正在加载
             await MainActor.run {
                 self.loadingPlanets = Set(planetsWithOwner.map { planetWithOwner in
@@ -746,74 +814,20 @@ final class CharacterPlanetaryViewModel: ObservableObject {
                     } else {
                         // 没有缓存结果：进行计算
                         group.addTask {
-                            // 查找所有采集器的最早过期时间和统计停工状态
-                            var earliestExpiry: Date? = nil
-                            let currentTime = Date()
-                            var totalExtractors = 0
-                            var expiredCount = 0
-                            var expiringSoonCount = 0
-                            let oneHourFromNow = currentTime.addingTimeInterval(3600) // 1小时后
-
-                            for pin in detail.pins {
-                                // 检查是否是采集器（通过extractorDetails判断）
-                                if pin.extractorDetails != nil {
-                                    totalExtractors += 1
-
-                                    if let expiryTimeString = pin.expiryTime,
-                                       let expiryTime = dateFormatter.date(from: expiryTimeString)
-                                    {
-                                        if expiryTime <= currentTime {
-                                            // 已停工
-                                            expiredCount += 1
-                                        } else if expiryTime <= oneHourFromNow {
-                                            // 即将在1小时内停工
-                                            expiringSoonCount += 1
-                                            // 更新最早过期时间
-                                            if let existing = earliestExpiry {
-                                                if expiryTime < existing {
-                                                    earliestExpiry = expiryTime
-                                                }
-                                            } else {
-                                                earliestExpiry = expiryTime
-                                            }
-                                        } else {
-                                            // 更新最早过期时间
-                                            if let existing = earliestExpiry {
-                                                if expiryTime < existing {
-                                                    earliestExpiry = expiryTime
-                                                }
-                                            } else {
-                                                earliestExpiry = expiryTime
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 计算最终产品：找出只输出，不输入到其他设施的资源
-                            // 使用缓存的 schematic
+                            let (earliestExpiry, extractorStatus) = Self.extractorSummary(detail, at: Date())
                             let finalProducts = await self.calculateFinalProducts(detail: detail)
-
-                            // 创建采集器状态
-                            let extractorStatus = ExtractorStatus(
-                                totalCount: totalExtractors,
-                                expiredCount: expiredCount,
-                                expiringSoonCount: expiringSoonCount
-                            )
-
-                            // 保存计算结果到缓存
-                            let finalProductIds = finalProducts.map { $0.typeId }
                             let cachedExtractorStatus = CachedExtractorStatus(
-                                totalCount: totalExtractors,
-                                expiredCount: expiredCount,
-                                expiringSoonCount: expiringSoonCount
+                                totalCount: extractorStatus.totalCount,
+                                expiredCount: extractorStatus.expiredCount,
+                                expiringSoonCount: extractorStatus.expiringSoonCount
                             )
 
-                            CharacterPlanetaryAPI.savePlanetaryDetailCalculations(
+                            await CharacterPlanetaryAPI.savePlanetaryDetailCalculations(
                                 characterId: planetWithOwner.ownerId,
                                 planetId: planetWithOwner.planet.planetId,
+                                detail: detail,
                                 earliestExtractorExpiry: earliestExpiry,
-                                finalProductIds: finalProductIds,
+                                finalProductIds: finalProducts.map(\.typeId),
                                 extractorStatus: cachedExtractorStatus
                             )
 
@@ -831,14 +845,8 @@ final class CharacterPlanetaryViewModel: ObservableObject {
                     // 立即更新该行星的数据
                     await MainActor.run {
                         // 更新采集器过期时间
-                        if let expiry = expiry {
-                            self.earliestExtractorExpiry[planetKey] = expiry
-                        }
-
-                        // 更新最终产品
-                        if !products.isEmpty {
-                            self.finalProducts[planetKey] = products
-                        }
+                        self.earliestExtractorExpiry[planetKey] = expiry
+                        self.finalProducts[planetKey] = products
 
                         // 更新采集器状态
                         if let status = status {
@@ -1109,10 +1117,13 @@ struct CharacterPlanetaryView: View {
     /// 多人物模式下已折叠的角色 ID；默认空 = 全部展开
     @State private var collapsedCharacterIdsInMultiMode: Set<Int> = []
 
-    init(characterId: Int?) {
+    init(characterId: Int?, focusSingleCharacter: Bool = false) {
         self.characterId = characterId
         _viewModel = StateObject(
-            wrappedValue: CharacterPlanetaryViewModel(characterId: characterId)
+            wrappedValue: CharacterPlanetaryViewModel(
+                characterId: characterId,
+                focusSingleCharacter: focusSingleCharacter
+            )
         )
     }
 
@@ -1306,6 +1317,17 @@ struct CharacterPlanetaryView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: AppDataUpdate.notification)) { notification in
+            guard let update = notification.object as? AppDataUpdate else { return }
+            switch update {
+            case let .colonies(id, colonies, date):
+                Task { await viewModel.applySharedColonies(colonies, characterID: id, at: date) }
+            case let .colony(id, planetID, detail, date):
+                Task { await viewModel.applySharedDetail(detail, characterID: id, planetID: planetID, at: date) }
+            default:
+                break
+            }
+        }
         .navigationTitle(NSLocalizedString("Main_Planetary_Title", comment: ""))
         .refreshable {
             // 清理星球详情缓存，防止数据不同步
@@ -1319,7 +1341,7 @@ struct CharacterPlanetaryView: View {
             }
 
             for charId in characterIdsToClear {
-                CharacterPlanetaryAPI.clearPlanetDetailCache(characterId: charId)
+                await CharacterPlanetaryAPI.clearPlanetDetailCache(characterId: charId)
             }
             await viewModel.loadPlanets(forceRefresh: true)
         }

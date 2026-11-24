@@ -78,6 +78,7 @@ class MarketManager {
 
     /// PLEX（30 天欧米伽时间）的 typeID；其订单走全球市场（regionID 19000001），位置信息不可解析
     static let plexTypeID = 44992
+    static let globalPlexRegionID = 19_000_001
 
     /// 市场搜索结果分组时的分类展示优先级（舰船、无人机、模块、弹药等），与 EVE 客户端 UI 顺序保持一致。
     /// 多处复用：MarketBrowserView / MarketWatchList / SearchResultView / MarketItemGrouper。

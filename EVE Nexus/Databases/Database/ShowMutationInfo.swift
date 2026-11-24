@@ -31,37 +31,38 @@ struct ShowMutationInfo: View {
                         .font(.headline)
                 ) {
                     ForEach(mutationAttributes, id: \.attributeID) { attribute in
-                        HStack {
-                            HStack(spacing: 8) {
-                                if let iconFileName = attribute.iconFileName {
-                                    IconManager.shared.loadImage(for: iconFileName)
-                                        .resizable()
-                                        .frame(width: 24, height: 24)
+                        AttributeTooltipRow(title: attribute.name, attributeID: attribute.attributeID) { title in
+                            HStack {
+                                HStack(spacing: 8) {
+                                    if let iconFileName = attribute.iconFileName {
+                                        IconManager.shared.loadImage(for: iconFileName)
+                                            .resizable()
+                                            .frame(width: 24, height: 24)
+                                    }
+                                    title.font(.body)
                                 }
-                                Text(attribute.name)
-                                    .font(.body)
-                            }
 
-                            Spacer()
+                                Spacer()
 
-                            HStack(spacing: 4) {
-                                Text(
-                                    formatValue(
-                                        attribute.highIsGood
-                                            ? attribute.minValue : attribute.maxValue
+                                HStack(spacing: 4) {
+                                    Text(
+                                        formatValue(
+                                            attribute.highIsGood
+                                                ? attribute.minValue : attribute.maxValue
+                                        )
                                     )
-                                )
-                                .foregroundColor(.red)
-                                Text("-")
-                                    .font(.system(.body, design: .monospaced))
-                                    .foregroundColor(.secondary)
-                                Text(
-                                    formatValue(
-                                        attribute.highIsGood
-                                            ? attribute.maxValue : attribute.minValue
+                                    .foregroundColor(.red)
+                                    Text("-")
+                                        .font(.system(.body, design: .monospaced))
+                                        .foregroundColor(.secondary)
+                                    Text(
+                                        formatValue(
+                                            attribute.highIsGood
+                                                ? attribute.maxValue : attribute.minValue
+                                        )
                                     )
-                                )
-                                .foregroundColor(.green)
+                                    .foregroundColor(.green)
+                                }
                             }
                         }
                     }

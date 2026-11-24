@@ -8,14 +8,14 @@ enum AddFittingSkillsToPlanSheet {
     ///   - characterId: 角色ID
     ///   - planName: 计划名称
     ///   - databaseManager: 数据库管理器
-    /// - Returns: 保存的计划名称，失败返回 nil
+    /// - Returns: 保存的计划名称，空名称返回 nil；保存失败时抛出错误。
     static func saveMissingSkillsToPlan(
         missingSkills: [(skillID: Int, requiredLevel: Int, currentLevel: Int, skillName: String)],
         characterId: Int,
         planName: String,
         databaseManager: DatabaseManager
-    ) async -> String? {
-        let name = planName.trimmingCharacters(in: .whitespaces)
+    ) async throws -> String? {
+        let name = SkillPlanNaming.normalized(planName)
         guard !name.isEmpty else { return nil }
 
         var skillsToAdd: [(skillId: Int, skillName: String, level: Int)] = []
@@ -43,13 +43,7 @@ enum AddFittingSkillsToPlanSheet {
                 id: UUID(),
                 skillID: skill.skillId,
                 skillName: skillName,
-                currentLevel: 0,
-                targetLevel: skill.level,
-                trainingTime: 0,
-                requiredSP: 0,
-                prerequisites: [],
-                currentSkillPoints: nil,
-                isCompleted: false
+                targetLevel: skill.level
             )
         }
 
@@ -63,13 +57,7 @@ enum AddFittingSkillsToPlanSheet {
                     id: UUID(),
                     skillID: item.skillID,
                     skillName: item.skillName,
-                    currentLevel: item.requiredLevel,
-                    targetLevel: item.requiredLevel,
-                    trainingTime: 0,
-                    requiredSP: 0,
-                    prerequisites: [],
-                    currentSkillPoints: nil,
-                    isCompleted: true
+                    targetLevel: item.requiredLevel
                 ),
                 at: 0
             )
@@ -79,15 +67,13 @@ enum AddFittingSkillsToPlanSheet {
             id: UUID(),
             name: name,
             skills: plannedSkills,
-            totalTrainingTime: 0,
-            totalSkillPoints: 0,
             lastUpdated: Date()
         )
 
-        _ = SkillPlanFileManager.shared.saveSkillPlan(
+        let savedPlan = try SkillPlanFileManager.shared.saveSkillPlan(
             characterId: characterId, plan: newPlan, databaseManager: databaseManager
         )
-        return name
+        return savedPlan.name
     }
 
     private static func getCurrentSkillLevels(characterId: Int) async -> [Int: Int] {

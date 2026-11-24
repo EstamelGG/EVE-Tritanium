@@ -8,6 +8,9 @@ extension SDEMemoryStore {
             SELECT attribute_id, categoryID, attribute_key, iconID, icon_filename,
                    unitID, highIsGood, stackable, defaultValue,
                    \(nameColumns),
+                   de_tooltip_description, en_tooltip_description, es_tooltip_description,
+                   fr_tooltip_description, ja_tooltip_description, ko_tooltip_description,
+                   ru_tooltip_description, zh_tooltip_description,
                    unit_de_name, unit_en_name, unit_es_name, unit_fr_name,
                    unit_ja_name, unit_ko_name, unit_ru_name, unit_zh_name
             FROM dogmaAttributes
@@ -23,6 +26,7 @@ extension SDEMemoryStore {
                     categoryID: row["categoryID"] as? Int,
                     name: (row["attribute_key"] as? String) ?? (row["name"] as? String) ?? "",
                     displayNames: LocalizedText.from(row: row),
+                    tooltipDescriptions: LocalizedText.from(row: row, suffix: "tooltip_description"),
                     iconID: (row["iconID"] as? Int) ?? 0,
                     iconFilename: rawIcon,
                     unitID: row["unitID"] as? Int,

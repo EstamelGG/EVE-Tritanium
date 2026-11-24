@@ -390,6 +390,21 @@ struct PlanetDetailView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: AppDataUpdate.notification)) { notification in
+            guard hasInitialized, !isLoading,
+                  let update = notification.object as? AppDataUpdate,
+                  case let .colony(id, updatedPlanetID, detail, _) = update,
+                  id == characterId, updatedPlanetID == planetId,
+                  let info = CharacterPlanetaryAPI.cachedColonies(characterID: id)?.first(where: { $0.planetId == planetId })
+            else { return }
+            Task {
+                guard !isLoading else { return }
+                if await loadPlanetDetail(shared: (info, detail)) {
+                    isSimulatingInitial = false
+                    isLoading = false
+                }
+            }
+        }
         .onReceive(timer) { newTime in
             let shouldUpdate = shouldUpdateView(newTime: newTime)
             if shouldUpdate {
@@ -740,7 +755,9 @@ struct PlanetDetailView: View {
         return false
     }
 
-    private func loadPlanetDetail(forceRefresh: Bool = false) async -> Bool {
+    private func loadPlanetDetail(
+        forceRefresh: Bool = false, shared: (CharacterPlanetaryInfo, PlanetaryDetail)? = nil
+    ) async -> Bool {
         var didInitialSimulation = false // 跟踪是否执行了初始模拟
         let task = Task { @MainActor in
             let revision = UUID()
@@ -750,19 +767,21 @@ struct PlanetDetailView: View {
             storageContentMarketPrices = [:]
 
             do {
-                // 获取行星基本信息
-                let planetaryInfo = try await CharacterPlanetaryAPI.fetchCharacterPlanetary(
-                    characterId: characterId, forceRefresh: forceRefresh
-                )
-                guard colonyRevision == revision else { return }
-                let currentPlanetInfo = planetaryInfo.first { $0.planetId == planetId }
-
-                // 获取行星详情
-                let fetchedDetail = try await CharacterPlanetaryAPI.fetchPlanetaryDetail(
-                    characterId: characterId,
-                    planetId: planetId,
-                    forceRefresh: forceRefresh
-                )
+                let currentPlanetInfo: CharacterPlanetaryInfo?
+                let fetchedDetail: PlanetaryDetail
+                if let (info, detail) = shared {
+                    currentPlanetInfo = info
+                    fetchedDetail = detail
+                } else {
+                    let planetaryInfo = try await CharacterPlanetaryAPI.fetchCharacterPlanetary(
+                        characterId: characterId, forceRefresh: forceRefresh
+                    )
+                    guard colonyRevision == revision else { return }
+                    currentPlanetInfo = planetaryInfo.first { $0.planetId == planetId }
+                    fetchedDetail = try await CharacterPlanetaryAPI.fetchPlanetaryDetail(
+                        characterId: characterId, planetId: planetId, forceRefresh: forceRefresh
+                    )
+                }
                 guard colonyRevision == revision else { return }
                 planetDetail = fetchedDetail
 
@@ -815,7 +834,7 @@ struct PlanetDetailView: View {
                     // 生成每小时快照（在后台执行）
                     // 注意：从已模拟到当前时间的殖民地开始生成快照
                     // 如果是强制刷新，清空旧快照并重新生成
-                    if forceRefresh {
+                    if forceRefresh || shared != nil {
                         await MainActor.run {
                             self.hourlySnapshots = [:]
                             self.storageVolumeCache = [:]

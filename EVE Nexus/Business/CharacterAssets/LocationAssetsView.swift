@@ -41,6 +41,38 @@ private func formatLocationFlag(_ flag: String) -> String {
     return NSLocalizedString(key, comment: "")
 }
 
+struct LocationAssetSection {
+    let flag: String
+    let items: [AssetTreeNode]
+    let totalVolume: Double
+}
+
+private struct LocationAssetSectionHeader: View {
+    let section: LocationAssetSection
+    let showsVolume: Bool
+
+    var body: some View {
+        if showsVolume {
+            HStack(alignment: .firstTextBaseline) {
+                Text(formatLocationFlag(section.flag))
+                Spacer()
+                Text(
+                    String(
+                        format: NSLocalizedString("%@ m³", comment: ""),
+                        FormatUtil.format(section.totalVolume, maxFractionDigits: 4)
+                    )
+                )
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .monospacedDigit()
+                .fixedSize(horizontal: true, vertical: false)
+            }
+        } else {
+            Text(formatLocationFlag(section.flag))
+        }
+    }
+}
+
 /// 与 `LocationAssetsViewModel.processFlag` 一致：将 ESI 的逐槽位 flag 归并为分组名
 private func normalizedAssetLocationFlag(_ flag: String) -> String {
     SlotFlag.assetGroup(for: flag)
@@ -117,6 +149,12 @@ private struct SavedFittingSheetItem: Identifiable {
 
 /// 扩展，提供共用的获取位置名称方法
 extension AssetTreeNode {
+    fileprivate var stackVolume: Double {
+        guard let info = ItemInfoMap.typeInfo(for: type_id) else { return 0 }
+        let unitVolume = is_singleton ? info.volume : (info.repackagedVolume ?? info.volume)
+        return unitVolume * Double(quantity)
+    }
+
     func getLocationName(
         stationNameCache: [Int64: String]? = nil, solarSystemNameCache: [Int: String]? = nil
     ) -> String {
@@ -156,6 +194,7 @@ struct LocationAssetsView: View {
     let ownerName: String?
     let ownerPortrait: UIImage?
     let typeFilterContext: AssetTypeFilterContext
+    private let showsSectionVolume: Bool
 
     init(
         location: AssetTreeNode, preloadedItemInfo: [Int: ItemInfo]? = nil,
@@ -163,7 +202,7 @@ struct LocationAssetsView: View {
         dynamicResultingTypeIds: Set<Int> = [],
         showOwner: Bool = false, ownerId: Int? = nil, ownerName: String? = nil,
         ownerPortrait: UIImage? = nil,
-        typeFilterContext: AssetTypeFilterContext = .inactive
+        typeFilterContext: AssetTypeFilterContext = .inactive, showsSectionVolume: Bool = true
     ) {
         self.location = location
         self.stationNameCache = stationNameCache
@@ -174,6 +213,7 @@ struct LocationAssetsView: View {
         self.ownerName = ownerName
         self.ownerPortrait = ownerPortrait
         self.typeFilterContext = typeFilterContext
+        self.showsSectionVolume = showsSectionVolume
         _viewModel = StateObject(
             wrappedValue: LocationAssetsViewModel(
                 location: location, preloadedItemInfo: preloadedItemInfo,
@@ -216,9 +256,9 @@ struct LocationAssetsView: View {
     }
 
     /// 将Section提取为单独的函数
-    private func assetGroupSection(for group: (flag: String, items: [AssetTreeNode])) -> some View {
+    private func assetGroupSection(for group: LocationAssetSection) -> some View {
         Section(
-            header: Text(formatLocationFlag(group.flag))
+            header: LocationAssetSectionHeader(section: group, showsVolume: showsSectionVolume)
         ) {
             ForEach(group.items, id: \.item_id) { node in
                 assetRow(for: node)
@@ -246,7 +286,8 @@ struct LocationAssetsView: View {
                 parentNode: node, preloadedItemInfo: viewModel.preloadedItemInfo,
                 stationNameCache: stationNameCache, solarSystemNameCache: solarSystemNameCache,
                 dynamicResultingTypeIds: dynamicResultingTypeIds,
-                typeFilterContext: typeFilterContext.containerContext(for: node)
+                typeFilterContext: typeFilterContext.containerContext(for: node),
+                showsSectionVolume: showsSectionVolume
             )
         } label: {
             AssetItemView(
@@ -489,9 +530,7 @@ struct SubLocationAssetsView: View {
     let dynamicResultingTypeIds: Set<Int>
     let typeFilterContext: AssetTypeFilterContext
 
-    private let containerCapacity: Double
-    private let isShip: Bool
-    private let contentVolume: Double
+    private let showsSectionVolume: Bool
 
     @State private var isExportableFittedShip = false
     @State private var showExportConfirm = false
@@ -505,35 +544,20 @@ struct SubLocationAssetsView: View {
         parentNode: AssetTreeNode, preloadedItemInfo: [Int: ItemInfo]? = nil,
         stationNameCache: [Int64: String]? = nil, solarSystemNameCache: [Int: String]? = nil,
         dynamicResultingTypeIds: Set<Int> = [],
-        typeFilterContext: AssetTypeFilterContext = .inactive
+        typeFilterContext: AssetTypeFilterContext = .inactive, showsSectionVolume: Bool = true
     ) {
         self.parentNode = parentNode
         self.stationNameCache = stationNameCache
         self.solarSystemNameCache = solarSystemNameCache
         self.dynamicResultingTypeIds = dynamicResultingTypeIds
         self.typeFilterContext = typeFilterContext
-
-        let parentInfo = ItemInfoMap.typeInfo(for: parentNode.type_id)
-        let ship = parentInfo?.categoryID == 6
-        containerCapacity = parentInfo?.capacity ?? 0
-        isShip = ship
-        contentVolume = (parentNode.items ?? []).reduce(0) { sum, item in
-            if ship && item.location_flag != "Cargo" {
-                return sum
-            }
-            let info = ItemInfoMap.typeInfo(for: item.type_id)
-            let volume =
-                item.is_singleton
-                    ? (info?.volume ?? 0)
-                    : (info?.repackagedVolume ?? info?.volume ?? 0)
-            return sum + volume * Double(item.quantity)
-        }
+        self.showsSectionVolume = showsSectionVolume
 
         _viewModel = StateObject(
             wrappedValue: LocationAssetsViewModel(
                 location: parentNode, preloadedItemInfo: preloadedItemInfo,
                 dynamicResultingTypeIds: dynamicResultingTypeIds,
-                typeFilterContext: typeFilterContext
+                typeFilterContext: typeFilterContext, includesContainerVolume: true
             )
         )
     }
@@ -686,21 +710,21 @@ struct SubLocationAssetsView: View {
                 )
             }
 
-            ContainerVolumeRow(
-                capacity: containerCapacity,
-                contentVolume: contentVolume
-            )
+            if let containerVolume = viewModel.containerVolume {
+                ContainerVolumeRow(
+                    capacity: containerVolume.capacity,
+                    contentVolume: containerVolume.contents
+                )
+            }
         } header: {
             Text(NSLocalizedString("Container_Basic_Info", comment: ""))
         }
     }
 
     /// 容器内容部分
-    private func containerContentSection(for group: (flag: String, items: [AssetTreeNode]))
-        -> some View
-    {
+    private func containerContentSection(for group: LocationAssetSection) -> some View {
         Section(
-            header: Text(formatLocationFlag(group.flag))
+            header: LocationAssetSectionHeader(section: group, showsVolume: showsSectionVolume)
         ) {
             ForEach(group.items, id: \.item_id) { node in
                 containerItemRow(for: node)
@@ -721,7 +745,8 @@ struct SubLocationAssetsView: View {
                     stationNameCache: stationNameCache,
                     solarSystemNameCache: solarSystemNameCache,
                     dynamicResultingTypeIds: dynamicResultingTypeIds,
-                    typeFilterContext: typeFilterContext.containerContext(for: node)
+                    typeFilterContext: typeFilterContext.containerContext(for: node),
+                    showsSectionVolume: showsSectionVolume
                 )
             } label: {
                 AssetItemView(
@@ -760,7 +785,8 @@ class LocationAssetsViewModel: ObservableObject {
     private var itemInfoCache: [Int: ItemInfo] = [:]
     let databaseManager: DatabaseManager
 
-    @Published private(set) var groupedSections: [(flag: String, items: [AssetTreeNode])] = []
+    @Published private(set) var groupedSections: [LocationAssetSection] = []
+    @Published private(set) var containerVolume: (capacity: Double, contents: Double)?
 
     /// 添加一个标志来跟踪是否正在加载
     private var isLoadingItems = false
@@ -770,6 +796,7 @@ class LocationAssetsViewModel: ObservableObject {
     /// 深渊变异产物 type_id 集合，不可合并、不可跳转市场
     let dynamicResultingTypeIds: Set<Int>
     private let typeFilterContext: AssetTypeFilterContext
+    private let includesContainerVolume: Bool
 
     /// 优先显示的货物集装箱的 marketGroupID 列表
     private let priorityMarketGroups = [1651, 1652, 1653, 1657, 1658]
@@ -780,13 +807,14 @@ class LocationAssetsViewModel: ObservableObject {
         location: AssetTreeNode, databaseManager: DatabaseManager = DatabaseManager(),
         preloadedItemInfo: [Int: ItemInfo]? = nil,
         dynamicResultingTypeIds: Set<Int> = [],
-        typeFilterContext: AssetTypeFilterContext = .inactive
+        typeFilterContext: AssetTypeFilterContext = .inactive, includesContainerVolume: Bool = false
     ) {
         self.location = location
         self.databaseManager = databaseManager
         self.preloadedItemInfo = preloadedItemInfo
         self.dynamicResultingTypeIds = dynamicResultingTypeIds
         self.typeFilterContext = typeFilterContext
+        self.includesContainerVolume = includesContainerVolume
     }
 
     func itemInfo(for typeId: Int) -> ItemInfo? {
@@ -812,9 +840,35 @@ class LocationAssetsViewModel: ObservableObject {
 
     /// 按location_flag分组的资产（结果缓存在 groupedSections）
     private func rebuildGroupedSections() {
-        let rawItems = location.items ?? []
-        let items = typeFilterContext.filterNodesForDisplay(rawItems)
-        if items.isEmpty {
+        let containerInfo = includesContainerVolume ? ItemInfoMap.typeInfo(for: location.type_id) : nil
+        let usesCargoVolume = containerInfo?.categoryID == 6
+        var groups: [String: (items: [AssetTreeNode], totalVolume: Double)] = [:]
+        var hiddenContentVolume = 0.0
+
+        // 第一步：按 flag 分组，同时汇总体积。
+        for item in location.items ?? [] {
+            guard let visibleItem = typeFilterContext.filterNodeForDisplay(item) else {
+                // 筛选隐藏的物品仍可能占用容积。
+                if includesContainerVolume, !usesCargoVolume || item.location_flag == "Cargo" {
+                    hiddenContentVolume += item.stackVolume
+                }
+                continue
+            }
+
+            let flag = normalizedAssetLocationFlag(item.location_flag)
+            groups[flag, default: ([], 0)].items.append(visibleItem)
+            // 同类物品合并前按各自的打包状态计算体积。
+            groups[flag, default: ([], 0)].totalVolume += item.stackVolume
+        }
+
+        if includesContainerVolume {
+            let visibleContentVolume = usesCargoVolume
+                ? (groups["Cargo"]?.totalVolume ?? 0)
+                : groups.values.reduce(0) { $0 + $1.totalVolume }
+            containerVolume = (containerInfo?.capacity ?? 0, visibleContentVolume + hiddenContentVolume)
+        }
+
+        if groups.isEmpty {
             groupedSections = []
             return
         }
@@ -822,20 +876,10 @@ class LocationAssetsViewModel: ObservableObject {
         // 获取优先显示的容器类型ID集合（带缓存，避免每次 groupedAssets 都查库）
         let priorityTypeIds = priorityContainerTypeIds
 
-        var groups: [String: [AssetTreeNode]] = [:]
-
-        // 第一步：按flag分组
-        for item in items {
-            let flag = normalizedAssetLocationFlag(item.location_flag)
-            if groups[flag] == nil {
-                groups[flag] = []
-            }
-            groups[flag]?.append(item)
-        }
-
         // 第二步：在每个分组内处理物品
-        var mergedGroups: [String: [AssetTreeNode]] = [:]
-        for (flag, items) in groups {
+        var mergedGroups: [String: LocationAssetSection] = [:]
+        for (flag, group) in groups {
+            let items = group.items
             // 将物品分为容器和非容器两类
             let containers = items.filter { $0.items != nil && !$0.items!.isEmpty }
             let normalItems = items.filter { $0.items == nil || $0.items!.isEmpty }
@@ -919,21 +963,14 @@ class LocationAssetsViewModel: ObservableObject {
 
             // 优先容器 + 普通容器 + 突变物品（按item_id） + 普通物品
             let allItems = sortedPriorityContainers + sortedNormalContainers + sortedDynamicItems + sortedNormalItems
-            mergedGroups[flag] = allItems
+            mergedGroups[flag] = LocationAssetSection(flag: flag, items: allItems, totalVolume: group.totalVolume)
         }
 
         // 第三步：按预定义顺序排序
-        let result = flagOrder.compactMap { flag in
-            if let items = mergedGroups[flag], !items.isEmpty {
-                return (flag: flag, items: items)
-            }
-            return nil
-        }
+        let result = flagOrder.compactMap { mergedGroups.removeValue(forKey: $0) }
 
         // 如果没有预定义的分组，添加剩余的分组
-        let remainingGroups = mergedGroups.filter { !flagOrder.contains($0.key) }
-        let remainingResult = remainingGroups.map { (flag: $0.key, items: $0.value) }
-            .sorted { $0.flag < $1.flag }
+        let remainingResult = mergedGroups.values.sorted { $0.flag < $1.flag }
 
         groupedSections = result + remainingResult
     }

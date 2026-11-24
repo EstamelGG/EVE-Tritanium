@@ -344,7 +344,7 @@ struct ContractRow: View {
 
     /// 根据字段显示信息创建文本视图
     private func createFieldText(_ fieldInfo: FieldDisplayInfo) -> some View {
-        Text("\(fieldInfo.prefix)\(FormatUtil.format(fieldInfo.value)) ISK")
+        Text("\(fieldInfo.prefix)\(FormatUtil.formatISKAmount(fieldInfo.value)) ISK")
             .foregroundColor(fieldInfo.color)
             .font(.system(.caption, design: .monospaced))
     }

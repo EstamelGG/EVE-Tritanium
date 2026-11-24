@@ -21,6 +21,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>eveauthpanel</string>
+				<string>evenexus</string>
 			</array>
 		</dict>
 	</array>

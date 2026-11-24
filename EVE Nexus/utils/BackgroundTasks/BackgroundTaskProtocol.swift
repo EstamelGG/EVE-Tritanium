@@ -6,7 +6,9 @@ import Foundation
 class BaseBackgroundTask {
     let identifier: String
     let interval: TimeInterval
-    private var task: Task<Void, Never>?
+    var nextRefreshDate: Date {
+        Date(timeIntervalSinceNow: interval)
+    }
 
     init(identifier: String, interval: TimeInterval) {
         self.identifier = identifier
@@ -22,46 +24,41 @@ class BaseBackgroundTask {
     func handle(task: BGAppRefreshTask) {
         Logger.notice("开始执行后台任务: \(identifier)")
 
-        // 安排下一次任务
-        schedule()
-
-        // 创建执行任务
-        self.task = Task {
-            await perform()
-
-            // 通知系统后台任务已完成
-            task.setTaskCompleted(success: true)
-            Logger.info("后台任务完成: \(identifier)")
+        var completed = false
+        let finish: @MainActor (Bool) -> Void = { success in
+            guard !completed else { return }
+            completed = true
+            task.setTaskCompleted(success: success)
         }
-
-        // 提供过期处理器
+        let operation = Task {
+            await perform()
+            if !Task.isCancelled {
+                let earliest = nextRefreshDate
+                await withCheckedContinuation { continuation in
+                    WidgetBackgroundRefresh.schedule(earliest: earliest, replaceExisting: true) {
+                        continuation.resume()
+                    }
+                }
+            }
+            finish(!Task.isCancelled)
+        }
         task.expirationHandler = {
-            Logger.warning("后台任务已过期，取消任务: \(self.identifier)")
-            self.task?.cancel()
-            task.setTaskCompleted(success: false)
+            operation.cancel()
+            Task { @MainActor in
+                let earliest = self.nextRefreshDate
+                await withCheckedContinuation { continuation in
+                    WidgetBackgroundRefresh.schedule(earliest: earliest, replaceExisting: true) {
+                        continuation.resume()
+                    }
+                }
+                finish(false)
+            }
         }
     }
 
     /// 安排任务
     func schedule() {
-        let request = BGAppRefreshTaskRequest(identifier: identifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: interval)
-
-        do {
-            try BGTaskScheduler.shared.submit(request)
-
-            // 格式化日期为本地时区显示
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateStyle = .medium
-            dateFormatter.timeStyle = .medium
-            dateFormatter.timeZone = TimeZone.current
-            dateFormatter.locale = Locale.current
-
-            let formattedDate = request.earliestBeginDate.map { dateFormatter.string(from: $0) } ?? "未知"
-            Logger.success("后台任务已安排: \(identifier) - \(formattedDate)")
-        } catch {
-            Logger.error("安排后台任务失败: \(identifier), 错误: \(error)")
-        }
+        WidgetBackgroundRefresh.schedule(earliest: nextRefreshDate, replaceExisting: true)
     }
 }
 

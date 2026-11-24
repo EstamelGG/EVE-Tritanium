@@ -547,7 +547,7 @@ struct PersonalContractsView: View {
                                                     if !minPrice.isEmpty,
                                                        let value = Double(minPrice), value > 0
                                                     {
-                                                        Text("(\(FormatUtil.formatForUI(value)))")
+                                                        Text("(\(FormatUtil.formatISKAmount(value, maxFractionDigits: 1)))")
                                                             .font(.caption)
                                                             .foregroundColor(.blue)
                                                     }
@@ -573,7 +573,7 @@ struct PersonalContractsView: View {
                                                     if !maxPrice.isEmpty,
                                                        let value = Double(maxPrice), value > 0
                                                     {
-                                                        Text("(\(FormatUtil.formatForUI(value)))")
+                                                        Text("(\(FormatUtil.formatISKAmount(value, maxFractionDigits: 1)))")
                                                             .font(.caption)
                                                             .foregroundColor(.blue)
                                                     }

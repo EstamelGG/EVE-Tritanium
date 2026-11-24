@@ -63,21 +63,7 @@ struct IndustryProgressView: View {
         case "delivered", "ready": // 已完成
             return .green
         case "active", "paused": // 进行中或暂停
-            // 根据活动类型返回不同颜色
-            switch job.activity_id {
-            case 1: // 制造
-                return Color(red: 204 / 255, green: 153 / 255, blue: 0 / 255)
-            case 3, 4: // 时间效率研究、材料效率研究
-                return Color.blue
-            case 5: // 复制
-                return Color.blue
-            case 8: // 发明
-                return Color.blue
-            case 9: // 反应
-                return Color.cyan
-            default:
-                return Color.gray
-            }
+            return WidgetIndustryActivity(rawValue: job.activity_id)?.progressColor ?? .gray
         default:
             return Color.gray
         }

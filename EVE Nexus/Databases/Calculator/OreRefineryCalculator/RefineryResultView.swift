@@ -331,7 +331,7 @@ struct RefineryResultView: View {
                         let marketPrice = priceData.averagePrice
                         if marketPrice > 0 {
                             Text(
-                                "\(NSLocalizedString("Ore_Refinery_Result_Avg_Price", comment: "")): \(FormatUtil.format(marketPrice)) ISK"
+                                "\(NSLocalizedString("Ore_Refinery_Result_Avg_Price", comment: "")): \(FormatUtil.formatISKAmount(marketPrice)) ISK"
                             )
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -389,7 +389,7 @@ struct RefineryResultView: View {
                         let marketPrice = priceData.averagePrice
                         if marketPrice > 0 {
                             Text(
-                                "\(NSLocalizedString("Ore_Refinery_Result_Avg_Price", comment: "")): \(FormatUtil.format(marketPrice)) ISK"
+                                "\(NSLocalizedString("Ore_Refinery_Result_Avg_Price", comment: "")): \(FormatUtil.formatISKAmount(marketPrice)) ISK"
                             )
                             .font(.caption)
                             .foregroundColor(.secondary)

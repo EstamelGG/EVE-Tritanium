@@ -376,6 +376,25 @@ struct MarketItemDetailView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: AppDataUpdate.notification)) { notification in
+            guard let update = notification.object as? AppDataUpdate else { return }
+            switch update {
+            case let .marketOrders(typeID, region, orders, _):
+                guard typeID == itemID, !isLoadingPrice,
+                      !isStructureSelection, region == (typeID == MarketManager.plexTypeID ? MarketManager.globalPlexRegionID : selectedRegionID)
+                else { return }
+                applyOrders(orders)
+            case let .marketHistory(typeID, region, history, _):
+                guard typeID == itemID, !isLoadingHistory, region == currentHistoryRegion else { return }
+                Task {
+                    let interpolated = await MarketHistoryAPI.shared.interpolateMarketHistory(history)
+                    guard !isLoadingHistory, region == currentHistoryRegion else { return }
+                    applyHistory(interpolated)
+                }
+            default:
+                break
+            }
+        }
         .onChange(of: selectedLocation) { _, _ in
             Task {
                 await loadAllMarketData()
@@ -396,11 +415,10 @@ struct MarketItemDetailView: View {
                     defaults.selectedLocation = selectedLocation
                 }
             } else {
-                // 验证当前选择的地点是否有效
+                // 验证当前选择的地点是否有效（显式传入时仅做本次回退，不覆写用户全局默认地点）
                 if !isValidRegionID(selectedLocation) {
                     Logger.warning("当前选择的地点 ID \(selectedLocation) 无效，回退到Jita")
                     selectedLocation = MarketManager.theForgeRegionID // The Forge (Jita)
-                    defaults.selectedLocation = selectedLocation
                 }
             }
 
@@ -413,6 +431,32 @@ struct MarketItemDetailView: View {
                 isFromParent = false
             }
         }
+    }
+
+    private var currentHistoryRegion: Int? {
+        if itemID == MarketManager.plexTypeID {
+            return MarketManager.globalPlexRegionID
+        }
+        guard isStructureSelection else { return selectedRegionID }
+        return StructureMarketManager.getStructureId(from: selectedLocation)
+            .flatMap { getStructureById($0)?.regionId }
+    }
+
+    private func applyOrders(_ orders: [MarketOrder]) {
+        let filtered = locationType?.systemID.map { id in orders.filter { $0.systemId == id } } ?? orders
+        marketOrders = filtered
+        lowestPrice = filtered.lazy.filter { !$0.isBuyOrder }.map(\.price).min()
+    }
+
+    private func applyHistory(_ history: [MarketHistory]) {
+        chartDataByTimeRange = Dictionary(uniqueKeysWithValues: PriceHistoryTimeRange.allCases.map {
+            ($0, MarketHistoryChartData(
+                history: filteredHistory(for: history, timeRange: $0),
+                fullHistory: history,
+                timeRange: $0
+            ))
+        })
+        marketHistory = history
     }
 
     private func loadMarketData(forceRefresh: Bool = false) async {
@@ -470,14 +514,7 @@ struct MarketItemDetailView: View {
                 )
             }
 
-            // 更新UI：选中星系时仅显示该星系的订单
-            let systemFilter = locationType?.systemID
-            let filteredOrders = systemFilter.map { sid in
-                orders.filter { $0.systemId == sid }
-            } ?? orders
-            marketOrders = filteredOrders
-            let sellOrders = filteredOrders.filter { !$0.isBuyOrder }
-            lowestPrice = sellOrders.map { $0.price }.min()
+            applyOrders(orders)
         } catch {
             Logger.error("加载市场订单失败: \(error)")
             marketOrders = []
@@ -523,16 +560,7 @@ struct MarketItemDetailView: View {
                 forceRefresh: forceRefresh
             )
 
-            // 更新UI
-            // Prepare each window only when history changes, not on every layout or order update.
-            chartDataByTimeRange = Dictionary(uniqueKeysWithValues: PriceHistoryTimeRange.allCases.map {
-                ($0, MarketHistoryChartData(
-                    history: filteredHistory(for: history, timeRange: $0),
-                    fullHistory: history,
-                    timeRange: $0
-                ))
-            })
-            marketHistory = history
+            applyHistory(history)
         } catch {
             Logger.error("加载市场历史数据失败: \(error)")
             marketHistory = []

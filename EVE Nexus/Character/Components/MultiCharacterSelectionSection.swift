@@ -26,9 +26,39 @@ struct CharacterNameText: View {
 /// 多人物聚合功能中通用的角色选择列表 Section。
 ///
 /// 包含：角色列表（头像 + 名称 + 选中勾号）+ 全选/全不选按钮。
-struct MultiCharacterSelectionSection: View {
+struct MultiCharacterSelectionSection<Row: View>: View {
     let availableCharacters: [(id: Int, name: String)]
     @Binding var selectedCharacterIds: Set<Int>
+    let showsSelectAllFirst: Bool
+    private let row: ((Int, String) -> Row)?
+
+    init(
+        availableCharacters: [(id: Int, name: String)], selectedCharacterIds: Binding<Set<Int>>,
+        showsSelectAllFirst: Bool = false, @ViewBuilder row: @escaping (Int, String) -> Row
+    ) {
+        self.availableCharacters = availableCharacters
+        _selectedCharacterIds = selectedCharacterIds
+        self.showsSelectAllFirst = showsSelectAllFirst
+        self.row = row
+    }
+
+    init(
+        availableCharacters: [(id: Int, name: String)], selectedCharacterIds: Binding<Set<Int>>,
+        showsSelectAllFirst: Bool = false
+    ) where Row == EmptyView {
+        self.availableCharacters = availableCharacters
+        _selectedCharacterIds = selectedCharacterIds
+        self.showsSelectAllFirst = showsSelectAllFirst
+        row = nil
+    }
+
+    private var availableIDs: Set<Int> {
+        Set(availableCharacters.map(\.id))
+    }
+
+    private var allSelected: Bool {
+        !availableIDs.isEmpty && availableIDs.isSubset(of: selectedCharacterIds)
+    }
 
     var body: some View {
         Section(
@@ -36,49 +66,63 @@ struct MultiCharacterSelectionSection: View {
                 NSLocalizedString("MultiCharacter_Select_Characters", comment: "选择角色")
             )
         ) {
+            if showsSelectAllFirst {
+                selectAllButton
+            }
+
             ForEach(availableCharacters, id: \.id) { character in
+                let selected = selectedCharacterIds.contains(character.id)
                 Button {
-                    if selectedCharacterIds.contains(character.id) {
+                    if selected {
                         selectedCharacterIds.remove(character.id)
                     } else {
                         selectedCharacterIds.insert(character.id)
                     }
                 } label: {
                     HStack {
-                        CharacterPortraitView(characterId: character.id)
-                            .padding(.trailing, 8)
-                        CharacterNameText(characterId: character.id, name: character.name)
-                        Spacer()
-                        if selectedCharacterIds.contains(character.id) {
+                        if let row {
+                            row(character.id, character.name)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            CharacterPortraitView(characterId: character.id)
+                                .padding(.trailing, 8)
+                            CharacterNameText(characterId: character.id, name: character.name)
+                            Spacer()
+                        }
+                        if selected || row != nil {
                             Image(systemName: "checkmark")
                                 .foregroundColor(.blue)
+                                .opacity(selected ? 1 : 0)
+                                .accessibilityHidden(true)
                         }
                     }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
             }
 
-            Button {
-                if selectedCharacterIds.count == availableCharacters.count {
-                    selectedCharacterIds = []
-                } else {
-                    selectedCharacterIds = Set(availableCharacters.map(\.id))
-                }
-            } label: {
-                HStack {
-                    Text(NSLocalizedString("MultiCharacter_Select_All", comment: "全选"))
-                    Spacer()
-                    if selectedCharacterIds.count == availableCharacters.count {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.blue)
-                    } else {
-                        Image(systemName: "circle")
-                            .foregroundColor(.secondary)
-                    }
-                }
+            if !showsSelectAllFirst {
+                selectAllButton
             }
-            .buttonStyle(.plain)
         }
+    }
+
+    private var selectAllButton: some View {
+        Button {
+            selectedCharacterIds = allSelected ? [] : availableIDs
+        } label: {
+            HStack {
+                Text(NSLocalizedString("MultiCharacter_Select_All", comment: "全选"))
+                Spacer()
+                Image(systemName: allSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(allSelected ? Color.blue : Color.secondary)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(availableIDs.isEmpty)
+        .accessibilityAddTraits(allSelected ? .isSelected : [])
     }
 }

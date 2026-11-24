@@ -2,6 +2,22 @@ import XCTest
 @testable import EVE_Nexus
 
 final class FormatUtilTests: XCTestCase {
+    @MainActor
+    func testIncursionPercentDoesNotRoundIncompleteInfluenceTo100() {
+        let cases: [(Double, Double)] = [
+            (-0.1, 0), (0, 0), (0.12399, 12.3), (0.85, 85),
+            (0.9994, 99.9), (0.9995, 99.9), (0.9996, 99.9),
+            (Double(1).nextDown, 99.9), (1, 100), (1.1, 100),
+        ]
+        for (influence, expected) in cases {
+            XCTAssertEqual(
+                IncursionProgressRow.percentText(for: influence),
+                FormatUtil.format(expected, maxFractionDigits: 1),
+                "Influence: \(influence)"
+            )
+        }
+    }
+
     // MARK: - format 测试
     func testFormat() {
         // 基本格式化测试
@@ -58,25 +74,28 @@ final class FormatUtilTests: XCTestCase {
     }
     
     // MARK: - formatISK 测试
-    func testFormatISK() {
-        // 不同单位测试
-        XCTAssertEqual(FormatUtil.formatISK(1200), "1.20K ISK")
-        XCTAssertEqual(FormatUtil.formatISK(1200000), "1.20M ISK")
-        XCTAssertEqual(FormatUtil.formatISK(1200000000), "1.20B ISK")
-        XCTAssertEqual(FormatUtil.formatISK(1200000000000), "1.20T ISK")
-        
-        // 小数位数测试
-        XCTAssertEqual(FormatUtil.formatISK(1234), "1.23K ISK")
-        XCTAssertEqual(FormatUtil.formatISK(12345), "12.35K ISK")
-        XCTAssertEqual(FormatUtil.formatISK(123456), "123.46K ISK")
-        XCTAssertEqual(FormatUtil.formatISK(1234567), "1.23M ISK")
-        
-        // 边界值测试
+    func testFormatISK() throws {
+        let defaults = try XCTUnwrap(WidgetMarketWatchlist.defaults)
+        let key = CurrencyUnitStyle.key
+        let previousValue = defaults.object(forKey: key)
+        defer { defaults.set(previousValue, forKey: key) }
+        defaults.set(CurrencyUnitStyle.english.rawValue, forKey: key)
+
+        XCTAssertEqual(FormatUtil.formatISK(1_200), "1.2K ISK")
+        XCTAssertEqual(FormatUtil.formatISK(1_200_000), "1.2M ISK")
+        XCTAssertEqual(FormatUtil.formatISK(1_200_000_000), "1.2B ISK")
+        XCTAssertEqual(FormatUtil.formatISK(1_200_000_000_000), "1.2T ISK")
+
+        XCTAssertEqual(FormatUtil.formatISK(1_234), "1.23K ISK")
+        XCTAssertEqual(FormatUtil.formatISK(12_346), "12.35K ISK")
+        XCTAssertEqual(FormatUtil.formatISK(123_456), "123.46K ISK")
+        XCTAssertEqual(FormatUtil.formatISK(-1_234_567), "-1.23M ISK")
+
         XCTAssertEqual(FormatUtil.formatISK(0), "0 ISK")
         XCTAssertEqual(FormatUtil.formatISK(999), "999 ISK")
-        XCTAssertEqual(FormatUtil.formatISK(999999999999999), "1000.00T ISK")
+        XCTAssertEqual(FormatUtil.formatISK(999_999_999_999_999), "1000T ISK")
     }
-    
+
     // MARK: - formatTimeWithMillisecondPrecision 测试
     func testFormatTimeWithMillisecondPrecision() {
         // 基本时间单位测试

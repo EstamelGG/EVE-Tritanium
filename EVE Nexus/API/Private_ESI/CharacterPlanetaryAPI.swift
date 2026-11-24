@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Data Models
 
-struct CharacterPlanetaryInfo: Codable {
+struct CharacterPlanetaryInfo: Codable, Sendable {
     let lastUpdate: String
     let numPins: Int
     let ownerId: Int
@@ -22,7 +22,7 @@ struct CharacterPlanetaryInfo: Codable {
     }
 }
 
-struct PlanetaryDetail: Codable {
+struct PlanetaryDetail: Codable, Equatable, Sendable {
     let links: [PlanetaryLink] // maxItems: 500
     let pins: [PlanetaryPin] // maxItems: 100
     let routes: [PlanetaryRoute] // maxItems: 1000
@@ -32,7 +32,7 @@ struct PlanetaryDetail: Codable {
     }
 }
 
-struct PlanetaryPin: Codable {
+struct PlanetaryPin: Codable, Equatable, Sendable {
     let contentTypeId: Int?
     let contents: [PlanetaryContent]? // maxItems: 90
     let expiryTime: String?
@@ -62,7 +62,7 @@ struct PlanetaryPin: Codable {
     }
 }
 
-struct PlanetaryContent: Codable {
+struct PlanetaryContent: Codable, Equatable, Sendable {
     let amount: Int64
     let typeId: Int
 
@@ -72,7 +72,7 @@ struct PlanetaryContent: Codable {
     }
 }
 
-struct PlanetaryExtractor: Codable {
+struct PlanetaryExtractor: Codable, Equatable, Sendable {
     let heads: [PlanetaryHead] // maxItems: 10
     let productTypeId: Int?
     let cycleTime: Int? // in seconds
@@ -88,7 +88,7 @@ struct PlanetaryExtractor: Codable {
     }
 }
 
-struct PlanetaryHead: Codable {
+struct PlanetaryHead: Codable, Equatable, Sendable {
     let headId: Int // maximum: 9, minimum: 0
     let latitude: Double
     let longitude: Double
@@ -100,7 +100,7 @@ struct PlanetaryHead: Codable {
     }
 }
 
-struct PlanetaryFactory: Codable {
+struct PlanetaryFactory: Codable, Equatable, Sendable {
     let schematicId: Int
 
     enum CodingKeys: String, CodingKey {
@@ -108,7 +108,7 @@ struct PlanetaryFactory: Codable {
     }
 }
 
-struct PlanetaryRoute: Codable {
+struct PlanetaryRoute: Codable, Equatable, Sendable {
     let contentTypeId: Int
     let destinationPinId: Int64
     let quantity: Double
@@ -136,12 +136,14 @@ struct CachedPlanetaryDetail: Codable {
     let earliestExtractorExpiry: Date? // 最早采集器过期时间
     let finalProductIds: [Int]? // 最终产品ID列表
     let extractorStatus: CachedExtractorStatus? // 采集器状态
+    var fetchedAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case detail
         case earliestExtractorExpiry = "earliest_extractor_expiry"
         case finalProductIds = "final_product_ids"
         case extractorStatus = "extractor_status"
+        case fetchedAt = "fetched_at"
     }
 }
 
@@ -165,6 +167,11 @@ struct CachedPlanetaryResults {
     let extractorStatus: CachedExtractorStatus
 }
 
+@globalActor
+actor PlanetaryCacheWriter {
+    static let shared = PlanetaryCacheWriter()
+}
+
 class CharacterPlanetaryAPI {
     // MARK: - Cache Configuration
 
@@ -174,126 +181,95 @@ class CharacterPlanetaryAPI {
     /// 星球详情缓存过期时间（秒），默认1小时
     private static let planetaryDetailCacheExpiration: TimeInterval = 1 * 60 * 60
 
-    static func fetchCharacterPlanetary(characterId: Int, forceRefresh: Bool = false) async throws
-        -> [CharacterPlanetaryInfo]
-    {
-        let urlString =
-            "https://esi.evetech.net/characters/\(characterId)/planets/?datasource=tranquility"
-        guard let url = URL(string: urlString) else {
-            throw AssetError.invalidURL
-        }
-        // 检查缓存（除非强制刷新）
-        if !forceRefresh, let cachedData = checkCache(characterId: characterId) {
-            Logger.info("Fetch Planets from cache.")
-            return cachedData
-        }
-
-        // 使用fetchWithToken发起请求
-        let data = try await NetworkManager.shared.fetchDataWithToken(
-            from: url,
-            characterId: characterId,
-            forceRefresh: forceRefresh
-        )
-        Logger.debug("Fetched from Network.")
-        // 解析数据
-        let planetaryInfo = try JSONDecoder().decode([CharacterPlanetaryInfo].self, from: data)
-
-        // 缓存数据
-        try? saveToCache(data: data, characterId: characterId)
-
-        return planetaryInfo
+    private struct DetailKey: Hashable, Sendable {
+        let characterID: Int
+        let planetID: Int
     }
 
-    static func fetchPlanetaryDetail(characterId: Int, planetId: Int, forceRefresh: Bool = false)
-        async throws -> PlanetaryDetail
-    {
-        let urlString =
-            "https://esi.evetech.net/characters/\(characterId)/planets/\(planetId)/?datasource=tranquility"
-        guard let url = URL(string: urlString) else {
-            throw AssetError.invalidURL
+    private static let colonyRequests = AppDataRequests<Int, [CharacterPlanetaryInfo]>()
+    private static let detailRequests = AppDataRequests<DetailKey, PlanetaryDetail>()
+
+    static func fetchCharacterPlanetary(
+        characterId: Int, forceRefresh: Bool = false, maxCacheAge: TimeInterval? = nil
+    ) async throws -> [CharacterPlanetaryInfo] {
+        if !forceRefresh, let cached = checkCache(
+            characterId: characterId, maxAge: maxCacheAge ?? planetaryListCacheExpiration
+        ) {
+            return cached
         }
-
-        // 检查缓存（除非强制刷新）
-        if !forceRefresh,
-           let cachedData = checkPlanetCache(characterId: characterId, planetId: planetId)
-        {
-            Logger.info("Fetch Planetary Detail from cache.")
-            return cachedData
+        return try await colonyRequests.run(characterId) {
+            let url = URL(string: "https://esi.evetech.net/characters/\(characterId)/planets/?datasource=tranquility")!
+            let data = try await NetworkManager.shared.fetchDataWithToken(
+                from: url, characterId: characterId, forceRefresh: forceRefresh
+            )
+            let colonies = try JSONDecoder().decode([CharacterPlanetaryInfo].self, from: data)
+            try? saveToCache(data: data, characterId: characterId)
+            await AppDataUpdate.colonies(characterID: characterId, colonies: colonies, at: Date()).publish()
+            return colonies
         }
-
-        // 使用fetchWithToken发起请求
-        let data = try await NetworkManager.shared.fetchDataWithToken(
-            from: url,
-            characterId: characterId,
-            forceRefresh: forceRefresh
-        )
-        Logger.debug("Fetched from Network.")
-        // 解析数据
-        let planetaryDetail = try JSONDecoder().decode(PlanetaryDetail.self, from: data)
-
-        // 缓存数据（保存为扩展格式，但不包含计算结果）
-        try? saveToPlanetCache(detail: planetaryDetail, characterId: characterId, planetId: planetId)
-        Logger.debug("Save to cache.")
-        return planetaryDetail
     }
 
-    /// 获取行星详情（带计算结果缓存）
-    /// - Returns: (detail, cachedResults)，如果缓存中有计算结果则返回，否则返回 nil
+    static func fetchPlanetaryDetail(
+        characterId: Int, planetId: Int, forceRefresh: Bool = false, maxCacheAge: TimeInterval? = nil
+    ) async throws -> PlanetaryDetail {
+        try await fetchPlanetaryDetailWithCache(
+            characterId: characterId, planetId: planetId, forceRefresh: forceRefresh, maxCacheAge: maxCacheAge
+        ).detail
+    }
+
     static func fetchPlanetaryDetailWithCache(
         characterId: Int,
         planetId: Int,
-        forceRefresh: Bool = false
+        forceRefresh: Bool = false,
+        maxCacheAge: TimeInterval? = nil
     ) async throws -> (detail: PlanetaryDetail, cachedResults: CachedPlanetaryResults?) {
-        let urlString =
-            "https://esi.evetech.net/characters/\(characterId)/planets/\(planetId)/?datasource=tranquility"
-        guard let url = URL(string: urlString) else {
-            throw AssetError.invalidURL
+        if !forceRefresh, let cached = checkMergedPlanetCache(
+            characterId: characterId, planetId: planetId, maxCacheAge: maxCacheAge
+        ) {
+            return cached
         }
 
-        // 检查合并后的缓存（包含计算结果）
-        if !forceRefresh {
-            if let (detail, cachedResults) = checkMergedPlanetCache(characterId: characterId, planetId: planetId) {
-                Logger.info("Fetch Planetary Detail from merged cache.")
-                return (detail, cachedResults)
-            }
+        let key = DetailKey(characterID: characterId, planetID: planetId)
+        let detail = try await detailRequests.run(key) {
+            let url = URL(string: "https://esi.evetech.net/characters/\(characterId)/planets/\(planetId)/?datasource=tranquility")!
+            let data = try await NetworkManager.shared.fetchDataWithToken(
+                from: url, characterId: characterId, forceRefresh: forceRefresh
+            )
+            let detail = try JSONDecoder().decode(PlanetaryDetail.self, from: data)
+            try? await saveToPlanetCache(detail: detail, characterId: characterId, planetId: planetId)
+            await AppDataUpdate.colony(characterID: characterId, planetID: planetId, detail: detail, at: Date()).publish()
+            return detail
         }
+        return (detail, nil)
+    }
 
-        // 使用fetchWithToken发起请求
-        let data = try await NetworkManager.shared.fetchDataWithToken(
-            from: url,
-            characterId: characterId,
-            forceRefresh: forceRefresh
-        )
-        Logger.debug("Fetched from Network.")
-        // 解析数据
-        let planetaryDetail = try JSONDecoder().decode(PlanetaryDetail.self, from: data)
+    static func cachedColonies(characterID: Int) -> [CharacterPlanetaryInfo]? {
+        checkCache(characterId: characterID, maxAge: nil)
+    }
 
-        // 缓存数据（保存为扩展格式，但不包含计算结果）
-        try? saveToPlanetCache(detail: planetaryDetail, characterId: characterId, planetId: planetId)
-        Logger.debug("Save to cache.")
-        return (planetaryDetail, nil)
+    static func cachedColony(characterID: Int, planetID: Int, allowExpired: Bool = true) -> PlanetaryDetail? {
+        checkMergedPlanetCache(characterId: characterID, planetId: planetID, allowExpired: allowExpired)?.detail
     }
 
     /// 保存计算结果到缓存（更新合并后的缓存）
+    @PlanetaryCacheWriter
     static func savePlanetaryDetailCalculations(
         characterId: Int,
         planetId: Int,
+        detail: PlanetaryDetail,
         earliestExtractorExpiry: Date?,
         finalProductIds: [Int],
         extractorStatus: CachedExtractorStatus
     ) {
-        // 先读取现有的缓存数据
-        guard let detail = checkPlanetCache(characterId: characterId, planetId: planetId) else {
-            Logger.warning("无法保存计算结果：找不到原始缓存数据")
-            return
-        }
+        guard checkPlanetCache(characterId: characterId, planetId: planetId) == detail else { return }
 
         // 创建扩展缓存结构（包含计算结果）
         let cachedDetail = CachedPlanetaryDetail(
             detail: detail,
             earliestExtractorExpiry: earliestExtractorExpiry,
             finalProductIds: finalProductIds,
-            extractorStatus: extractorStatus
+            extractorStatus: extractorStatus,
+            fetchedAt: cachedColonyAt(characterID: characterId, planetID: planetId)
         )
 
         // 保存到合并后的缓存
@@ -307,12 +283,35 @@ class CharacterPlanetaryAPI {
 
     // MARK: - Cache Management
 
-    private static func checkCache(characterId: Int) -> [CharacterPlanetaryInfo]? {
-        let fileManager = FileManager.default
-        let cacheDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Planetary")
+    private static var cacheDirectory: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Planetary", isDirectory: true)
+    }
 
-        let cacheFile = cacheDirectory.appendingPathComponent("\(characterId)_planetary.json")
+    private static func coloniesCacheURL(characterID: Int) -> URL {
+        cacheDirectory.appendingPathComponent("\(characterID)_planetary.json")
+    }
+
+    private static func colonyCacheURL(characterID: Int, planetID: Int) -> URL {
+        cacheDirectory.appendingPathComponent("character_\(characterID)_planet_\(planetID).json")
+    }
+
+    static func cachedColoniesAt(characterID: Int) -> Date? {
+        coloniesCacheURL(characterID: characterID).cacheModificationDate
+    }
+
+    static func cachedColonyAt(characterID: Int, planetID: Int) -> Date? {
+        let url = colonyCacheURL(characterID: characterID, planetID: planetID)
+        struct Timestamp: Decodable { let fetched_at: Date? }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let fetchedAt = (try? decoder.decode(Timestamp.self, from: Data(contentsOf: url)))?.fetched_at
+        return fetchedAt ?? url.cacheModificationDate
+    }
+
+    private static func checkCache(characterId: Int, maxAge: TimeInterval?) -> [CharacterPlanetaryInfo]? {
+        let fileManager = FileManager.default
+        let cacheFile = coloniesCacheURL(characterID: characterId)
 
         guard fileManager.fileExists(atPath: cacheFile.path) else {
             return nil
@@ -326,8 +325,7 @@ class CharacterPlanetaryAPI {
         }
 
         // 检查缓存是否过期
-        if Date().timeIntervalSince(modificationDate) > planetaryListCacheExpiration {
-            try? fileManager.removeItem(at: cacheFile)
+        if let maxAge, Date().timeIntervalSince(modificationDate) >= maxAge {
             return nil
         }
 
@@ -343,44 +341,25 @@ class CharacterPlanetaryAPI {
 
     private static func saveToCache(data: Data, characterId: Int) throws {
         let fileManager = FileManager.default
-        let cacheDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Planetary")
 
         // 创建缓存目录（如果不存在）
         if !fileManager.fileExists(atPath: cacheDirectory.path) {
             try fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
         }
 
-        let cacheFile = cacheDirectory.appendingPathComponent("\(characterId)_planetary.json")
-        try data.write(to: cacheFile)
+        let cacheFile = coloniesCacheURL(characterID: characterId)
+        try data.write(to: cacheFile, options: .atomic)
     }
 
     // MARK: - Planet Cache Management
 
     /// 检查合并后的缓存（统一使用 CachedPlanetaryDetail 格式）
-    private static func checkMergedPlanetCache(characterId: Int, planetId: Int) -> (detail: PlanetaryDetail, cachedResults: CachedPlanetaryResults?)? {
+    private static func checkMergedPlanetCache(characterId: Int, planetId: Int, allowExpired: Bool = false, maxCacheAge: TimeInterval? = nil) -> (detail: PlanetaryDetail, cachedResults: CachedPlanetaryResults?)? {
         let fileManager = FileManager.default
-        let cacheDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Planetary")
 
-        let cacheFile = cacheDirectory.appendingPathComponent(
-            "character_\(characterId)_planet_\(planetId).json"
-        )
+        let cacheFile = colonyCacheURL(characterID: characterId, planetID: planetId)
 
         guard fileManager.fileExists(atPath: cacheFile.path) else {
-            return nil
-        }
-
-        // 检查文件修改时间
-        guard let attributes = try? fileManager.attributesOfItem(atPath: cacheFile.path),
-              let modificationDate = attributes[.modificationDate] as? Date
-        else {
-            return nil
-        }
-
-        // 检查缓存是否过期
-        if Date().timeIntervalSince(modificationDate) > planetaryDetailCacheExpiration {
-            try? fileManager.removeItem(at: cacheFile)
             return nil
         }
 
@@ -396,6 +375,9 @@ class CharacterPlanetaryAPI {
         guard let cachedDetail = try? decoder.decode(CachedPlanetaryDetail.self, from: data) else {
             return nil
         }
+
+        guard allowExpired || (cachedDetail.fetchedAt ?? cacheFile.cacheModificationDate)
+            .map({ Date().timeIntervalSince($0) < (maxCacheAge ?? planetaryDetailCacheExpiration) }) == true else { return nil }
 
         // 检查是否有计算结果
         if let finalProductIds = cachedDetail.finalProductIds,
@@ -422,6 +404,7 @@ class CharacterPlanetaryAPI {
     }
 
     /// 保存到缓存（统一使用 CachedPlanetaryDetail 格式）
+    @PlanetaryCacheWriter
     private static func saveToPlanetCache(
         detail: PlanetaryDetail? = nil,
         cachedDetail: CachedPlanetaryDetail? = nil,
@@ -429,17 +412,13 @@ class CharacterPlanetaryAPI {
         planetId: Int
     ) throws {
         let fileManager = FileManager.default
-        let cacheDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Planetary")
 
         // 创建缓存目录（如果不存在）
         if !fileManager.fileExists(atPath: cacheDirectory.path) {
             try fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
         }
 
-        let cacheFile = cacheDirectory.appendingPathComponent(
-            "character_\(characterId)_planet_\(planetId).json"
-        )
+        let cacheFile = colonyCacheURL(characterID: characterId, planetID: planetId)
 
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -454,22 +433,22 @@ class CharacterPlanetaryAPI {
                 detail: detail,
                 earliestExtractorExpiry: nil,
                 finalProductIds: nil,
-                extractorStatus: nil
+                extractorStatus: nil,
+                fetchedAt: Date()
             )
         } else {
             throw NSError(domain: "CharacterPlanetaryAPI", code: -1, userInfo: [NSLocalizedDescriptionKey: "必须提供 detail 或 cachedDetail"])
         }
 
         let data = try encoder.encode(cachedDetailToSave)
-        try data.write(to: cacheFile)
+        try data.write(to: cacheFile, options: .atomic)
     }
 
     /// 清理指定角色的所有星球详情缓存
     /// - Parameter characterId: 角色ID
+    @PlanetaryCacheWriter
     static func clearPlanetDetailCache(characterId: Int) {
         let fileManager = FileManager.default
-        let cacheDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Planetary")
 
         guard fileManager.fileExists(atPath: cacheDirectory.path) else {
             return

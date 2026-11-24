@@ -4,7 +4,7 @@ import Foundation
 /// 负责刷新所有角色的钱包余额、位置信息以及公共数据（主权数据）
 @MainActor
 class DataRefreshTask: BaseBackgroundTask {
-    static let identifier = "com.evenexus.datarefresh"
+    static let identifier = WidgetBackgroundRefresh.identifier
     static let interval: TimeInterval = 30 * 60 // 30分钟
 
     init() {
@@ -13,6 +13,9 @@ class DataRefreshTask: BaseBackgroundTask {
 
     override func perform() async {
         Logger.notice("开始执行后台数据刷新")
+
+        await refreshWidgets()
+        guard !Task.isCancelled else { return }
 
         let characters = EVELogin.shared.loadCharacters()
         guard !characters.isEmpty else {
@@ -50,6 +53,10 @@ class DataRefreshTask: BaseBackgroundTask {
         await refreshPublicData()
 
         Logger.success("后台数据刷新完成")
+    }
+
+    private func refreshWidgets() async {
+        await WidgetRefreshService.shared.refresh()
     }
 
     /// 刷新单个角色的数据（仅钱包和位置信息）

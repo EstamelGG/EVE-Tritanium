@@ -380,7 +380,7 @@ struct CharacterOrdersView: View {
                                 Text("\(order.volumeRemain)/\(order.volumeTotal)")
                                     .font(.caption)
                             }
-                            Text(FormatUtil.format(order.price) + " ISK")
+                            Text(FormatUtil.formatISKAmount(order.price) + " ISK")
                                 .font(.system(.caption, design: .monospaced))
                                 .foregroundColor(order.isBuyOrder ?? false ? .red : .green)
                         }

@@ -408,8 +408,7 @@ final class IncursionsViewModel: ObservableObject {
                 // 获取受影响的星系名称（已排序）
                 let systemNames = getInfestedSystemNames(for: incursion)
 
-                // 百分比最多保留一位小数，省略末尾的零
-                let influencePercent = FormatUtil.format(min(max(incursion.incursion.influence, 0), 1) * 100, maxFractionDigits: 1)
+                let influencePercent = IncursionProgressRow.percentText(for: incursion.incursion.influence)
                 let influenceText = String(
                     format: NSLocalizedString("Incursions_Influence_Format", comment: ""),
                     influencePercent
@@ -450,6 +449,13 @@ struct IncursionProgressRow: View {
     static let stateOrder = ["established", "mobilizing", "withdrawing"]
     static let progressFillColor = Color(red: 64 / 255, green: 168 / 255, blue: 176 / 255)
     static let progressTrackColor = Color(red: 130 / 255, green: 55 / 255, blue: 55 / 255)
+
+    static func percentText(for influence: Double) -> String {
+        let fraction = min(max(influence, 0), 1)
+        // 不将尚未达到满值的影响力四舍五入为 100%。
+        let percent = (fraction * 1000).rounded(.down) / 10
+        return FormatUtil.format(percent, maxFractionDigits: 1)
+    }
 
     static func color(for state: String) -> Color {
         switch state {
@@ -499,7 +505,7 @@ struct IncursionProgressRow: View {
                     .foregroundColor(stateColor)
                     .font(.caption)
                 Spacer(minLength: 8)
-                Text(verbatim: "\(FormatUtil.format(min(max(influence, 0), 1) * 100, maxFractionDigits: 1))%")
+                Text(verbatim: "\(Self.percentText(for: influence))%")
                     .font(.caption.weight(.semibold).monospacedDigit())
                     .foregroundColor(Self.progressFillColor)
             }
@@ -993,7 +999,7 @@ private struct IncursionsInformationView: View {
 
 /// 预览容器：三种阶段 × 多档影响力，在真实 List 行背景下对比两段进度
 private struct IncursionProgressRowPreviewList: View {
-    private let influences: [Double] = [0, 0.15, 0.35, 0.6, 0.85, 1]
+    private let influences: [Double] = [0, 0.15, 0.35, 0.6, 0.85, 0.9996, 1]
 
     var body: some View {
         List {
@@ -1001,7 +1007,7 @@ private struct IncursionProgressRowPreviewList: View {
                 Section {
                     ForEach(influences, id: \.self) { influence in
                         HStack(spacing: 12) {
-                            Text("\(FormatUtil.format(influence * 100, maxFractionDigits: 1))%")
+                            Text(verbatim: "\(IncursionProgressRow.percentText(for: influence))%")
                                 .font(.caption.monospacedDigit())
                                 .foregroundColor(.secondary)
                                 .frame(width: 40, alignment: .trailing)

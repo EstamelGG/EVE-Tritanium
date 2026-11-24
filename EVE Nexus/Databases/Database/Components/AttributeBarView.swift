@@ -7,19 +7,22 @@ private struct AttributeMetricRow: View {
     let icon: String
     let title: String
     let value: String
+    var attributeID: Int? = nil
 
     var body: some View {
-        HStack {
-            Image(icon)
-                .resizable()
-                .frame(width: 32, height: 32)
-            Text(title)
-                .font(.body)
-            Spacer()
-            Text(value)
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.trailing)
+        AttributeTooltipRow(title: title, attributeID: attributeID) { attributeTitle in
+            HStack {
+                Image(icon)
+                    .resizable()
+                    .frame(width: 32, height: 32)
+                attributeTitle
+                    .font(.body)
+                Spacer()
+                Text(value)
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.trailing)
+            }
         }
     }
 }
@@ -155,21 +158,23 @@ struct AttributeItemView: View {
 
     var body: some View {
         if AttributeDisplayConfig.shouldShowAttribute(attribute.id, attribute: attribute) {
-            if isNavigable, let id = resolvedID {
-                NavigationLink {
-                    navigableDestination(id: id)
-                } label: {
-                    defaultAttributeView
-                        .foregroundStyle(.primary)
+            AttributeTooltipRow(title: attribute.displayTitle, attributeID: attribute.id) { title in
+                if isNavigable, let id = resolvedID {
+                    NavigationLink {
+                        navigableDestination(id: id)
+                    } label: {
+                        defaultAttributeView(title: title)
+                            .foregroundStyle(.primary)
+                    }
+                } else {
+                    defaultAttributeView(title: title)
+                        .attributeInfluences([attribute.id])
                 }
-            } else {
-                defaultAttributeView
-                    .attributeInfluences([attribute.id])
             }
         }
     }
 
-    private var defaultAttributeView: some View {
+    private func defaultAttributeView(title: AttributeTooltipTitle) -> some View {
         HStack {
             if attribute.iconID != 0 {
                 IconManager.shared.loadImage(for: attribute.iconFileName)
@@ -177,7 +182,7 @@ struct AttributeItemView: View {
                     .frame(width: 32, height: 32)
             }
 
-            Text(attribute.displayTitle)
+            title
                 .font(.body)
 
             Spacer()
@@ -315,7 +320,8 @@ struct AttributeGroupView: View {
                 {
                     AttributeMetricRow(icon: "warp_speed",
                                        title: NSLocalizedString("Fitting_warp_speed", comment: "跃迁速度"),
-                                       value: "\(FormatUtil.format(baseWarpSpeed * multiplier)) AU/s")
+                                       value: "\(FormatUtil.format(baseWarpSpeed * multiplier)) AU/s",
+                                       attributeID: 1281)
                         .listRowInsets(attributeRowInsets)
                 }
 

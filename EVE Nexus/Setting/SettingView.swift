@@ -1,6 +1,7 @@
 import CommonCrypto
 import SwiftUI
 import UIKit
+import WidgetKit
 
 // MARK: - 数据模型
 
@@ -92,6 +93,17 @@ class CacheManager {
         "github_market_cache", // Jita 订单汇总缓存
     ]
 
+    /// App Group 中与小组件共享的缓存目录
+    func getSharedCacheDirectories() -> [(name: String, url: URL)] {
+        guard let root = fileManager.containerURL(
+            forSecurityApplicationGroupIdentifier: WidgetStore.appGroup
+        ) else { return [] }
+        return [
+            ("Shared/WidgetResources", root.appendingPathComponent("WidgetResources/Samples", isDirectory: true)),
+            ("Shared/WidgetImages", root.appendingPathComponent("WidgetImages", isDirectory: true)),
+        ]
+    }
+
     /// 获取缓存目录列表
     func getCacheDirs() -> [String] {
         return cacheDirs
@@ -159,6 +171,31 @@ class CacheManager {
                 }
             } catch {
                 Logger.error("清理目录失败 - \(dirName): \(error)")
+            }
+        }
+
+        for (dirName, dirPath) in getSharedCacheDirectories() {
+            do {
+                if fileManager.fileExists(atPath: dirPath.path) {
+                    var fileCount = 0
+                    if let enumerator = fileManager.enumerator(
+                        at: dirPath,
+                        includingPropertiesForKeys: [.isRegularFileKey],
+                        options: [.skipsHiddenFiles]
+                    ) {
+                        while let fileURL = enumerator.nextObject() as? URL {
+                            if (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
+                                fileCount += 1
+                            }
+                        }
+                    }
+                    try fileManager.removeItem(at: dirPath)
+                    try fileManager.createDirectory(at: dirPath, withIntermediateDirectories: true)
+                    totalFilesRemoved += fileCount
+                    Logger.success("成功清理并重建共享目录: \(dirName)，删除了 \(fileCount) 个文件")
+                }
+            } catch {
+                Logger.error("清理共享目录失败 - \(dirName): \(error)")
             }
         }
 
@@ -245,6 +282,11 @@ struct SettingView: View {
     // MARK: - 属性定义
 
     @AppStorage("selectedTimeZone") private var selectedTimeZone = "local"
+    @AppStorage(CurrencyUnitStyle.key, store: WidgetMarketWatchlist.defaults)
+    private var currencyUnitStyle = CurrencyUnitStyle.defaultStyle
+    @AppStorage(WidgetMarketTrendColors.key, store: WidgetMarketWatchlist.defaults)
+    private var marketTrendColors = WidgetMarketTrendColors.defaultStyle
+    @State private var showingCurrencyEconomySettings = false
     @State private var showingTimeZoneView = false
     @AppStorage("selectedTheme") private var selectedTheme: String = "system"
     @AppStorage("enableLogging") private var enableLogging: Bool = false
@@ -255,6 +297,7 @@ struct SettingView: View {
     @ObservedObject var databaseManager: DatabaseManager
     var isLaboratory = false
     @State private var showingLaboratory = false
+    @State private var showingWidgetSettings = false
     @State private var isCleaningCache = false
     @State private var isCleaningCharacterDatabase = false
     @State private var isResettingSDE = false
@@ -296,13 +339,14 @@ struct SettingView: View {
             let fileCountThreshold = 200
             var directoryStats: [DirectoryStats] = []
 
-            // 计算缓存目录大小
+            // 计算缓存目录大小（含 App Group 共享目录）
             let documentPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
             // 使用CacheManager中的缓存目录列表（包含StaticDataSet）
-            let cacheDirs = CacheManager.shared.getCacheDirs()
+            let cacheEntries: [(name: String, url: URL)] = CacheManager.shared.getCacheDirs().map {
+                ($0, documentPath.appendingPathComponent($0))
+            } + CacheManager.shared.getSharedCacheDirectories()
 
-            for dirName in cacheDirs {
-                let dirPath = documentPath.appendingPathComponent(dirName)
+            for (dirName, dirPath) in cacheEntries {
                 var dirStats = DirectoryStats(name: dirName)
 
                 if fileManager.fileExists(atPath: dirPath.path),
@@ -436,6 +480,12 @@ struct SettingView: View {
                         : TimeZoneSettingsView.currentTimeZoneDescription,
                     icon: "globe",
                     action: { showingTimeZoneView = true }
+                ),
+                SettingItem(
+                    title: NSLocalizedString("Main_Setting_Currency_Units", comment: ""),
+                    detail: "\(currencyUnitStyle.settingsTitle) · \(marketTrendColors.settingsTitle)",
+                    icon: "number",
+                    action: { showingCurrencyEconomySettings = true }
                 ),
             ]
         )
@@ -583,6 +633,13 @@ struct SettingView: View {
 
     private func createDiagnosticsGroup() -> SettingGroup {
         var items = [
+            SettingItem(
+                title: String(localized: "Widget_Settings_Title", table: "Widgets", bundle: WidgetLocalization.bundle),
+                detail: String(localized: "Widget_Settings_Detail", table: "Widgets", bundle: WidgetLocalization.bundle),
+                icon: "square.grid.2x2",
+                iconColor: .blue,
+                action: { showingWidgetSettings = true }
+            ),
             SettingItem(
                 title: NSLocalizedString("Main_Setting_ESI_Status", comment: ""),
                 detail: NSLocalizedString("Main_Setting_ESI_Status_Detail", comment: ""),
@@ -896,6 +953,15 @@ struct SettingView: View {
         .navigationDestination(isPresented: $showingLaboratory) {
             // 类型擦除避免共享页面容器的递归泛型展开。
             AnyView(SettingView(databaseManager: databaseManager, isLaboratory: true))
+        }
+        .navigationDestination(isPresented: $showingWidgetSettings) {
+            WidgetSettingsView()
+        }
+        .navigationDestination(isPresented: $showingCurrencyEconomySettings) {
+            CurrencyEconomySettingsView(
+                currencyUnitStyle: $currencyUnitStyle,
+                marketTrendColors: $marketTrendColors
+            )
         }
         .navigationDestination(isPresented: $showingTimeZoneView) {
             TimeZoneSettingsView()
@@ -1601,7 +1667,7 @@ struct TokenViewerView: View {
                 Logger.error("加载人物头像失败 (ID: \(characterId)): \(error)")
             }
             // 读取 refresh token（Keychain）
-            let refreshToken = try? SecureStorage.shared.loadToken(for: characterId)
+            let refreshToken = try? WidgetCredentialStore.read(characterId)?.refreshToken
             // 读取 access token（内存缓存，不触发刷新）
             let accessToken = await AuthTokenManager.shared.getCachedAccessToken(for: characterId)
             await MainActor.run {
@@ -1782,5 +1848,97 @@ private struct TimeZoneSettingsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selectedTimeZone == value ? .isSelected : [])
+    }
+}
+
+private extension CurrencyUnitStyle {
+    var settingsTitle: String {
+        switch self {
+        case .localized: NSLocalizedString("Main_Setting_Currency_Units_Localized", comment: "")
+        case .english: NSLocalizedString("Main_Setting_Currency_Units_English", comment: "")
+        }
+    }
+}
+
+private extension WidgetMarketTrendColors {
+    var settingsTitle: String {
+        switch self {
+        case .redUp: String(localized: "Widget_Market_Red_Up", table: "Widgets")
+        case .greenUp: String(localized: "Widget_Market_Green_Up", table: "Widgets")
+        }
+    }
+}
+
+private struct CurrencyEconomySettingsView: View {
+    @Binding var currencyUnitStyle: CurrencyUnitStyle
+    @Binding var marketTrendColors: WidgetMarketTrendColors
+    @Environment(\.locale) private var locale
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(CurrencyUnitStyle.allCases, id: \.self) { style in
+                    selectionRow(
+                        title: style.settingsTitle,
+                        subtitle: style.format(150_000_000, locale: locale),
+                        isSelected: currencyUnitStyle == style
+                    ) {
+                        guard currencyUnitStyle != style else { return }
+                        currencyUnitStyle = style
+                        WidgetCenter.shared.reloadTimelines(ofKind: NexusWidgetKind.market.rawValue)
+                    }
+                }
+            } header: {
+                Text("Main_Setting_Currency_Units_Header")
+            }
+
+            Section {
+                ForEach([WidgetMarketTrendColors.redUp, .greenUp], id: \.self) { style in
+                    selectionRow(
+                        title: style.settingsTitle,
+                        isSelected: marketTrendColors == style
+                    ) {
+                        guard marketTrendColors != style else { return }
+                        marketTrendColors = style
+                        WidgetCenter.shared.reloadTimelines(ofKind: NexusWidgetKind.market.rawValue)
+                    }
+                }
+            } header: {
+                Text("Widget_Market_Trend_Colors", tableName: "Widgets")
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle(NSLocalizedString("Main_Setting_Currency_Units", comment: ""))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func selectionRow(
+        title: String,
+        subtitle: String? = nil,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .foregroundStyle(.primary)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

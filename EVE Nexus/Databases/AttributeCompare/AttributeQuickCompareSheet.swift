@@ -44,6 +44,8 @@ struct AttributeQuickCompareSheet: View {
                             isOn: $showOnlyDifferences
                         )
                         .padding(.top, 4)
+
+                        AttributeCompareLayoutPicker()
                     } header: {
                         Text(
                             String.localizedStringWithFormat(

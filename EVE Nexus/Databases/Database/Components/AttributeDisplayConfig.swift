@@ -139,6 +139,10 @@ enum AttributeDisplayConfig {
         ),
     ]
 
+    /// 安装座数和等级属于计数语义，属性名称已经表达含义，不再重复拼接单位。
+    private static let unitlessAttributeIDs: Set<Int> = [101, 102, 280]
+    private static let unitlessUnitIDs: Set<Int> = [140, 141]
+
     /// 基于 Attribute_id 的值转换规则
     private static let valueTransformRules: [Int: (Double) -> Double] = [:]
 
@@ -147,6 +151,11 @@ enum AttributeDisplayConfig {
         108: { (1 - $0) * 100 },
         111: { (1 - $0) * 100 },
         127: { $0 * 100 },
+    ]
+
+    /// 属性对比把单位放在标题中，因此百分比单位需要先转换为数值。
+    private static let comparisonValueTransformRules: [Int: (Double) -> Double] = [
+        109: { ($0 - 1) * 100 },
     ]
 
     /// 基于 unitID 的值格式化规则，参考 https://sde.hoboleaks.space/tq/dogmaunits.json
@@ -275,9 +284,13 @@ enum AttributeDisplayConfig {
     }
 
     /// 转换属性值，将数值与单位拼接
-    static func transformValue(_ attributeID: Int, allAttributes: [Int: Double], unitID: Int?, applyCalculations: Bool = true)
-        -> TransformResult
-    {
+    static func transformValue(
+        _ attributeID: Int,
+        allAttributes: [Int: Double],
+        unitID: Int?,
+        applyCalculations: Bool = true,
+        appliesUnitFormatRules: Bool = true
+    ) -> TransformResult {
         let value = applyCalculations
             ? calculateValue(for: attributeID, in: allAttributes)
             : (allAttributes[attributeID] ?? 0)
@@ -308,7 +321,20 @@ enum AttributeDisplayConfig {
             transformedValue = unitTransform(transformedValue)
         }
 
-        if let unitID, let formatRule = unitFormatRules[unitID] {
+        if unitlessAttributeIDs.contains(attributeID)
+            || unitID.map(unitlessUnitIDs.contains) == true
+        {
+            return .number(transformedValue, nil)
+        }
+
+        if !appliesUnitFormatRules,
+           let unitID,
+           let comparisonTransform = comparisonValueTransformRules[unitID]
+        {
+            transformedValue = comparisonTransform(transformedValue)
+        }
+
+        if appliesUnitFormatRules, let unitID, let formatRule = unitFormatRules[unitID] {
             return .text(formatRule(transformedValue, attributeUnits[attributeID]))
         }
 

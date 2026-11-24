@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - 数据模型
 
-struct MarketOrder: Codable {
+struct MarketOrder: Codable, Sendable {
     let duration: Int
     let isBuyOrder: Bool
     let issued: String
@@ -72,6 +72,13 @@ class MarketOrdersAPI {
     static let shared = MarketOrdersAPI()
     private let cacheDuration: TimeInterval = 3 * 60 * 60 // 3 小时缓存
 
+    private struct RequestKey: Hashable, Sendable {
+        let typeID: Int
+        let regionID: Int
+    }
+
+    private let requests = AppDataRequests<RequestKey, [MarketOrder]>()
+
     private init() {}
 
     private struct CachedData: Codable {
@@ -106,11 +113,16 @@ class MarketOrdersAPI {
         return cacheDirectory.appendingPathComponent("market_orders_\(typeID)_\(regionID).json")
     }
 
-    private func loadFromCache(typeID: Int, regionID: Int) -> [MarketOrder]? {
+    func cachedAt(typeID: Int, regionID: Int) -> Date? {
+        let region = typeID == MarketManager.plexTypeID ? MarketManager.globalPlexRegionID : regionID
+        return getCacheFilePath(typeID: typeID, regionID: region)?.cacheModificationDate
+    }
+
+    private func loadFromCache(typeID: Int, regionID: Int, maxAge: TimeInterval) -> [MarketOrder]? {
         guard let cacheFile = getCacheFilePath(typeID: typeID, regionID: regionID),
               let data = try? Data(contentsOf: cacheFile),
               let cached = try? JSONDecoder().decode(CachedData.self, from: data),
-              cached.timestamp.addingTimeInterval(cacheDuration) > Date()
+              cached.timestamp.addingTimeInterval(maxAge) > Date()
         else {
             return nil
         }
@@ -119,13 +131,13 @@ class MarketOrdersAPI {
         return cached.data
     }
 
-    private func saveToCache(_ orders: [MarketOrder], typeID: Int, regionID: Int) {
+    private func saveToCache(_ orders: [MarketOrder], typeID: Int, regionID: Int, at date: Date) {
         guard let cacheFile = getCacheFilePath(typeID: typeID, regionID: regionID) else { return }
 
-        let cachedData = CachedData(data: orders, timestamp: Date())
+        let cachedData = CachedData(data: orders, timestamp: date)
         do {
             let encodedData = try JSONEncoder().encode(cachedData)
-            try encodedData.write(to: cacheFile)
+            try encodedData.write(to: cacheFile, options: .atomic)
             Logger.info("市场订单数据已缓存到文件")
         } catch {
             Logger.error("保存市场订单缓存失败: \(error)")
@@ -134,14 +146,16 @@ class MarketOrdersAPI {
 
     // MARK: - 公共方法
 
-    func fetchMarketOrders(typeID: Int, regionID: Int, forceRefresh: Bool = false) async throws
+    func fetchMarketOrders(
+        typeID: Int, regionID: Int, forceRefresh: Bool = false, maxCacheAge: TimeInterval? = nil
+    ) async throws
         -> [MarketOrder]
     {
         var actualRegionID = regionID
 
         // PLEX 特殊处理：订单走全球市场
         if typeID == MarketManager.plexTypeID {
-            actualRegionID = 19_000_001
+            actualRegionID = MarketManager.globalPlexRegionID
         }
 
         // 统一强制刷新限流：5 分钟内的重复强制刷新降级为使用缓存
@@ -155,11 +169,20 @@ class MarketOrdersAPI {
 
         // 如果不是强制刷新，尝试从缓存获取
         if !forceRefresh {
-            if let cached = loadFromCache(typeID: typeID, regionID: actualRegionID) {
+            if let cached = loadFromCache(typeID: typeID, regionID: actualRegionID, maxAge: maxCacheAge ?? cacheDuration) {
                 return cached
             }
         }
 
+        let key = RequestKey(typeID: typeID, regionID: actualRegionID)
+        return try await requests.run(key) {
+            try await self.downloadOrders(for: key)
+        }
+    }
+
+    private func downloadOrders(for key: RequestKey) async throws -> [MarketOrder] {
+        let typeID = key.typeID
+        let actualRegionID = key.regionID
         // 构建URL
         let baseURL = "https://esi.evetech.net/markets/\(actualRegionID)/orders/"
         var components = URLComponents(string: baseURL)
@@ -177,7 +200,9 @@ class MarketOrdersAPI {
         let orders = try JSONDecoder().decode([MarketOrder].self, from: data)
 
         // 保存到缓存
-        saveToCache(orders, typeID: typeID, regionID: actualRegionID)
+        let now = Date()
+        saveToCache(orders, typeID: typeID, regionID: actualRegionID, at: now)
+        await AppDataUpdate.marketOrders(typeID: typeID, regionID: actualRegionID, orders: orders, at: now).publish()
 
         return orders
     }
